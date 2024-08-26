@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台指期籌碼力道</title>
+    <link rel="stylesheet" href="./style.css">
+    <!-- <link rel="stylesheet" href="style.css"> -->
+</head>
+<body>
+    <h1>台指期籌碼力道</h1>
+    <div id="index-value"> TX-1 台指期 N/A </div>
+        <div id="highlow-value"> 最高 N/A </div>
+    <div id="data-container">
+    <div class="category-box" id="tank-category">
+        <span class="category-title">坦克</span>
+        <span id="tx_bvav" class="category-value">加載中...</span>
+    </div>
+    <div class="category-box" id="cannon-fodder-category">
+        <span class="category-title">炮灰</span>
+        <span id="mtx_tbta" class="category-value">加載中...</span>
+    </div>
+    <div class="category-box" id="guerrilla-category">
+        <span class="category-title">游擊隊</span>
+        <span id="mtx_bvav" class="category-value">加載中...</span>
+    </div>
+    <div class="category-box" id="guerrilla-tank">
+        <span class="category-title">方向</span>
+        <span id="mtx_p" class="category-value">加載中...</span>
+    </div>
+    </div>
+    <h2>參考說明</h2>
+    <p style="color: red;">游擊＋　坦克＋　炮灰－ ➡️　方向偏多
+    <p style="color: green;">游擊－　坦克－　炮灰＋ ➡️　方向偏空
+
+    <script src="script.js"></script>
+</body>
+</html>
+
+<script>
+    
+// 顯示指數價格
+async function fetchIndexValues() {
+        try {
+            const response = await fetch('https://histock.tw/stock/module/function.aspx?m=stocktop2017&no=FITX');
+            const htmlText = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+
+            // 獲取所有的<li>元素
+            const listItems = doc.querySelectorAll('ul > li');
+
+                // 初始化變量
+                let indexValue = null;
+                let changeValue = null;
+                let percentageChange = null;
+                let openValue = null;
+
+            listItems.forEach(item => {
+            const title = item.querySelector('.ci_title');
+            const value = item.querySelector('.ci_value span');
+
+                if (title && value) {
+                    const titleText = title.textContent.trim();
+                    let valueText = value.textContent.trim();
+                    // 指數去小數點.0
+                    if (valueText.endsWith('.0')) {
+                        valueText = valueText.slice(0, -2);
+                    }
+
+                    switch (titleText) {
+                        case '指數':
+                            indexValue = valueText;
+                            break;
+                        case '漲跌':
+                            changeValue = valueText;
+                            break;
+                        case '幅度':
+                            percentageChange = valueText;
+                            break;
+                        case '開盤':
+                            openValue = valueText;
+                            break;
+                        case '最高':
+                            highValue = valueText;
+                            break;
+                        case '最低':
+                            lowValue = valueText;
+                            break;
+                        case '成交量(口)':
+                            volume = valueText;
+                            break;
+                    }
+                }
+            });     
+            document.getElementById('index-value').textContent = 'TX-1 台指期　' + 
+                (indexValue || 'N/A')　+'　' + (changeValue || 'N/A') +'　' +(percentageChange || 'N/A') +'　量(口)' +(volume || 'N/A')
+            document.getElementById('highlow-value').textContent = '最高　' + 
+                (highValue || 'N/A')　+'　最低　' + (lowValue || 'N/A') +'　開盤　' + (openValue || 'N/A')
+            } catch (error) {
+                console.error('Error fetching index values:', error);
+            }
+        }
+
+        // 每3秒自動同步一次
+        setInterval(fetchIndexValues, 2000);
+
+        // 初始調用以立即獲取一次數據
+        fetchIndexValues();
+
+// Function to fetch data from the API
+async function fetchData() {
+    try {
+        const response = await fetch('https://market-data-api.futures-ai.com/chip960_tradeinfo/');
+        const data = await response.json();
+        updateUI(data);
+    } catch (error) {
+        console.error('獲取籌碼出現問題:', error);
+    }
+}
+
+// Function to update UI with fetched data
+function updateUI(data) {
+    // Extract data for each category
+    const tx_bvav = data['tx_bvav'];    // 坦克
+    const mtx_tbta = data['mtx_tbta'];  // 炮灰
+    const mtx_bvav = data['mtx_bvav'];  // 游擊隊
+    const mtx_tx = tx_bvav+mtx_bvav;  // 主力方向
+
+    // Update DOM elements with the fetched data
+    document.getElementById('tx_bvav').textContent = tx_bvav;
+    document.getElementById('mtx_tbta').textContent = mtx_tbta;
+    document.getElementById('mtx_bvav').textContent = mtx_bvav;
+    document.getElementById('mtx_p').textContent = mtx_tx;
+
+    // Apply color coding based on conditions using setCategoryColors
+    setCategoryColors('tank-category', tx_bvav);
+    setCategoryColors('cannon-fodder-category', mtx_tbta);
+    setCategoryColors('guerrilla-category', mtx_bvav);
+    setCategoryColors('guerrilla-tank', mtx_tx);
+}
+
+// Function to set background color based on value for both text and container
+function setCategoryColors(categoryId, value) {
+    const categoryElement = document.getElementById(categoryId);
+    const valueElement = categoryElement.querySelector('.category-value');
+
+    if (categoryId === 'cannon-fodder-category') { // 炮灰
+        if (value > 0) {
+            valueElement.style.backgroundColor = '#66a43a';    // 正值為綠色
+            categoryElement.style.backgroundColor = '#243620'; // 較深的綠色背景
+        } else {
+            valueElement.style.backgroundColor = '#cc393b';    // 負值或零為紅色
+            categoryElement.style.backgroundColor = '#452121'; // 較深的紅色背景
+        }
+    } else { // 游擊隊, 坦克
+        if (value > 0) {
+            valueElement.style.backgroundColor = '#cc393b';    // 正值為紅色
+            categoryElement.style.backgroundColor = '#452121'; // 較深的紅色背景
+        } else {
+            valueElement.style.backgroundColor = '#66a43a';    // 負值或零為綠色
+            categoryElement.style.backgroundColor = '#243620'; // 較深的綠色背景
+        }
+    }
+}
+
+// Initial fetch and update
+fetchData();
+
+// Fetch data every 5 seconds
+setInterval(fetchData, 2000);
+
+</script>
