@@ -2,134 +2,86 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>期權籌碼 | 行動戰情室</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 期權戰情室</title>
     <style>
         :root {
-            --bg-color: #0d1117;
-            --card-bg: #161b22;
-            --border-color: #30363d;
-            --call-red: #ff7b72;
-            --put-green: #7ee787;
-            --ai-blue: #58a6ff;
+            --bg: #0d1117; --card: #161b22; --blue: #58a6ff;
+            --red: #ff7b72; --green: #7ee787; --border: #30363d;
         }
-
         body { 
-            font-family: -apple-system, "Helvetica Neue", "Microsoft JhengHei", sans-serif; 
-            background-color: var(--bg-color); 
-            color: #c9d1d9; 
-            padding: 10px; 
-            margin: 0;
+            font-family: -apple-system, "Segoe UI", sans-serif; 
+            background: var(--bg); color: #c9d1d9; margin: 0; padding: 8px; 
         }
-
-        .container { 
-            max-width: 600px; 
-            margin: auto; 
-        }
-
-        h2 { color: var(--ai-blue); text-align: center; font-size: 20px; margin: 15px 0; }
-
-        /* --- 響應式表格：手機轉卡片 --- */
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; display: table; }
+        .container { max-width: 500px; margin: auto; }
         
-        .main-title { background: #010409; color: var(--ai-blue); padding: 12px; font-size: 16px; font-weight: bold; border: 1px solid var(--border-color); }
-
-        thead { display: table-header-group; }
+        /* 1. 表格區塊優化：分組顯示 */
+        .header-title { font-size: 16px; color: var(--blue); text-align: center; margin-bottom: 8px; font-weight: bold; }
         
-        th { background: #21262d; color: #8b949e; padding: 8px; font-size: 12px; border: 1px solid var(--border-color); }
-        td { padding: 12px 8px; border: 1px solid var(--border-color); text-align: center; font-size: 14px; }
-
-        /* 手機端調整 (螢幕寬度小於 600px) */
-        @media screen and (max-width: 600px) {
-            thead { display: none; } /* 隱藏表頭 */
-            tr { 
-                display: block; 
-                background: var(--card-bg); 
-                margin-bottom: 10px; 
-                border-radius: 8px; 
-                border: 1px solid var(--border-color);
-                position: relative;
-                padding-left: 40%;
-                min-height: 120px;
-            }
-            td { 
-                display: block; 
-                text-align: right; 
-                border: none; 
-                padding: 8px 12px;
-                position: relative;
-                border-bottom: 1px solid #21262d;
-            }
-            td:last-child { border-bottom: none; }
-            td::before {
-                content: attr(data-label);
-                position: absolute;
-                left: 12px;
-                font-weight: bold;
-                color: #8b949e;
-                font-size: 12px;
-            }
-            .call-row { border-left: 5px solid var(--call-red) !important; }
-            .put-row { border-left: 5px solid var(--put-green) !important; }
-        }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 13px; }
+        th { background: #21262d; color: #8b949e; padding: 5px; border: 1px solid var(--border); font-size: 11px; }
+        td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
+        
+        /* 分組標籤 */
+        .group-label { background: #010409 !important; font-weight: bold; color: #bc8cff; font-size: 11px; text-align: left !important; padding-left: 10px !important; }
+        .group-foreign { color: var(--blue); }
 
         .num-cell { font-family: "Consolas", monospace; font-weight: bold; }
-        .pos { color: var(--call-red); } 
-        .neg { color: var(--put-green); }
-        .call-text { color: var(--call-red); font-weight: bold; }
-        .put-text { color: var(--put-green); font-weight: bold; }
+        .pos { color: var(--red); } .neg { color: var(--green); }
+        .call-text { color: var(--red); font-weight: bold; }
+        .put-text { color: var(--green); font-weight: bold; }
 
-        /* --- AI 戰情室優化 --- */
-        .ai-dashboard { 
-            background: var(--card-bg); border: 1px solid var(--border-color); 
-            border-radius: 12px; padding: 15px; margin-top: 10px;
-        }
-        .trend-hero { 
-            text-align: center; padding: 15px; background: #010409; 
-            border-radius: 10px; margin-bottom: 15px; 
-        }
-        .trend-status { font-size: 28px; font-weight: 900; margin: 5px 0; display: block; }
+        /* 2. AI 整合面板 */
+        .ai-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
         
-        .ai-grid { display: flex; flex-direction: column; gap: 10px; }
-        .vs-card { background: #1c2128; padding: 12px; border-radius: 8px; border-left: 4px solid var(--border-color); }
-        .dealer-card { border-left-color: #bc8cff; }
-        .foreign-card { border-left-color: var(--ai-blue); }
-        
+        .trend-row { 
+            display: flex; align-items: center; justify-content: space-between; 
+            margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+        }
+        .trend-status { font-size: 20px; font-weight: 900; }
+
+        .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .ai-card { background: #0d1117; padding: 6px; border-radius: 6px; border: 1px solid var(--border); }
+        .card-label { font-size: 10px; color: #8b949e; margin-bottom: 2px; }
+        .card-content { font-size: 12px; line-height: 1.4; }
+
         .strategy-box { 
-            margin-top: 15px; padding: 15px; background: rgba(88, 166, 255, 0.05); 
-            border-radius: 10px; border: 1px dashed var(--ai-blue); 
+            padding: 8px; background: rgba(88, 166, 255, 0.08); 
+            border-radius: 6px; border-left: 3px solid var(--blue);
         }
+        .strategy-desc { font-size: 13px; line-height: 1.5; color: #f0f6fc; }
+
+        .color-bull { color: var(--red); }
+        .color-bear { color: var(--green); }
+        .color-neutral { color: var(--blue); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📊 期權籌碼行動終端</h2>
+    <div class="header-title">📊 法人期權籌碼分布</div>
+    
     <div id="data-table">載入中...</div>
 
-    <div class="ai-dashboard">
-        <div class="trend-hero">
-            <span style="font-size: 12px; color: #8b949e;">AI 綜合判斷</span>
-            <span id="trend-indicator" class="trend-status">分析中...</span>
-            <div style="height: 6px; background: #30363d; border-radius: 3px; margin-top: 8px; overflow: hidden;">
-                <div id="score-fill" style="height: 100%; width: 50%; background: var(--ai-blue); transition: 0.5s;"></div>
-            </div>
+    <div class="ai-box">
+        <div class="trend-row">
+            <span style="font-size: 13px; color: #8b949e;">籌碼傾向</span>
+            <span id="trend-indicator" class="trend-status color-neutral">--</span>
         </div>
 
         <div class="ai-grid">
-            <div class="vs-card dealer-card">
-                <div style="font-size: 11px; color: #8b949e; margin-bottom: 4px;">自營商 (莊家防線)</div>
-                <div id="dealer-txt" style="font-size: 14px;">計算中...</div>
+            <div class="ai-card">
+                <div class="card-label">自營商 (莊家)</div>
+                <div id="dealer-txt" class="card-content">分析中...</div>
             </div>
-            <div class="vs-card foreign-card">
-                <div style="font-size: 11px; color: #8b949e; margin-bottom: 4px;">外資 (大戶攻勢)</div>
-                <div id="foreign-txt" style="font-size: 14px;">計算中...</div>
+            <div class="ai-card">
+                <div class="card-label">外資 (大戶)</div>
+                <div id="foreign-txt" class="card-content">分析中...</div>
             </div>
         </div>
         
         <div class="strategy-box">
-            <div style="color:var(--ai-blue); font-weight:bold; font-size: 14px; margin-bottom: 5px;">💡 操盤策略</div>
-            <div id="strategy-desc" style="font-size: 15px; line-height: 1.5;">正在評估最優方案...</div>
+            <div id="strategy-desc" class="strategy-desc">正在計算建議策略...</div>
         </div>
     </div>
 </div>
@@ -143,54 +95,68 @@
             const data = await response.json();
             const startIndex = (data[0][0] === "權別") ? 1 : 0;
             
-            let html = '<table><thead><tr><th>權別</th><th>身份</th><th>差額</th><th>OI</th><th>狀態</th></tr></thead><tbody>';
-            let lastType = ""; 
+            // 將資料按身份別分類
+            let dealerRows = "";
+            let foreignRows = "";
             let s = { dCall: 0, dPut: 0, fCall: 0, fPut: 0 };
 
+            let lastType = ""; 
             for (let i = startIndex; i < data.length; i++) {
                 let [type, id, diff, oi] = data[i];
                 if (type && type.trim() !== "") lastType = type; else type = lastType;
                 const oiVal = parseFloat(oi.replace(/,/g, '')) || 0;
-
-                if (id === "自營商") { if (type.includes("買權")) s.dCall = oiVal; if (type.includes("賣權")) s.dPut = oiVal; }
-                else if (id === "外資") { if (type.includes("買權")) s.fCall = oiVal; if (type.includes("賣權")) s.fPut = oiVal; }
-
                 const isCall = type.includes('買權');
-                html += `<tr class="${isCall ? 'call-row' : 'put-row'}">
-                    <td data-label="權別" class="${isCall ? 'call-text' : 'put-text'}">${type}</td>
-                    <td data-label="身份別">${id}</td>
-                    <td data-label="今日差額" class="num-cell ${diff.includes('-')?'neg':'pos'}">${diff}</td>
-                    <td data-label="未平倉OI" class="num-cell ${oi.includes('-')?'neg':'pos'}">${oi}</td>
-                    <td data-label="曝險狀態" style="color:${oiVal < 0 ? '#ff7b72':'#8b949e'}">${oiVal < 0 ? '⚠️曝險' : '正常'}</td>
+                const typeClass = isCall ? 'call-text' : 'put-text';
+                const rowHtml = `<tr>
+                    <td class="${typeClass}">${type}</td>
+                    <td class="num-cell ${diff.includes('-')?'neg':'pos'}">${diff}</td>
+                    <td class="num-cell ${oi.includes('-')?'neg':'pos'}">${oi}</td>
                 </tr>`;
+
+                if (id === "自營商") {
+                    dealerRows += rowHtml;
+                    if (isCall) s.dCall = oiVal; else s.dPut = oiVal;
+                } else if (id === "外資") {
+                    foreignRows += rowHtml;
+                    if (isCall) s.fCall = oiVal; else s.fPut = oiVal;
+                }
             }
-            document.getElementById('data-table').innerHTML = html + '</tbody></table>';
-            analyze(s);
-        } catch (e) { document.getElementById('data-table').innerHTML = "<div style='text-align:center;'>資料讀取失敗</div>"; }
+
+            let finalTable = `<table>
+                <thead><tr><th>權別</th><th>今日差額</th><th>未平倉OI</th></tr></thead>
+                <tbody>
+                    <tr><td colspan="3" class="group-label">🟣 自營商部位</td></tr>
+                    ${dealerRows}
+                    <tr><td colspan="3" class="group-label group-foreign">🔵 外資部位</td></tr>
+                    ${foreignRows}
+                </tbody>
+            </table>`;
+
+            document.getElementById('data-table').innerHTML = finalTable;
+            analyzeTrend(s);
+        } catch (e) { document.getElementById('data-table').innerHTML = "讀取失敗"; }
     }
 
-    function analyze(s) {
-        let score = 50; 
-        let d = "", f = "", trend = "", strat = "";
+    function analyzeTrend(s) {
+        let trend = "", color = "color-neutral", dealer = "", foreign = "", strategy = "";
+        let score = 0;
 
-        if (s.dPut < 0) { score += 12; d = "莊家支撐明確(Sell Put)。"; }
-        if (s.dCall < 0) { score -= 12; d += " 上方壓力同步(Sell Call)。"; }
-        if (s.fCall > 0) { score += 20; f = "外資多頭進攻。"; }
-        if (s.fPut > 0) { score -= 20; f += " 外資空頭避險。"; }
+        if (s.dPut < 0) { score += 1; dealer = "底部有撐。"; }
+        if (s.dCall < 0) { score -= 1; dealer += "上方有壓。"; }
+        if (s.fCall > 0) { score += 2; foreign = "外資做多。"; }
+        if (s.fPut > 0) { score -= 2; foreign += "避險增加。"; }
 
-        if (score >= 70) { trend = "📈 極度偏多"; strat = "籌碼全速看多。建議拉回即買，順勢操作。"; }
-        else if (score >= 55) { trend = "↗️ 趨勢偏多"; strat = "緩步墊高。建議守住支撐點位分批進場。"; }
-        else if (score <= 30) { trend = "📉 極度偏空"; strat = "下殺力道強。建議空手或反彈站賣方。"; }
-        else if (score <= 45) { trend = "↘️ 趨勢偏空"; strat = "壓力沉重。應注意回測風險。"; }
-        else { trend = "↔️ 區間震盪"; strat = "多空拉鋸中。適合低買高賣區間操作。"; }
+        if (score >= 3) { trend = "📈 極度偏多"; color = "color-bull"; strategy = "多頭佔優，適合逢回補多，看壓突破。"; }
+        else if (score >= 1) { trend = "↗️ 偏多震盪"; color = "color-bull"; strategy = "支撐穩健，低吸為主，注意高檔壓力。"; }
+        else if (score <= -3) { trend = "📉 極度偏空"; color = "color-bear"; strategy = "籌碼潰散，避險強，不宜進場接刀。"; }
+        else if (score <= -1) { trend = "↘️ 偏空震盪"; color = "color-bear"; strategy = "壓力沉重，反彈無力，建議保守觀望。"; }
+        else { trend = "↔️ 中性震盪"; color = "color-neutral"; strategy = "多空拉鋸，適合區間操作，收權利金。"; }
 
         document.getElementById('trend-indicator').innerText = trend;
-        document.getElementById('trend-indicator').style.color = score > 50 ? "#ff7b72" : (score < 50 ? "#7ee787" : "#58a6ff");
-        document.getElementById('score-fill').style.width = score + "%";
-        document.getElementById('score-fill').style.background = score > 50 ? "#ff7b72" : "#7ee787";
-        document.getElementById('dealer-txt').innerText = d || "中性佈局";
-        document.getElementById('foreign-txt').innerText = f || "觀望中";
-        document.getElementById('strategy-desc').innerText = strat;
+        document.getElementById('trend-indicator').className = "trend-status " + color;
+        document.getElementById('dealer-txt').innerText = dealer || "中性佈局";
+        document.getElementById('foreign-txt').innerText = foreign || "部位不明";
+        document.getElementById('strategy-desc').innerText = "💡 策略：" + strategy;
     }
     fetchData();
 </script>
