@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>期權籌碼 | 行動戰情室</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --call-red: #ff7b72;
+            --put-green: #7ee787;
+            --ai-blue: #58a6ff;
+        }
+
+        body { 
+            font-family: -apple-system, "Helvetica Neue", "Microsoft JhengHei", sans-serif; 
+            background-color: var(--bg-color); 
+            color: #c9d1d9; 
+            padding: 10px; 
+            margin: 0;
+        }
+
+        .container { 
+            max-width: 600px; 
+            margin: auto; 
+        }
+
+        h2 { color: var(--ai-blue); text-align: center; font-size: 20px; margin: 15px 0; }
+
+        /* --- 響應式表格：手機轉卡片 --- */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; display: table; }
+        
+        .main-title { background: #010409; color: var(--ai-blue); padding: 12px; font-size: 16px; font-weight: bold; border: 1px solid var(--border-color); }
+
+        thead { display: table-header-group; }
+        
+        th { background: #21262d; color: #8b949e; padding: 8px; font-size: 12px; border: 1px solid var(--border-color); }
+        td { padding: 12px 8px; border: 1px solid var(--border-color); text-align: center; font-size: 14px; }
+
+        /* 手機端調整 (螢幕寬度小於 600px) */
+        @media screen and (max-width: 600px) {
+            thead { display: none; } /* 隱藏表頭 */
+            tr { 
+                display: block; 
+                background: var(--card-bg); 
+                margin-bottom: 10px; 
+                border-radius: 8px; 
+                border: 1px solid var(--border-color);
+                position: relative;
+                padding-left: 40%;
+                min-height: 120px;
+            }
+            td { 
+                display: block; 
+                text-align: right; 
+                border: none; 
+                padding: 8px 12px;
+                position: relative;
+                border-bottom: 1px solid #21262d;
+            }
+            td:last-child { border-bottom: none; }
+            td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 12px;
+                font-weight: bold;
+                color: #8b949e;
+                font-size: 12px;
+            }
+            .call-row { border-left: 5px solid var(--call-red) !important; }
+            .put-row { border-left: 5px solid var(--put-green) !important; }
+        }
+
+        .num-cell { font-family: "Consolas", monospace; font-weight: bold; }
+        .pos { color: var(--call-red); } 
+        .neg { color: var(--put-green); }
+        .call-text { color: var(--call-red); font-weight: bold; }
+        .put-text { color: var(--put-green); font-weight: bold; }
+
+        /* --- AI 戰情室優化 --- */
+        .ai-dashboard { 
+            background: var(--card-bg); border: 1px solid var(--border-color); 
+            border-radius: 12px; padding: 15px; margin-top: 10px;
+        }
+        .trend-hero { 
+            text-align: center; padding: 15px; background: #010409; 
+            border-radius: 10px; margin-bottom: 15px; 
+        }
+        .trend-status { font-size: 28px; font-weight: 900; margin: 5px 0; display: block; }
+        
+        .ai-grid { display: flex; flex-direction: column; gap: 10px; }
+        .vs-card { background: #1c2128; padding: 12px; border-radius: 8px; border-left: 4px solid var(--border-color); }
+        .dealer-card { border-left-color: #bc8cff; }
+        .foreign-card { border-left-color: var(--ai-blue); }
+        
+        .strategy-box { 
+            margin-top: 15px; padding: 15px; background: rgba(88, 166, 255, 0.05); 
+            border-radius: 10px; border: 1px dashed var(--ai-blue); 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📊 期權籌碼行動終端</h2>
+    <div id="data-table">載入中...</div>
+
+    <div class="ai-dashboard">
+        <div class="trend-hero">
+            <span style="font-size: 12px; color: #8b949e;">AI 綜合判斷</span>
+            <span id="trend-indicator" class="trend-status">分析中...</span>
+            <div style="height: 6px; background: #30363d; border-radius: 3px; margin-top: 8px; overflow: hidden;">
+                <div id="score-fill" style="height: 100%; width: 50%; background: var(--ai-blue); transition: 0.5s;"></div>
+            </div>
+        </div>
+
+        <div class="ai-grid">
+            <div class="vs-card dealer-card">
+                <div style="font-size: 11px; color: #8b949e; margin-bottom: 4px;">自營商 (莊家防線)</div>
+                <div id="dealer-txt" style="font-size: 14px;">計算中...</div>
+            </div>
+            <div class="vs-card foreign-card">
+                <div style="font-size: 11px; color: #8b949e; margin-bottom: 4px;">外資 (大戶攻勢)</div>
+                <div id="foreign-txt" style="font-size: 14px;">計算中...</div>
+            </div>
+        </div>
+        
+        <div class="strategy-box">
+            <div style="color:var(--ai-blue); font-weight:bold; font-size: 14px; margin-bottom: 5px;">💡 操盤策略</div>
+            <div id="strategy-desc" style="font-size: 15px; line-height: 1.5;">正在評估最優方案...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbxtnFuNANtdObDtCYbaHXxC-LGfiWRqMdhTjh0E1psdftmHPhVL3nNJhJxC5_WF0S0UtQ/exec';
+
+    async function fetchData() {
+        try {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            const startIndex = (data[0][0] === "權別") ? 1 : 0;
+            
+            let html = '<table><thead><tr><th>權別</th><th>身份</th><th>差額</th><th>OI</th><th>狀態</th></tr></thead><tbody>';
+            let lastType = ""; 
+            let s = { dCall: 0, dPut: 0, fCall: 0, fPut: 0 };
+
+            for (let i = startIndex; i < data.length; i++) {
+                let [type, id, diff, oi] = data[i];
+                if (type && type.trim() !== "") lastType = type; else type = lastType;
+                const oiVal = parseFloat(oi.replace(/,/g, '')) || 0;
+
+                if (id === "自營商") { if (type.includes("買權")) s.dCall = oiVal; if (type.includes("賣權")) s.dPut = oiVal; }
+                else if (id === "外資") { if (type.includes("買權")) s.fCall = oiVal; if (type.includes("賣權")) s.fPut = oiVal; }
+
+                const isCall = type.includes('買權');
+                html += `<tr class="${isCall ? 'call-row' : 'put-row'}">
+                    <td data-label="權別" class="${isCall ? 'call-text' : 'put-text'}">${type}</td>
+                    <td data-label="身份別">${id}</td>
+                    <td data-label="今日差額" class="num-cell ${diff.includes('-')?'neg':'pos'}">${diff}</td>
+                    <td data-label="未平倉OI" class="num-cell ${oi.includes('-')?'neg':'pos'}">${oi}</td>
+                    <td data-label="曝險狀態" style="color:${oiVal < 0 ? '#ff7b72':'#8b949e'}">${oiVal < 0 ? '⚠️曝險' : '正常'}</td>
+                </tr>`;
+            }
+            document.getElementById('data-table').innerHTML = html + '</tbody></table>';
+            analyze(s);
+        } catch (e) { document.getElementById('data-table').innerHTML = "<div style='text-align:center;'>資料讀取失敗</div>"; }
+    }
+
+    function analyze(s) {
+        let score = 50; 
+        let d = "", f = "", trend = "", strat = "";
+
+        if (s.dPut < 0) { score += 12; d = "莊家支撐明確(Sell Put)。"; }
+        if (s.dCall < 0) { score -= 12; d += " 上方壓力同步(Sell Call)。"; }
+        if (s.fCall > 0) { score += 20; f = "外資多頭進攻。"; }
+        if (s.fPut > 0) { score -= 20; f += " 外資空頭避險。"; }
+
+        if (score >= 70) { trend = "📈 極度偏多"; strat = "籌碼全速看多。建議拉回即買，順勢操作。"; }
+        else if (score >= 55) { trend = "↗️ 趨勢偏多"; strat = "緩步墊高。建議守住支撐點位分批進場。"; }
+        else if (score <= 30) { trend = "📉 極度偏空"; strat = "下殺力道強。建議空手或反彈站賣方。"; }
+        else if (score <= 45) { trend = "↘️ 趨勢偏空"; strat = "壓力沉重。應注意回測風險。"; }
+        else { trend = "↔️ 區間震盪"; strat = "多空拉鋸中。適合低買高賣區間操作。"; }
+
+        document.getElementById('trend-indicator').innerText = trend;
+        document.getElementById('trend-indicator').style.color = score > 50 ? "#ff7b72" : (score < 50 ? "#7ee787" : "#58a6ff");
+        document.getElementById('score-fill').style.width = score + "%";
+        document.getElementById('score-fill').style.background = score > 50 ? "#ff7b72" : "#7ee787";
+        document.getElementById('dealer-txt').innerText = d || "中性佈局";
+        document.getElementById('foreign-txt').innerText = f || "觀望中";
+        document.getElementById('strategy-desc').innerText = strat;
+    }
+    fetchData();
+</script>
+</body>
+</html>
