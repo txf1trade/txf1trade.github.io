@@ -3,6 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 期權對戰分析</title>
+    <style>
+        :root {
+            --bg: #0d1117; --card: #161b22; --blue: #58a6ff;
+            --red: #ff7b72; --green: #7ee787; --border: #30363d;
+        }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: #c9d1d9; margin: 0; padding: 8px; }
+        .container { max-width: 500px; margin: auto; }
+        
+        /* 表格壓縮 */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
+        th { background: #21262d; color: #8b949e; padding: 5px; border: 1px solid var(--border); }
+        td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
+        
+        .group-label { background: #010409 !important; font-weight: bold; font-size: 11px; text-align: left !important; padding-left: 10px !important; }
+        .num-cell { font-family: "Consolas", monospace; font-weight: bold; }
+        .pos { color: var(--red); } .neg { color: var(--green); }
+
+        /* 動作標籤 */
+        .act { border-radius: 3px; padding: 1px 3px; font-size: 10px; font-weight: bold; border: 1px solid transparent; }
+        .bc { background: var(--red); color: white; }
+        .sc { border-color: var(--red); color: var(--red); }
+        .bp { background: var(--green); color: white; }
+        .sp { border-color: var(--green); color: var(--green); }
+
+        /* AI 策略區塊 */
+        .ai-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+        .trend-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .trend-val { font-size: 22px; font-weight: 900; }
+
+        .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .battle-card { background: #0d1117; padding: 8px; border-radius: 6px; border-left: 3px solid var(--blue); }
+        .card-name { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
+        .card-action { font-size: 14px; font-weight: bold; color: #f0f6fc; }
+
+        .strategy-box { background: rgba(88, 166, 255, 0.1); padding: 10px; border-radius: 6px; border: 1px solid var(--blue); }
+        .strat-text { font-size: 14px; line-height: 1.6; color: #f0f6fc; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="data-table">載入中...</div>
+
+    <div class="ai-box">
+        <div class="trend-header">
+            <span style="font-size: 13px; color: #8b949e;">AI 籌碼傾向</span>
+            <span id="trend-indicator" class="trend-val">--</span>
+        </div>
+
+        <div class="battle-grid">
+            <div class="battle-card" style="border-color: #bc8cff;">
+                <div class="card-name">自營商 (莊家防線)</div>
+                <div id="d-action" class="card-action">--</div>
+            </div>
+            <div class="battle-card" style="border-color: var(--blue);">
+                <div class="card-name">外資 (大戶意圖)</div>
+                <div id="f-action" class="card-action">--</div>
+            </div>
+        </div>
+        
+        <div class="strategy-box">
+            <div id="strategy-desc" class="strat-text">分析中...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbxtnFuNANtdObDtCYbaHXxC-LGfiWRqMdhTjh0E1psdftmHPhVL3nNJhJxC5_WF0S0UtQ/exec';
+
+    async function fetchData() {
+        try {
+            const res = await fetch(apiUrl);
+            const data = await res.json();
+            const start = (data[0][0] === "權別") ? 1 : 0;
+            let s = { dc: 0, dp: 0, fc: 0, fp: 0 };
+            let rows = { "自營商": "", "外資": "" };
+
+            let lastT = ""; 
+            for (let i = start; i < data.length; i++) {
+                let [t, id, diff, oi] = data[i];
+                if (t && t.trim() !== "") lastT = t; else t = lastT;
+                const oiV = parseFloat(oi.replace(/,/g, '')) || 0;
+                const isC = t.includes('買');
+                
+                // 判斷標籤
+                let tag = "";
+                if(isC) tag = oiV >= 0 ? '<span class="act bc">BC</span>' : '<span class="act sc">SC</span>';
+                else tag = oiV >= 0 ? '<span class="act bp">BP</span>' : '<span class="act sp">SP</span>';
+
+                const row = `<tr><td>${t}</td><td class="num-cell ${diff.includes('-')?'neg':'pos'}">${diff}</td><td class="num-cell ${oiV<0?'neg':'pos'}">${oi}</td><td>${tag}</td></tr>`;
+                if(rows[id] !== undefined) {
+                    rows[id] += row;
+                    if(id === "自營商") { if(isC) s.dc=oiV; else s.dp=oiV; }
+                    else { if(isC) s.fc=oiV; else s.fp=oiV; }
+                }
+            }
+
+            document.getElementById('data-table').innerHTML = `<table><thead><tr><th>權別</th><th>差額</th><th>未平倉</th><th>動作</th></tr></thead>
+                <tbody><tr><td colspan="4" class="group-label" style="color:#bc8cff;">🟣 自營商部位</td></tr>${rows["自營商"]}
+                <tr><td colspan="4" class="group-label" style="color:var(--blue);">🔵 外資部位</td></tr>${rows["外資"]}</tbody></table>`;
+            
+            analyze(s);
+        } catch (e) { document.getElementById('data-table').innerText = "讀取失敗"; }
+    }
+
+    function analyze(s) {
+        let score = 0;
+        let dAct = "", fAct = "", trend = "", strat = "", color = "";
+
+        // 1. 自營商動作 (莊家)
+        if (s.dc < 0 && s.dp < 0) dAct = "雙賣收租 (上有壓下有撐)";
+        else if (s.dp < 0) { dAct = "SP 撐盤 (看好不跌)"; score += 1; }
+        else if (s.dc < 0) { dAct = "SC 壓頭 (看好不漲)"; score -= 1; }
+        else dAct = "中性佈局";
+
+        // 2. 外資動作 (大戶)
+        if (s.fc > 0 && s.fp > 0) fAct = "雙買避險 (防大幅波動)";
+        else if (s.fc > 0) { fAct = "BC 進攻 (強力看多)"; score += 2; }
+        else if (s.fp > 0) { fAct = "BP 偷襲 (強力看空)"; score -= 2; }
+        else if (s.fp < 0) { fAct = "SP 配合撐盤 (偏多)"; score += 1; }
+        else fAct = "觀望";
+
+        // 3. 策略判定 (依據您要求的邏輯)
+        if (score >= 3) { 
+            trend = "📈 極度偏多"; color = varName('--red');
+            strat = "多頭佔據絕對優勢！外資 BC 進攻且莊家 SP 護盤，建議逢回即補多，目標看壓突破。";
+        } else if (score >= 1) { 
+            trend = "↗️ 偏多震盪"; color = varName('--red');
+            strat = "盤勢有撐。雖然莊家上方有小壓 (SC)，但外資買盤較強，建議回測支撐不破後小量佈多。";
+        } else if (score <= -3) { 
+            trend = "📉 極度偏空"; color = varName('--green');
+            strat = "空方勢力龐大！外資 BP 避險力道強且莊家撤退，不宜進場接刀，建議空手或建立防守性部位。";
+        } else if (score <= -1) { 
+            trend = "↘️ 偏空震盪"; color = varName('--green');
+            strat = "壓力較重。外資不願做多且莊家在上方佈壓 (SC)，反彈建議保守，切勿盲目追高。";
+        } else { 
+            trend = "↔️ 中性整理"; color = varName('--blue');
+            strat = "多空勢力均衡，法人正在兩端收權利金。適合 Sell 組合策略或等待區間突破。";
+        }
+
+        document.getElementById('trend-indicator').innerText = trend;
+        document.getElementById('trend-indicator').style.color = color;
+        document.getElementById('d-action').innerText = dAct;
+        document.getElementById('f-action').innerText = fAct;
+        document.getElementById('strategy-desc').innerText = "💡 策略建議：" + strat;
+    }
+    function varName(name) { return getComputedStyle(document.documentElement).getPropertyValue(name); }
+    fetchData();
+</script>
+</body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI 期權戰情室</title>
     <style>
         :root {
@@ -167,4 +325,4 @@
     fetchData();
 </script>
 </body>
-</html>
+</html> -->
