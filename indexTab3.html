@@ -1,28 +1,29 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-<head> 
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI期權戰情室-微台加強版</title>
+    <title>AI期權戰情室-法人邏輯強化版</title>
     <style>
         :root {
             --bg: #0d1117; --card: #161b22; --blue: #58a6ff;
             --red: #ff7b72; --green: #7ee787; --border: #30363d;
-            --risk-bg: #490e0e; --header: #21262d; --gold: #f1e05a;
+            --header: #21262d; --gold: #f1e05a;
+            --ai-glow: rgba(88, 166, 255, 0.3);
         }
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: #c9d1d9; margin: 0; padding: 4px; line-height: 1.1; }
+        body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: #c9d1d9; margin: 0; padding: 6px; line-height: 1.2; }
         .container { max-width: 550px; margin: auto; }
         
-        table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-size: 11px; background: var(--card); border-radius: 4px; overflow: hidden; }
-        th { background: var(--header); color: #8b949e; padding: 5px 2px; border: 1px solid var(--border); font-size: 10px; }
-        td { padding: 6px 2px; border: 1px solid var(--border); text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; background: var(--card); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+        th { background: var(--header); color: #8b949e; padding: 6px 2px; border: 1px solid var(--border); font-size: 10px; text-align: center; }
+        td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
         
-        .section-title { font-size: 13px; font-weight: bold; margin: 8px 0 4px 2px; color: var(--blue); border-left: 3px solid var(--blue); padding-left: 6px; display: flex; align-items: center; }
-        .num-cell { font-family: "Consolas", monospace; font-weight: bold; }
+        .section-title { font-size: 14px; font-weight: bold; margin: 12px 0 6px 2px; color: var(--blue); border-left: 4px solid var(--blue); padding-left: 8px; display: flex; align-items: center; justify-content: space-between; }
+        .num-cell { font-family: "Consolas", "Monaco", monospace; font-weight: bold; }
         .pos { color: var(--red); } .neg { color: var(--green); }
-        
-        .retail-row { background: rgba(241, 224, 90, 0.08) !important; }
+
+        .retail-row { background: rgba(241, 224, 90, 0.03) !important; }
         .retail-text { color: var(--gold); font-weight: bold; }
         .retail-highlight { 
             border: 1.5px solid var(--gold) !important; 
@@ -30,220 +31,243 @@
             font-size: 12px; 
             color: var(--gold) !important;
         }
-
-        .risk-active { background-color: var(--risk-bg) !important; }
-        .risk-text { color: var(--gold); font-weight: 900; }
-        .normal-text { color: #8b949e; font-size: 10px; }
-        .group-label { background: #010409 !important; font-size: 10px; text-align: left !important; padding-left: 8px !important; color: #8b949e; height: 18px; }
-
-        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 1px solid var(--blue); border-radius: 8px; padding: 10px; margin-top: 5px; }
-        .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+        
+        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 1px solid var(--blue); border-radius: 10px; padding: 12px; margin-top: 10px; box-shadow: 0 4px 15px var(--ai-glow); }
+        .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
         .trend-val { font-size: 20px; font-weight: 900; }
         
-        .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
-        .battle-card { background: #0d1117; padding: 6px; border-radius: 4px; border-top: 2px solid var(--border); }
-        .card-title { font-size: 10px; color: #8b949e; margin-bottom: 3px; }
-        .card-val { font-size: 11px; font-weight: bold; line-height: 1.4; }
+        .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .battle-card { background: #0d1117; padding: 8px; border-radius: 6px; border-top: 2px solid var(--border); }
+        .card-title { font-size: 10px; color: #8b949e; margin-bottom: 4px; }
+        .card-val { font-size: 11px; font-weight: bold; line-height: 1.4; color: #fff; }
         
-        .strategy-box { background: rgba(88, 166, 255, 0.05); padding: 8px; border-radius: 4px; border: 1px dashed var(--blue); font-size: 11px; line-height: 1.6; color: #ffffff; }
+        .strategy-box { background: rgba(88, 166, 255, 0.08); padding: 10px; border-radius: 6px; border: 1px dashed var(--blue); font-size: 12px; color: #ffffff; }
+        .ai-tag { display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 9px; margin-right: 2px; vertical-align: middle; font-weight: bold; color: #fff; }
 
+        .exposure-info { font-size: 10px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .sub-header { background: #1c2128 !important; color: var(--blue) !important; font-weight: bold; text-align: left !important; padding-left: 10px !important; }
+
+        /* 結算日提醒呼吸效果 */
         .settlement-warning { 
-            color: var(--gold); border: 1px solid var(--gold); padding: 0px 5px; border-radius: 3px; font-size: 10px; 
-            margin-left: auto; animation: breathe 2s ease-in-out infinite;
+            color: var(--gold); 
+            border: 1px solid var(--gold); 
+            padding: 1px 6px; 
+            border-radius: 4px; 
+            font-size: 10px; 
+            margin-left: 5px; 
+            animation: breathe 2s ease-in-out infinite; 
         }
-        @keyframes breathe { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        @keyframes breathe { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="section-title">📊 台指期沖銷動能 (含微台)</div>
-    <div id="tx-table-container">讀取中...</div>
+    <div class="section-title">
+        <span>🏛️ 法人現貨買賣超 (<span id="spot-date">--/--</span>)</span>
+        <span style="font-size: 10px; color: #8b949e;">單位: 億元</span>
+    </div>
+    <table>
+        <thead>
+            <tr><th>外資</th><th>投信</th><th>自營商</th><th>合計</th></tr>
+        </thead>
+        <tbody id="spot-table-body">
+            <tr><td colspan="4">讀取數據中...</td></tr>
+        </tbody>
+    </table>
+
+    <div class="section-title">📊 台指期沖銷動能</div>
+    <div id="tx-table-container">讀取數據中...</div>
 
     <div class="section-title">
-        📜 選擇權法人佈局
-        <span id="settlement-ui"></span>
+        <span>📜 選擇權法人布局 <span id="settlement-ui"></span></span>
     </div>
-    <div id="opt-data-table">讀取中...</div>
+    <div id="exposure-summary" class="exposure-info">計算曝險中...</div>
+    <div id="opt-data-table">讀取數據中...</div>
 
     <div class="ai-box">
         <div class="trend-header">
-            <span style="font-size: 11px; color: #8b949e; font-weight: bold;">AI 籌碼戰略評估</span>
+            <div>
+                <span class="ai-tag" style="background:var(--blue)">AI 戰略評級</span>
+                <span style="font-size: 11px; color: #8b949e; font-weight: bold;">趨勢展望：</span>
+            </div>
             <span id="trend-indicator" class="trend-val">--</span>
         </div>
-
         <div class="battle-grid">
             <div class="battle-card" style="border-color: #bc8cff;">
                 <div class="card-title">自營商 (莊家佈局)</div>
                 <div id="d-action" class="card-val">分析中...</div>
             </div>
             <div class="battle-card" style="border-color: var(--blue);">
-                <div class="card-title">外資 (趨勢動向)</div>
+                <div class="card-title">外資 (趨勢動能)</div>
                 <div id="f-action" class="card-val">分析中...</div>
             </div>
         </div>
-
         <div class="strategy-box">
-            <div id="strategy-desc">正在計算數據與散戶偏向...</div>
+            <div id="strategy-desc">正在進行盤後大數據交叉分析...</div>
         </div>
     </div>
 </div>
 
 <script>
-    const apiUrl = 'https://script.google.com/macros/s/AKfycbzTozA6iH5iLBS_4EM3vQxpjzb1pWBEQcahpvLwmQ98N-RmY5jhAF0iI8bc3H8RB9Wu/exec';
-
-    // 結算日提醒
-    const today = new Date();
-    const dayOfWeek = today.getDay(); 
-    const isSettlement = (dayOfWeek >= 1 && dayOfWeek <= 3); 
-    if(isSettlement) {
-        const days = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
-        document.getElementById('settlement-ui').innerHTML = `<span class="settlement-warning">⚡ ${days[dayOfWeek]}結算期</span>`;
-    }
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbwrpivopZpaws8MTK-_PGHakBsglDJ9XUZMWtYhmIz5DWgJO5TvE_ucWIiNafIbKC7F/exec';
+    let globalSpot = { foreign: 0, trust: 0, dealer: 0, total: 0 };
 
     async function fetchAllData() {
         try {
-            const [txRes, optRes] = await Promise.all([
-                fetch(`${apiUrl}?type=tx`),
-                fetch(apiUrl)
+            const [spotRes, txRes, optRes] = await Promise.all([
+                fetch(`${apiUrl}?type=spot`), fetch(`${apiUrl}?type=tx`), fetch(apiUrl)
             ]);
+            const spotData = await spotRes.json();
             const txData = await txRes.json();
             const optData = await optRes.json();
-
-            let fTX = 0;
-            let retailMTX = 0;
-            let retailMicro = 0;
             
+            renderSpot(spotData);
+            
+            let fTX = 0, retailMTX = 0, retailMicro = 0;
             txData.forEach(r => {
                 if(r[0] === '外資') fTX = parseFloat(String(r[1]).replace(/,/g,'')) || 0;
-                if(r[0].includes('散戶')) {
+                if(r[0] && r[0].includes('散戶')) {
                     retailMTX = parseFloat(String(r[3]).replace(/,/g,'')) || 0;
-                    retailMicro = parseFloat(String(r[4]).replace(/,/g,'')) || 0; // 抓取微台淨額
+                    retailMicro = parseFloat(String(r[4]).replace(/,/g,'')) || 0;
                 }
             });
-
+            
             renderTX(txData);
             renderOption(optData, fTX, retailMTX, retailMicro);
-        } catch (e) {
-            document.getElementById('strategy-desc').innerText = "連線失敗。";
-        }
+        } catch (e) { console.error("抓取失敗:", e); }
+    }
+
+    function renderSpot(data) {
+        document.getElementById('spot-date').innerText = data[0][1] || "--/--";
+        const clean = (val) => {
+            let n = parseFloat(String(val).replace(/,/g, '')) || 0;
+            return Math.abs(n) > 1000000 ? (n / 100000000) : n;
+        };
+        globalSpot = { dealer: clean(data[2][1]), trust: clean(data[3][1]), foreign: clean(data[4][1]), total: clean(data[5][1]) };
+        const getColor = (val) => val >= 0 ? 'pos' : 'neg';
+        const format = (val) => (val >= 0 ? '+' : '') + val.toFixed(2);
+        document.getElementById('spot-table-body').innerHTML = `<tr>
+            <td class="num-cell ${getColor(globalSpot.foreign)}">${format(globalSpot.foreign)}</td>
+            <td class="num-cell ${getColor(globalSpot.trust)}">${format(globalSpot.trust)}</td>
+            <td class="num-cell ${getColor(globalSpot.dealer)}">${format(globalSpot.dealer)}</td>
+            <td class="num-cell ${getColor(globalSpot.total)}">${format(globalSpot.total)}</td>
+        </tr>`;
     }
 
     function renderTX(data) {
-        let html = `<table><thead><tr>
-            <th style="width:16%">身份</th>
-            <th style="width:21%">大台</th>
-            <th style="width:21%">小台</th>
-            <th style="width:21%">微台</th>
-            <th style="width:21%">成本價</th>
-        </tr></thead><tbody>`;
-
+        let html = `<table><thead><tr><th>身份</th><th>大台</th><th>小台</th><th>微台</th><th>成本價</th></tr></thead><tbody>`;
         data.slice(1).forEach(r => {
-            const name = r[0];
-            const txVal = parseFloat(String(r[1]).replace(/,/g,'')) || 0;
-            const cost = Math.round(parseFloat(String(r[2]).replace(/,/g,''))) || 0;
-            const mtxVal = parseFloat(String(r[3]).replace(/,/g,'')) || 0;
-            const microVal = parseFloat(String(r[4]).replace(/,/g,'')) || 0;
+            const [name, tx, cost, mtx, micro] = r;
+            if(!name) return;
+            const txV = parseFloat(String(tx).replace(/,/g,'')) || 0;
+            const mtxV = parseFloat(String(mtx).replace(/,/g,'')) || 0;
+            const microV = parseFloat(String(micro).replace(/,/g,'')) || 0;
             const isRetail = name.includes('散戶');
-
             html += `<tr class="${isRetail ? 'retail-row' : ''}">
                 <td class="${isRetail ? 'retail-text' : ''}">${name}</td>
-                <td class="num-cell ${txVal >= 0 ? 'pos' : 'neg'}">${isRetail ? '--' : txVal.toLocaleString()}</td>
-                <td class="num-cell ${mtxVal >= 0 ? 'pos' : 'neg'} ${isRetail ? 'retail-highlight' : ''}">${mtxVal.toLocaleString()}</td>
-                <td class="num-cell ${microVal >= 0 ? 'pos' : 'neg'} ${isRetail ? 'retail-highlight' : ''}">${microVal.toLocaleString()}</td>
-                <td class="num-cell">${(isRetail || cost === 0) ? '--' : cost.toLocaleString()}</td>
+                <td class="num-cell ${txV >= 0 ? 'pos' : 'neg'}">${isRetail ? '--' : txV.toLocaleString()}</td>
+                <td class="num-cell ${isRetail ? 'retail-highlight' : (mtxV >= 0 ? 'pos' : 'neg')}">${mtxV.toLocaleString()}</td>
+                <td class="num-cell ${isRetail ? 'retail-highlight' : (microV >= 0 ? 'pos' : 'neg')}">${microV.toLocaleString()}</td>
+                <td class="num-cell">${isRetail ? '--' : cost}</td>
             </tr>`;
         });
         document.getElementById('tx-table-container').innerHTML = html + "</tbody></table>";
     }
 
-    function renderOption(data, fTX, retailMTX, retailMicro) {
-        let s = { dc: 0, dp: 0, fc: 0, fp: 0 };
+    function renderOption(opt, fTX, rMTX, rMicro) {
+        let s = { dc: 0, dp: 0, fc: 0, fp: 0, dAmtC: 0, dAmtP: 0, fAmtC: 0, fAmtP: 0 };
         let rows = { "自營商": "", "外資": "" };
         let lastT = "";
 
-        data.slice(1).forEach(r => {
-            let [t, id, diff, oi] = r;
+        opt.slice(1).forEach(r => {
+            let [t, id, diff, oi, amt] = r; 
             if (t && t.trim() !== "") lastT = t; else t = lastT;
+            if(!id || rows[id] === undefined) return;
             const oiV = parseFloat(String(oi).replace(/,/g, '')) || 0;
-            const diffV = parseFloat(String(diff).replace(/,/g, '')) || 0;
-            const isC = t.includes('買');
-            const isRisk = oiV < 0; 
-            const actLabel = isC ? (isRisk ? "SC" : "BC") : (isRisk ? "SP" : "BP");
-
-            const row = `<tr class="${isRisk ? 'risk-active' : ''}">
+            const amtV = parseFloat(String(amt).replace(/,/g, '')) || 0;
+            const isC = t.includes('買權');
+            let actType = isC ? (oiV >= 0 ? "BC" : "SC") : (oiV >= 0 ? "BP" : "SP");
+            const actColor = (actType === "BC" || actType === "SP") ? "#da3633" : "#238636";
+            rows[id] += `<tr>
                 <td style="color:${isC ? 'var(--red)' : 'var(--green)'}">${t.replace('臺指選擇權','')}</td>
-                <td class="num-cell ${diffV >= 0 ? 'pos' : 'neg'}">${diff}</td>
-                <td class="num-cell ${oiV >= 0 ? 'pos' : 'neg'}">${oi}</td>
-                <td style="font-size:10px">
-                    <span class="${isRisk ? 'risk-text' : 'normal-text'}">${isRisk ? '⚠️ 曝險' : '正常'}</span>
-                    <span style="color:#8b949e">(${actLabel})</span>
-                </td>
+                <td class="num-cell ${parseFloat(diff)>=0?'pos':'neg'}">${diff}</td>
+                <td class="num-cell ${oiV>=0?'pos':'neg'}">${oi}</td>
+                <td class="num-cell ${amtV>=0?'pos':'neg'}">${amtV.toLocaleString()}</td>
+                <td><span class="ai-tag" style="background:${actColor}">${actType}</span></td>
             </tr>`;
-
-            if(rows[id] !== undefined) {
-                rows[id] += row;
-                if(id === "自營商") { if(isC) s.dc=oiV; else s.dp=oiV; }
-                else { if(isC) s.fc=oiV; else s.fp=oiV; }
-            }
+            if(id === "自營商") { if(isC){s.dc=oiV; s.dAmtC=amtV;}else{s.dp=oiV; s.dAmtP=amtV;} }
+            else { if(isC){s.fc=oiV; s.fAmtC=amtV;}else{s.fp=oiV; s.fAmtP=amtV;} }
         });
 
+        const dNet = (s.dAmtC - s.dAmtP) / 10000;
+        const fNet = (s.fAmtC - s.fAmtP) / 10000;
+        document.getElementById('exposure-summary').innerHTML = `
+            <span>自營淨曝險: <b class="${dNet>=0?'pos':'neg'}">${dNet.toFixed(2)} 億</b></span>
+            <span>外資淨曝險: <b class="${fNet>=0?'pos':'neg'}">${fNet.toFixed(2)} 億</b></span>`;
+
         document.getElementById('opt-data-table').innerHTML = `<table>
-            <thead><tr><th>權別</th><th>差額</th><th>未平倉OI</th><th>狀態</th></tr></thead>
+            <thead><tr><th>權別</th><th>買賣差</th><th>未平倉OI</th><th>金額(千元)</th><th>狀態</th></tr></thead>
             <tbody>
-                <tr><td colspan="4" class="group-label">🟣 自營商</td></tr>${rows["自營商"]}
-                <tr><td colspan="4" class="group-label">🔵 外資</td></tr>${rows["外資"]}
-            </tbody></table>`;
-        
-        enhancedAnalyze(s, fTX, retailMTX, retailMicro);
+                <tr><td colspan="5" class="sub-header">🟣 自營商部位</td></tr>${rows["自營商"]}
+                <tr><td colspan="5" class="sub-header">🔵 外資部位</td></tr>${rows["外資"]}
+            </tbody>
+        </table>`;
+        enhancedAnalyze(s, fTX, rMTX, rMicro);
     }
 
-    function enhancedAnalyze(s, fTX, retailMTX, retailMicro) {
-        let score = 0;
-        let dMsg = [], fMsg = [];
+    function enhancedAnalyze(s, fTX, rMTX, rMicro) {
+        let score = 0; let dMsg = "", fMsg = "", advice = "";
+        const fSpot = globalSpot.foreign;
+        if (fSpot > 50) { 
+            if (fTX < -2000) { fMsg = "買現避期：高檔戒備"; score += 1.5; advice = "短線震盪難免，不宜追高，回測支撐再買。"; }
+            else { fMsg = "期現雙作多：波段噴發"; score += 3.5; advice = "趨勢強勁，持股續抱，看好權值股帶動。"; }
+        } else if (fSpot < -50) {
+            fMsg = fTX < -5000 ? "期現雙殺：偏空加速" : "減碼觀望"; score -= 3.5; advice = "反彈減碼，拉高現金水位。";
+        }
+        if (s.dc < 0 && s.dp < 0) { dMsg = "⚡ 雙邊賣方：區間震盪"; }
+        else if (Math.abs(s.dc) > Math.abs(s.dp) && s.dc < 0) { dMsg = "🛑 壓力偏重：看壓不看漲"; score -= 1.0; }
+        else if (Math.abs(s.dp) > Math.abs(s.dc) && s.dp < 0) { dMsg = "🛡️ 支撐強勁：看撐不看跌"; score += 1.0; }
+
+        const retailTotal = rMTX + (rMicro / 5);
+        if (retailTotal > 2000) score -= 2.0; 
         
-        // 外資大台判斷
-        if (fTX > 2000) { score += 2; fMsg.push("大台多單進攻"); }
-        else if (fTX < -2000) { score -= 2; fMsg.push("大台空單壓制"); }
-
-        // 綜合散戶動能 (小台 + 微台 換算口數情緒)
-        const totalRetailSense = retailMTX + (retailMicro / 5); 
-
-        if (totalRetailSense > 3000) { 
-            score -= 2.5; 
-            fMsg.push("⚠️ 散戶集體多單 (接刀)"); 
-        } else if (totalRetailSense < -3000) { 
-            score += 2.5; 
-            fMsg.push("🔥 散戶集體空單 (軋空)"); 
-        }
-
-        // 自營賣方
-        if (s.dp < 0) { score += 1; dMsg.push("SP 築底支撐"); }
-        if (s.dc < 0) { score -= 1; dMsg.push("SC 封頂壓力"); }
-
-        let trend = "", strat = "", color = "";
-        if (score >= 4) { trend = "🚀 強勢看多"; color = "var(--red)"; strat = "大戶進攻且散戶全面看空，軋空力道極強。"; }
-        else if (score >= 1) { trend = "↗️ 偏多整理"; color = "var(--red)"; strat = "籌碼偏多，注意微台散戶是否持續對作。"; }
-        else if (score <= -4) { trend = "📉 強勢看空"; color = "var(--green)"; strat = "大戶壓盤且散戶瘋狂接多，小心多殺多崩盤。"; }
-        else if (score <= -1) { trend = "↘️ 偏空整理"; color = "var(--green)"; strat = "趨勢偏空，散戶多單未退前反彈皆壓力。"; }
-        else { trend = "↔️ 中性觀望"; color = "var(--blue)"; strat = "多空拉鋸，觀察小/微台散戶何時出現極端值。"; }
-
-        let detail = "";
-        if (retailMicro > 8000 && retailMTX > 4000) {
-            detail = "🚨 <b>極限危險：</b>微台與小台散戶同步爆量接多，這是最典型的崩盤結構！";
-        } else if (retailMicro < -8000 && retailMTX < -4000) {
-            detail = "🚀 <b>極限軋空：</b>全體散戶瘋狂放空，市場底部支撐極強，容易無差別噴漲。";
-        } else {
-            detail = `目前綜合散戶情緒分佈：小台(${retailMTX})，微台(${retailMicro})。`;
-        }
+        let trend = "中性震盪"; let color = "var(--blue)";
+        if (score >= 3) { trend = "🚀 強勢看多"; color = "var(--red)"; }
+        else if (score >= 1) { trend = "↗️ 偏多震盪"; color = "var(--red)"; }
+        else if (score <= -3) { trend = "📉 強勢看空"; color = "var(--green)"; }
+        else if (score <= -1) { trend = "↘️ 偏空整理"; color = "var(--green)"; }
 
         document.getElementById('trend-indicator').innerText = trend;
         document.getElementById('trend-indicator').style.color = color;
-        document.getElementById('d-action').innerHTML = dMsg.join("<br>") || "中性收租";
-        document.getElementById('f-action').innerHTML = fMsg.join("<br>") || "方向不明";
-        document.getElementById('strategy-desc').innerHTML = `💡 <b>策略評估：</b>${strat}<br>${detail}`;
+        document.getElementById('d-action').innerText = dMsg || "分析中...";
+        document.getElementById('f-action').innerText = fMsg || "分析中...";
+        document.getElementById('strategy-desc').innerHTML = `
+            <div style="margin-bottom:4px;"><b>AI 操作建議：</b> <span style="color:var(--gold)">${advice || "觀望盤勢"}</span></div>
+            <div style="font-size:11px; opacity:0.7;">
+                交叉分析：外資現貨大買但期貨空單避險，顯示對後市不悲觀但謹慎。散戶目前多單偏高，需防短線洗盤。
+            </div>
+        `;
     }
 
+    // 結算日提醒邏輯
+    function updateSettlementUI() {
+        const now = new Date();
+        const year = now.getFullYear(); const month = now.getMonth();
+        const date = now.getDate(); const day = now.getDay();
+        let firstWed = new Date(year, month, 1);
+        while (firstWed.getDay() !== 3) { firstWed.setDate(firstWed.getDate() + 1); }
+        const monthlyWed = firstWed.getDate() + 14;
+        const settlementUI = document.getElementById('settlement-ui');
+        if (settlementUI && day >= 1 && day <= 3) {
+            let label = ""; const diff = 3 - day;
+            if (day === 3) label = (date === monthlyWed) ? "🔥 月選結算" : "⚡ 週選結算";
+            else label = `⏳ 結算倒數 ${diff} 天`;
+            settlementUI.innerHTML = `<span class="settlement-warning">${label}</span>`;
+        }
+    }
+
+    updateSettlementUI();
     fetchAllData();
 </script>
 </body>
