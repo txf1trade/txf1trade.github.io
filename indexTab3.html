@@ -37,9 +37,8 @@
         .card-title { font-size: 10px; color: #8b949e; margin-bottom: 2px; }
         .card-val { font-size: 11px; font-weight: bold; line-height: 1.3; }
         
-        .strategy-box { background: rgba(88, 166, 255, 0.05); padding: 6px; border-radius: 4px; border: 1px dashed var(--blue); font-size: 11px; line-height: 1.4; color: #ffffff; }
+        .strategy-box { background: rgba(88, 166, 255, 0.05); padding: 8px; border-radius: 4px; border: 1px dashed var(--blue); font-size: 11px; line-height: 1.5; color: #ffffff; }
 
-        /* --- 呼吸閃爍效果 --- */
         .settlement-warning { 
             color: var(--gold); 
             border: 1px solid var(--gold); 
@@ -48,14 +47,10 @@
             font-size: 10px; 
             margin-left: auto; 
             margin-right: 4px; 
-            animation: breathe 2s ease-in-out infinite; /* 2秒一個循環，柔和變換 */
+            animation: breathe 2s ease-in-out infinite;
         }
 
-        @keyframes breathe { 
-            0% { opacity: 1; } 
-            50% { opacity: 0.3; } 
-            100% { opacity: 1; } 
-        }
+        @keyframes breathe { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -78,17 +73,17 @@
 
         <div class="battle-grid">
             <div class="battle-card" style="border-color: #bc8cff;">
-                <div class="card-title">自營商佈局分析</div>
+                <div class="card-title">自營商 (莊家壓力/支撐)</div>
                 <div id="d-action" class="card-val">分析中...</div>
             </div>
             <div class="battle-card" style="border-color: var(--blue);">
-                <div class="card-title">外資趨勢解析</div>
+                <div class="card-title">外資 (市場趨勢方向)</div>
                 <div id="f-action" class="card-val">分析中...</div>
             </div>
         </div>
 
         <div class="strategy-box">
-            <div id="strategy-desc">正在讀取最新籌碼權重...</div>
+            <div id="strategy-desc">正在計算籌碼深度與盤勢建議...</div>
         </div>
     </div>
 </div>
@@ -101,10 +96,8 @@
     const isSettlementPeriod = (dayOfWeek >= 1 && dayOfWeek <= 3); 
     const dayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
 
-    // 只有在週一到週三顯示閃電呼吸標籤
     if(isSettlementPeriod) {
-        document.getElementById('settlement-ui').innerHTML = 
-            `<span class="settlement-warning">⚡ ${dayNames[dayOfWeek]}結算期</span>`;
+        document.getElementById('settlement-ui').innerHTML = `<span class="settlement-warning">⚡ ${dayNames[dayOfWeek]}結算期</span>`;
     }
 
     async function fetchAllData() {
@@ -122,7 +115,7 @@
             renderTX(txData);
             renderOption(optData, fTX);
         } catch (e) {
-            document.getElementById('strategy-desc').innerText = "連線失敗，請確認網路狀態。";
+            document.getElementById('strategy-desc').innerText = "數據抓取異常。";
         }
     }
 
@@ -186,34 +179,56 @@
         let score = 0;
         let dMsg = [], fMsg = [];
         
+        // 方向性評分
         if (fTX > 1500) { score += 2; fMsg.push("期貨多單進攻"); }
         else if (fTX < -1500) { score -= 2; fMsg.push("期貨空單壓制"); }
         
-        if (s.fc > 3000) { score += 2; fMsg.push("BC 加碼"); }
-        if (s.fp > 3000) { score -= 2; fMsg.push("BP 加碼"); }
+        if (s.fc > 3000) { score += 2; fMsg.push("BC 加碼推升"); }
+        if (s.fp > 3000) { score -= 2; fMsg.push("BP 加碼殺盤"); }
 
-        const isSPSisk = s.dp < 0;
-        const isSCRisk = s.dc < 0;
+        const isSPSisk = s.dp < 0; // 自營賣 SP (支撐)
+        const isSCRisk = s.dc < 0; // 自營賣 SC (壓力)
 
-        if (isSPSisk) { score += 1; dMsg.push("SP 築底強撐"); }
+        if (isSPSisk) { score += 1; dMsg.push("SP 強力築底"); }
         if (isSCRisk) { score -= 1; dMsg.push("SC 封頂賣壓"); }
 
         let trend = "", strat = "", color = "";
-        if (score >= 4) { trend = "🚀 強力看多"; color = "var(--red)"; strat = "法人期權共振多頭。操作宜順勢做多。"; }
-        else if (score >= 1) { trend = "↗️ 偏多震盪"; color = "var(--red)"; strat = "買盤佔優，逢回測支撐看多。"; }
-        else if (score <= -4) { trend = "📉 強力看空"; color = "var(--green)"; strat = "空方動能強勁。嚴防急跌破底。"; }
+        
+        // 1. 基礎盤勢判斷
+        if (score >= 4) { trend = "🚀 強力看多"; color = "var(--red)"; strat = "法人籌碼出現強力共振。"; }
+        else if (score >= 1) { trend = "↗️ 偏多震盪"; color = "var(--red)"; strat = "結構偏多，買盤穩定。"; }
+        else if (score <= -4) { trend = "📉 強力看空"; color = "var(--green)"; strat = "空方動能強勁，嚴防急殺。"; }
         else if (score <= -1) { trend = "↘️ 偏空震盪"; color = "var(--green)"; strat = "反彈力道微弱，保守因應。"; }
-        else { trend = "↔️ 中性整理"; color = "var(--blue)"; strat = "多空平衡，建議區間操作。"; }
+        else { trend = "↔️ 中性整理"; color = "var(--blue)"; strat = "多空平衡，靜待趨勢明朗。"; }
 
-        if (isSettlementPeriod && (isSPSisk || isSCRisk)) {
-            strat += ` <br><span style="color:var(--gold)">⚡【結算提醒】莊家曝險，需嚴防倒莊或軋空洗盤。</span>`;
+        // 2. 強化版策略建議 (針對結算期與法人對抗)
+        let detailStrat = "";
+        const isBullishF = (fTX > 1500 || s.fc > 3000); // 外資看多
+        const isBearishF = (fTX < -1500 || s.fp > 3000); // 外資看空
+
+        if (isSettlementPeriod) {
+            if (isBullishF && isSCRisk) {
+                detailStrat = "🔥 <b>倒莊警告：</b>外資做多對撞自營商壓力(SC)，若突破成本價將引發自營商停損回補，助漲動能強。";
+            } else if (isBearishF && isSPSisk) {
+                detailStrat = "❄️ <b>倒莊警告：</b>外資下殺對撞自營商支撐(SP)，若跌破成本將引發崩跌效應，嚴防多殺多。";
+            } else if (isSPSisk && isSCRisk) {
+                detailStrat = "⚖️ <b>區間洗盤：</b>自營商雙邊下注，傾向將指數控制在 SP/SC 區間內結算，適合高拋低吸。";
+            } else if (isSPSisk) {
+                detailStrat = "🛡️ <b>護盤支撐：</b>自營商力守 SP 成本區，結算前殺低易見支撐回升。";
+            } else if (isSCRisk) {
+                detailStrat = "🛑 <b>壓盤阻力：</b>自營商守住 SC 壓力區，反彈不宜過度追價，防範結算獲利了結。";
+            } else {
+                detailStrat = "📊 <b>趨勢盤：</b>目前無明顯莊家擋路，操作宜完全順從外資趨勢方向。";
+            }
+        } else {
+            detailStrat = "當前非結算敏感期，操作應以趨勢波段為主，回測成本價區不破可順勢切入。";
         }
 
         document.getElementById('trend-indicator').innerText = trend;
         document.getElementById('trend-indicator').style.color = color;
-        document.getElementById('d-action').innerHTML = dMsg.join("<br>") || "觀望整理";
+        document.getElementById('d-action').innerHTML = dMsg.join("<br>") || "中性觀望";
         document.getElementById('f-action').innerHTML = fMsg.join("<br>") || "方向不明";
-        document.getElementById('strategy-desc').innerHTML = "💡 AI 策略建議：" + strat;
+        document.getElementById('strategy-desc').innerHTML = `💡 <b>策略建議：</b>${strat}<br>${detailStrat}`;
     }
 
     fetchAllData();
