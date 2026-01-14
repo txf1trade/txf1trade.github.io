@@ -22,7 +22,6 @@
         .num-cell { font-family: "Consolas", monospace; font-weight: bold; }
         .pos { color: var(--red); } .neg { color: var(--green); }
         
-        /* 曝險列背景與文字樣式 */
         .risk-active { background-color: var(--risk-bg) !important; }
         .risk-text { color: var(--gold); font-weight: 900; }
         .normal-text { color: #8b949e; font-size: 10px; }
@@ -39,7 +38,24 @@
         .card-val { font-size: 11px; font-weight: bold; line-height: 1.3; }
         
         .strategy-box { background: rgba(88, 166, 255, 0.05); padding: 6px; border-radius: 4px; border: 1px dashed var(--blue); font-size: 11px; line-height: 1.4; color: #ffffff; }
-        .settlement-warning { color: var(--gold); border: 1px solid var(--gold); padding: 0px 2px; border-radius: 2px; font-size: 9px; margin-left: auto; margin-right: 4px; }
+
+        /* --- 呼吸閃爍效果 --- */
+        .settlement-warning { 
+            color: var(--gold); 
+            border: 1px solid var(--gold); 
+            padding: 0px 5px; 
+            border-radius: 3px; 
+            font-size: 10px; 
+            margin-left: auto; 
+            margin-right: 4px; 
+            animation: breathe 2s ease-in-out infinite; /* 2秒一個循環，柔和變換 */
+        }
+
+        @keyframes breathe { 
+            0% { opacity: 1; } 
+            50% { opacity: 0.3; } 
+            100% { opacity: 1; } 
+        }
     </style>
 </head>
 <body>
@@ -81,12 +97,14 @@
     const apiUrl = 'https://script.google.com/macros/s/AKfycbzTozA6iH5iLBS_4EM3vQxpjzb1pWBEQcahpvLwmQ98N-RmY5jhAF0iI8bc3H8RB9Wu/exec';
 
     const today = new Date();
-    const dayOfWeek = today.getDay();
+    const dayOfWeek = today.getDay(); 
     const isSettlementPeriod = (dayOfWeek >= 1 && dayOfWeek <= 3); 
     const dayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
 
+    // 只有在週一到週三顯示閃電呼吸標籤
     if(isSettlementPeriod) {
-        document.getElementById('settlement-ui').innerHTML = `<span class="settlement-warning">⚡ ${dayNames[dayOfWeek]}結算期</span>`;
+        document.getElementById('settlement-ui').innerHTML = 
+            `<span class="settlement-warning">⚡ ${dayNames[dayOfWeek]}結算期</span>`;
     }
 
     async function fetchAllData() {
@@ -134,7 +152,7 @@
             const oiV = parseFloat(String(oi).replace(/,/g, '')) || 0;
             const diffV = parseFloat(String(diff).replace(/,/g, '')) || 0;
             const isC = t.includes('買');
-            const isRisk = oiV < 0; // OI 為負表示為莊家賣方
+            const isRisk = oiV < 0; 
             const actLabel = isC ? (isRisk ? "SC" : "BC") : (isRisk ? "SP" : "BP");
 
             const row = `<tr class="${isRisk ? 'risk-active' : ''}">
@@ -202,217 +220,3 @@
 </script>
 </body>
 </html>
-
-
-<!-- <!DOCTYPE html>
-<html lang="zh-TW">
-<head> 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI期權戰情室-深度精簡版</title>
-    <style>
-        :root {
-            --bg: #0d1117; --card: #161b22; --blue: #58a6ff;
-            --red: #ff7b72; --green: #7ee787; --border: #30363d;
-            --risk-bg: #490e0e; --header: #21262d; --gold: #f1e05a;
-        }
-        * { box-sizing: border-box; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: #c9d1d9; margin: 0; padding: 4px; line-height: 1.1; }
-        .container { max-width: 550px; margin: auto; }
-        
-        /* 極致壓縮表格高度 */
-        table { width: 100%; border-collapse: collapse; margin-bottom: 4px; font-size: 11px; background: var(--card); border-radius: 4px; }
-        th { background: var(--header); color: #8b949e; padding: 2px 2px; border: 1px solid var(--border); font-size: 10px; }
-        td { padding: 3px 2px; border: 1px solid var(--border); text-align: center; }
-        
-        .section-title { font-size: 13px; font-weight: bold; margin: 4px 0 2px 2px; color: var(--blue); border-left: 3px solid var(--blue); padding-left: 6px; display: flex; align-items: center; }
-        .num-cell { font-family: "Consolas", monospace; font-weight: bold; }
-        .pos { color: var(--red); } .neg { color: var(--green); }
-        .risk-active { background-color: var(--risk-bg) !important; color: #ffffff !important; }
-        .risk-text { color: var(--gold); font-weight: bold; }
-        
-        .group-label { background: #010409 !important; font-size: 10px; color: #8b949e; padding: 2px 8px !important; text-align: left !important; }
-
-        /* AI 評估區：寬度拉滿，內容豐富 */
-        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 1px solid var(--blue); border-radius: 8px; padding: 10px; margin-top: 2px; }
-        .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-        .trend-val { font-size: 20px; font-weight: 900; }
-        
-        .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
-        .battle-card { background: rgba(0,0,0,0.2); padding: 6px; border-radius: 4px; border-left: 3px solid var(--border); }
-        .card-title { font-size: 10px; color: #8b949e; margin-bottom: 3px; }
-        .card-val { font-size: 11px; font-weight: 500; line-height: 1.4; color: #e6edf3; }
-        
-        .strategy-box { background: rgba(88, 166, 255, 0.08); padding: 8px; border-radius: 4px; border-left: 3px solid var(--blue); font-size: 12px; line-height: 1.5; color: #ffffff; }
-        .settlement-warning { color: var(--gold); border: 1px solid var(--gold); padding: 0px 3px; border-radius: 3px; font-size: 9px; margin-left: auto; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <div class="section-title">📊 台指期沖銷動能</div>
-    <div id="tx-table-container"></div>
-
-    <div class="section-title">
-        📜 選擇權法人佈局
-        <span id="settlement-ui"></span>
-    </div>
-    <div id="opt-data-table"></div>
-
-    <div class="ai-box">
-        <div class="trend-header">
-            <span style="font-size: 12px; color: #8b949e; font-weight: bold;">AI 戰略評估報告</span>
-            <span id="trend-indicator" class="trend-val">--</span>
-        </div>
-
-        <div class="battle-grid">
-            <div class="battle-card" style="border-color: #bc8cff;">
-                <div class="card-title">自營商佈局深度分析</div>
-                <div id="d-action" class="card-val">計算中...</div>
-            </div>
-            <div class="battle-card" style="border-color: var(--blue);">
-                <div class="card-title">外資動能流向解析</div>
-                <div id="f-action" class="card-val">計算中...</div>
-            </div>
-        </div>
-
-        <div class="strategy-box">
-            <div id="strategy-desc">正在計算結算週權重與壓力區間...</div>
-        </div>
-    </div>
-</div>
-
-<script>
-    const apiUrl = 'https://script.google.com/macros/s/AKfycbzTozA6iH5iLBS_4EM3vQxpjzb1pWBEQcahpvLwmQ98N-RmY5jhAF0iI8bc3H8RB9Wu/exec';
-
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const isSettlementPeriod = (dayOfWeek >= 1 && dayOfWeek <= 3); 
-    const dayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
-
-    if(isSettlementPeriod) {
-        document.getElementById('settlement-ui').innerHTML = `<span class="settlement-warning">⚡ ${dayNames[dayOfWeek]}結算敏感期</span>`;
-    }
-
-    async function fetchAllData() {
-        try {
-            const [txRes, optRes] = await Promise.all([
-                fetch(`${apiUrl}?type=tx`),
-                fetch(apiUrl)
-            ]);
-            const txData = await txRes.json();
-            const optData = await optRes.json();
-
-            let fTX = 0;
-            txData.forEach(r => { if(r[0] === '外資') fTX = parseFloat(String(r[1]).replace(/,/g,'')) || 0; });
-
-            renderTX(txData);
-            renderOption(optData, fTX);
-        } catch (e) {
-            document.getElementById('strategy-desc').innerText = "數據讀取失敗，請確認網路連線。";
-        }
-    }
-
-    function renderTX(data) {
-        let html = `<table><thead><tr><th>身份</th><th>沖銷口數</th><th>成本價</th></tr></thead><tbody>`;
-        data.slice(1).forEach(r => {
-            const val = parseFloat(String(r[1]).replace(/,/g,'')) || 0;
-            const cost = Math.round(parseFloat(String(r[2]).replace(/,/g,''))) || 0;
-            html += `<tr>
-                <td>${r[0]}</td>
-                <td class="num-cell ${val >= 0 ? 'pos' : 'neg'}">${r[1]}</td>
-                <td class="num-cell">${cost.toLocaleString()}</td>
-            </tr>`;
-        });
-        document.getElementById('tx-table-container').innerHTML = html + "</tbody></table>";
-    }
-
-    function renderOption(data, fTX) {
-        let s = { dc: 0, dp: 0, fc: 0, fp: 0 };
-        let rows = { "自營商": "", "外資": "" };
-        let lastT = "";
-
-        data.slice(1).forEach(r => {
-            let [t, id, diff, oi] = r;
-            if (t && t.trim() !== "") lastT = t; else t = lastT;
-            
-            const oiV = parseFloat(String(oi).replace(/,/g, '')) || 0;
-            const diffV = parseFloat(String(diff).replace(/,/g, '')) || 0;
-            const isC = t.includes('買');
-            const isRisk = oiV < 0; 
-            const actLabel = isC ? (isRisk ? "SC" : "BC") : (isRisk ? "SP" : "BP");
-
-            const row = `<tr class="${isRisk ? 'risk-active' : ''}">
-                <td style="color:${isC ? 'var(--red)' : 'var(--green)'}">${t.replace('臺指選擇權','')}</td>
-                <td class="num-cell ${diffV >= 0 ? 'pos' : 'neg'}">${diff}</td>
-                <td class="num-cell ${oiV >= 0 ? 'pos' : 'neg'}">${oi}</td>
-                <td class="${isRisk ? 'risk-text' : ''}">${isRisk ? '⚠️曝險' : '正常'}(${actLabel})</td>
-            </tr>`;
-
-            if(rows[id] !== undefined) {
-                rows[id] += row;
-                if(id === "自營商") { if(isC) s.dc=oiV; else s.dp=oiV; }
-                else { if(isC) s.fc=oiV; else s.fp=oiV; }
-            }
-        });
-
-        document.getElementById('opt-data-table').innerHTML = `<table>
-            <thead><tr><th>權別</th><th>差額</th><th>未平倉OI</th><th>風險狀態</th></tr></thead>
-            <tbody>
-                <tr><td colspan="4" class="group-label">🟣 自營商 (市場莊家)</td></tr>${rows["自營商"]}
-                <tr><td colspan="4" class="group-label">🔵 外資 (趨勢引導)</td></tr>${rows["外資"]}
-            </tbody></table>`;
-        
-        enhancedAnalyze(s, fTX);
-    }
-
-    function enhancedAnalyze(s, fTX) {
-        let score = 0;
-        let dMsg = [], fMsg = [];
-        
-        // 外資深度分析
-        if (fTX > 2000) { score += 2; fMsg.push("期貨大口數多單進場，具備強力拉抬意圖。"); }
-        else if (fTX > 0) { score += 1; fMsg.push("期貨微幅多單，動能溫和。"); }
-        else if (fTX < -2000) { score -= 2; fMsg.push("期貨空單佈局，需嚴防突發性殺盤。"); }
-        else if (fTX < 0) { score -= 1; fMsg.push("期貨微幅偏空，短線買盤受阻。"); }
-        
-        if (s.fc > 3000) { score += 2; fMsg.push("Option BC 加碼，追價意願強烈。"); }
-        if (s.fp > 3000) { score -= 2; fMsg.push("Option BP 避險情緒升溫，下行壓力大。"); }
-
-        // 自營商風險分析
-        const isSPSisk = s.dp < 0;
-        const isSCRisk = s.dc < 0;
-
-        if (isSPSisk) { score += 1; dMsg.push("SP 佈置重兵築底，支撐強勁。"); }
-        else { dMsg.push("無明顯 SP 支撐，下方空間尚未封鎖。"); }
-        
-        if (isSCRisk) { score -= 1; dMsg.push("SC 封頂壓制，反彈至高位易見賣壓。"); }
-        else { dMsg.push("上方壓力較輕，具備軋空空間。"); }
-
-        let trend = "", strat = "", color = "";
-        
-        // 趨勢判定邏輯強化
-        if (score >= 4) { trend = "🚀 極致看多"; color = "var(--red)"; strat = "法人多頭共振。建議順勢而為，以多方策略為主，回測支撐即是買點。"; }
-        else if (score >= 1) { trend = "↗️ 偏多震盪"; color = "var(--red)"; strat = "結構偏多但動能有限。建議採取低吸高拋，不宜在高位過度追漲。"; }
-        else if (score <= -4) { trend = "📉 極致看空"; color = "var(--green)"; strat = "期權同步空方下殺。需嚴守止損，避免盲目抄底，防止長陰線摜破支撐。"; }
-        else if (score <= -1) { trend = "↘️ 偏空震盪"; color = "var(--green)"; strat = "空方略佔優勢。操作應保持保守，觀察下方支撐是否有效。"; }
-        else { trend = "↔️ 中性整理"; color = "var(--blue)"; strat = "法人觀望，方向不明。建議觀望或採取雙邊區間操作，靜待突破信號。"; }
-
-        // 結算日專屬建議
-        if (isSettlementPeriod) {
-            if (isSPSisk && isSCRisk) strat += " <br><span style='color:var(--gold)'>⚠️ 雙邊莊家曝險，目前處於狹幅結算區間，慎防結算日前後的「雙殺」洗盤。</span>";
-            else if (isSPSisk) strat += " <br><span style='color:var(--gold)'>⚠️ 莊家力保 SP 支撐，結算日前下殺空間預計有限。</span>";
-            else if (isSCRisk) strat += " <br><span style='color:var(--gold)'>⚠️ 莊家力守 SC 壓力，結算日前拉升需防獲利了結回落。</span>";
-        }
-
-        document.getElementById('trend-indicator').innerText = trend;
-        document.getElementById('trend-indicator').style.color = color;
-        document.getElementById('d-action').innerHTML = dMsg.join("<br>");
-        document.getElementById('f-action').innerHTML = fMsg.join("<br>");
-        document.getElementById('strategy-desc').innerHTML = "💡 <b>AI 戰略建議：</b>" + strat;
-    }
-
-    fetchAllData();
-</script>
-</body>
-</html> -->
