@@ -128,8 +128,8 @@
     // ⚙️ AI 做多篩選配置
     // ==========================================
     const CONFIG = {
-        filterTop: 2,    
-        filterBottom: 2,
+        filterTop: 0,       // 設為 0，不再隱藏最強的標的
+        filterBottom: 0,    // 設為 0，不再隱藏最弱的標的
         longThreshold: 15,  // 做多總分門檻 (低於此分不推薦)
         longNearMin: 5      // 近月買氣必須大於此值 (確保短線有撐)
     };
