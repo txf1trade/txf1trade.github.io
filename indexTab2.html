@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>股期監控-AI做多精選</title>
+    <title>股期監控-熱力精選</title>
     <style>
         :root {
             --bg-black: #121212;
@@ -24,7 +24,7 @@
             display: flex; justify-content: center;
         }
 
-        .app-wrapper { width: 98%; max-width: 550px; background: var(--bg-black); min-height: 100vh; }
+        .app-wrapper { width: 98%; max-width: 550px; background: var(--bg-black); min-height: 100vh; padding-bottom: 30px; }
 
         .sticky-top {
             position: sticky; top: 0; background: rgba(0, 0, 0, 0.95);
@@ -34,7 +34,7 @@
 
         .mode-header { display: flex; gap: 4px; margin-bottom: 4px; }
         .mode-btn {
-            flex: 1; padding: 8px 2px; text-align: center; font-size: 13px;
+            flex: 1; padding: 10px 2px; text-align: center; font-size: 13px;
             font-weight: bold; border-radius: 4px; border: 1px solid #333;
             cursor: pointer; background: #111; color: var(--text-dim);
         }
@@ -45,7 +45,7 @@
 
         .controls-row {
             display: flex; align-items: center; gap: 6px;
-            background: var(--surface); padding: 4px 8px; border-radius: 4px;
+            background: var(--surface); padding: 6px 8px; border-radius: 4px;
             position: relative; overflow: hidden;
         }
 
@@ -57,30 +57,52 @@
         input[type=range] { flex-grow: 1; height: 3px; accent-color: var(--accent); }
         #refresh-bar { position: absolute; bottom: 0; left: 0; height: 1.5px; background: var(--accent); width: 0%; }
 
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 2px; }
-        th { color: var(--text-dim); font-size: 10px; padding: 8px 2px; border-bottom: 1px solid #333; cursor: pointer; }
+        /* 熱力圖摺疊設計 */
+        .heatmap-container { margin: 10px 0; }
+        .heatmap-header {
+            font-size: 13px; color: var(--ai-gold); background: #252525;
+            padding: 10px 12px; border-radius: 6px; display: flex;
+            justify-content: space-between; align-items: center;
+            cursor: pointer; border: 1px solid #333;
+        }
+        .arrow-icon { transition: transform 0.3s ease; font-size: 10px; color: var(--text-dim); }
+        .heatmap-container.open .arrow-icon { transform: rotate(180deg); }
+
+        .heatmap-grid {
+            display: none; /* 預設隱藏 */
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px; margin-top: 8px; padding: 4px;
+        }
+        .heatmap-container.open .heatmap-grid { display: grid; }
+
+        .hm-box {
+            height: 40px; border-radius: 4px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: pointer;
+            border: 1.5px solid transparent; transition: transform 0.1s;
+        }
+        .hm-box:active { transform: scale(0.95); }
+        .hm-name { font-size: 10px; color: #fff; font-weight: bold; line-height: 1.1; }
+        .hm-score { font-size: 9px; color: #fff; opacity: 0.9; font-family: monospace; }
+
+        /* 表格樣式 */
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 5px; }
+        th { color: var(--text-dim); font-size: 10px; padding: 8px 2px; border-bottom: 1px solid #333; }
         th:nth-child(1) { text-align: left; width: 42%; } 
-        th:nth-child(2), th:nth-child(3) { text-align: right; width: 11%; } 
-        th:nth-child(4) { text-align: right; width: 17%; } 
-        th:nth-child(5) { width: 19%; text-align: center; } 
+        th:nth-child(4) { text-align: right; width: 17%; color: var(--accent); cursor: pointer; } 
         
-        td { padding: 6px 2px; border-bottom: 1px solid #1a1a1a; text-align: right; }
+        td { padding: 8px 2px; border-bottom: 1px solid #1a1a1a; text-align: right; }
         .name-col { text-align: left; overflow: hidden; white-space: nowrap; }
         .stock-name-row { display: flex; align-items: baseline; gap: 3px; }
         .stock-num { font-size: 11px; color: var(--accent); font-family: monospace; font-weight: bold; }
-        .stock-name { font-weight: 500; color: #fff; font-size: 13px; cursor: pointer; text-decoration: underline dotted var(--text-dim); }
-        .stock-name:hover { color: var(--ai-gold); }
-        .stock-id { font-size: 10px; color: #f1adad; font-family: monospace; opacity: 0.7; }
-
+        .stock-name { font-weight: 500; color: #fff; font-size: 13px; cursor: pointer; text-decoration: underline dotted #444; }
         .score-val { font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-        .score-bar-bg { display: block; width: 100%; height: 2px; background: #222; border-radius: 1px; margin-top: 2px; overflow: hidden; }
-        .score-bar-fill { height: 100%; transition: width 0.3s ease; }
-
-        .rank-strength-container { width: 100%; height: 10px; background: #000; border-radius: 5px; position: relative; overflow: hidden; border: 1px solid #333; }
-        .rank-strength-fill { height: 100%; transition: width 0.4s ease; border-radius: 5px; }
-
+        .score-bar-bg { display: block; width: 100%; height: 2px; background: #222; margin-top: 2px; }
+        .score-bar-fill { height: 100%; }
+        .rank-strength-container { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; border: 1px solid #333; }
+        .rank-strength-fill { height: 100%; }
         .ai-badge { font-size: 9px; background: var(--ai-gold); color: #000; padding: 1px 3px; border-radius: 3px; margin-left: 4px; font-weight: bold; }
 
+        /* Modal */
         #ai-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;
@@ -88,18 +110,10 @@
         }
         .modal-content {
             background: var(--surface); width: 85%; max-width: 350px; padding: 20px;
-            border-radius: 12px; border: 1px solid var(--ai-gold); position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 12px; border: 1px solid var(--ai-gold);
         }
-        .close-btn { position: absolute; right: 15px; top: 10px; cursor: pointer; color: var(--text-dim); font-size: 20px; }
-        
-        .link-btn-group { display: flex; gap: 10px; margin-top: 5px; }
-        .link-btn {
-            flex: 1; padding: 12px 5px; text-align: center; border-radius: 8px;
-            text-decoration: none; font-size: 14px; font-weight: bold; color: #fff;
-            transition: transform 0.1s;
-        }
-        .link-btn:active { transform: scale(0.95); }
+        .link-btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .link-btn { flex: 1; padding: 12px 5px; text-align: center; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; color: #fff; }
         .link-news { background: #4285f4; }
         .link-wantgoo { background: #d32f2f; }
     </style>
@@ -108,7 +122,6 @@
 
 <div id="ai-modal" onclick="closeAI()">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <span class="close-btn" onclick="closeAI()">×</span>
         <h3 id="ai-title" style="color:var(--ai-gold); margin: 0 0 20px 0; text-align: center;">🤖 標題檢索</h3>
         <div class="link-btn-group">
             <a id="link-news" href="#" target="_blank" class="link-btn link-news">題材新聞</a>
@@ -126,14 +139,10 @@
             <div class="mode-btn active" data-mode="ai_long" onclick="setMode('ai_long')">🔥AI潛力股</div>
         </div>
         <div class="controls-row">
-            <label class="filter-toggle" title="勾選顯示極端標的">
-                <input type="checkbox" id="hot-filter" onchange="render()" checked> 熱
-            </label>
             <label class="filter-toggle"><input type="checkbox" id="mini-only" onchange="render()"> 小型</label>
             <label class="filter-toggle" style="border-right: 1px solid #444; padding-right: 6px;">
-                <input type="checkbox" id="sort-by-id" onchange="toggleIdSort()"> 代碼排序
+                <input type="checkbox" id="sort-by-id" onchange="toggleIdSort()"> 股代
             </label>
-
             <div class="slider-box">
                 <span id="rank-val">10 名</span>
                 <input type="range" id="rank-slider" min="10" max="240" step="10" value="10">
@@ -143,13 +152,21 @@
         </div>
     </div>
 
+    <div class="heatmap-container" id="hm-container">
+        <div class="heatmap-header" onclick="toggleHeatmap()">
+            <span>🔥 市場前 20 強熱力矩陣 <small id="hm-count" style="color: var(--text-dim); margin-left: 5px;"></small></span>
+            <span class="arrow-icon">▼</span>
+        </div>
+        <div id="heatmap-grid" class="heatmap-grid"></div>
+    </div>
+
     <table>
         <thead>
             <tr>
                 <th onclick="toggleIdSort()">代碼/名稱/期</th>
                 <th>近月</th>
                 <th>遠月</th>
-                <th id="th-total" onclick="handleSortClick()" style="color:var(--accent);">總分 ▼</th>
+                <th id="th-total" onclick="handleSortClick()">總分 ▼</th>
                 <th>排行強弱</th>
             </tr>
         </thead>
@@ -158,31 +175,15 @@
 </div>
 
 <script>
-    const CONFIG = {
-        filterTop: 2,
-        filterBottom: 2,
-        longThreshold: 15,
-        longNearMin: 5,
-        defaultRankLimit: 10 
-    };
-
-   const stockMap = {
-        "CAF":["1303","南亞期"],"CBF":["2002","中鋼期"],"CCF":["2303","聯電期"],"CDF":["2330","台積電期"],"QFF":["2330","小型台積電期"],"CEF":["2881","富邦金期"],"CFF":["1301","台塑期"],"CGF":["2324","仁寶期"],"CHF":["2409","友達期"],"CJF":["2880","華南金期"],"CKF":["2882","國泰金期"],"CLF":["2886","兆豐金期"],"CMF":["2887","台新金期"],"CNF":["2891","中信金期"],"CQF":["1216","統一期"],"CRF":["1402","遠東新期"],"CSF":["1605","華新期"],"CUF":["2323","中環期"],"CWF":["2352","佳世達期"],"CXF":["2371","大同期"],"CYF":["2408","南亞科期"],"CZF":["2603","長榮期"],"DAF":["2609","陽明期"],"DBF":["2610","華航期"],"DCF":["2801","彰銀期"],"DDF":["2888","新光金期"],"DEF":["2890","永豐金期"],"DFF":["1101","台泥期"],"DGF":["1326","台化期"],"DHF":["2317","鴻海期"],"DIF":["2337","旺宏期"],"DJF":["2357","華碩期"],"QRF":["2357","小型華碩期"],"DKF":["2382","廣達期"],"DLF":["2412","中華電期"],"DNF":["2884","玉山金期"],"DOF":["2885","元大金期"],"DPF":["2892","第一金期"],"DQF":["3481","群創期"],"DSF":["2353","宏碁期"],"DVF":["2454","聯發科期"],"PUF":["2454","小型聯發科期"],"DWF":["2915","潤泰全期"],"DXF":["3231","緯創期"],"DYF":["1102","亞泥期"],"DZF":["1210","大成期"],"EEF":["1310","國喬期"],"EGF":["1314","中石化期"],"EHF":["1319","東陽期"],"EKF":["1440","南紡期"],"EMF":["1504","東元期"],"EPF":["1590","亞德客-KY期"],"EYF":["1717","長興期"],"EZF":["1722","台肥期"],"FBF":["2006","東和鋼鐵期"],"FCF":["2014","中鴻期"],"FEF":["2027","大成鋼期"],"FFF":["2049","上銀期"],"QMF":["2049","小型上銀期"],"FGF":["2059","川湖期"],"SVF":["2059","小型川湖期"],"FKF":["2105","正新期"],"FNF":["2201","裕隆期"],"FQF":["2301","光寶科期"],"FRF":["2308","台達電期"],"RVF":["2308","小型台達電期"],"FSF":["2312","金寶期"],"FTF":["2313","華通期"],"FVF":["2314","精英期"],"FWF":["2332","友訊期"],"FYF":["2340","台亞期"],"FZF":["2344","華邦電期"],"GAF":["2347","聯強期"],"GCF":["2354","鴻準期"],"GHF":["2376","技嘉期"],"SLF":["2376","小型技嘉期"],"GIF":["2377","微星期"],"GJF":["2379","瑞昱期"],"QGF":["2379","小型瑞昱期"],"GKF":["2385","群光期"],"GLF":["2392","正崴期"],"GMF":["2393","億光期"],"GNF":["2401","凌陽期"],"GOF":["2404","漢唐期"],"UZF":["2404","小型漢唐期"],"GRF":["2449","京元電子期"],"GUF":["2455","全新期"],"GVF":["2457","飛宏期"],"GWF":["2458","義隆期"],"GXF":["2474","可成期"],"GYF":["2481","強茂期"],"GZF":["2485","兆赫期"],"HAF":["2489","瑞軒期"],"HBF":["2492","華新科期"],"HCF":["2498","宏達電期"],"HHF":["2504","中工期"],"HIF":["2520","冠德期"],"HLF":["2542","興富發期"],"HOF":["2548","華固期"],"HQF":["2605","新興期"],"HSF":["2618","長榮航期"],"IAF":["2834","臺企銀期"],"IHF":["2901","農林期"],"IIF":["3006","晶豪科期"],"IJF":["3008","大立光期"],"OLF":["3008","小型大立光期"],"IMF":["3019","亞光期"],"IOF":["3034","聯詠期"],"QHF":["3034","小型聯詠期"],"IPF":["3035","智原期"],"IQF":["3036","文曄期"],"IRF":["3037","欣興期"],"ITF":["3042","晶技期"],"IXF":["3044","景碩期"],"IYF":["3045","新日興期"],"IZF":["3059","明泰期"],"JBF":["3443","創意期"],"RWF":["3443","小型創意期"],"JFF":["3533","嘉澤期"],"RFF":["3533","小型嘉澤期"],"JMF":["3653","健策期"],"RGF":["3653","小型健策期"],"JNF":["3673","TPK-KY期"],"JPF":["3702","大聯大期"],"JSF":["4938","和碩期"],"JWF":["5534","長虹期"],"JXF":["6005","群益證期"],"JZF":["6153","嘉聯益期"],"KAF":["6176","瑞儀期"],"KBF":["6213","聯茂期"],"KCF":["6239","力成期"],"KDF":["6271","同欣電期"],"KEF":["6278","台表科期"],"KFF":["2328","康舒期"],"KGF":["6285","啟碁期"],"KIF":["6269","台虹期"],"KKF":["3041","達方期"],"KLF":["9904","寶成期"],"KOF":["9939","宏全期"],"KPF":["9945","潤泰新期"],"KSF":["1477","聚陽期"],"KUF":["1802","台玻期"],"KWF":["2384","廣宇期"],"LBF":["3044","健鼎期"],"LCF":["3045","台灣大期"],"LEF":["3406","玉晶光期"],"QJF":["3406","小型玉晶光期"],"LIF":["6269","台郡期"],"LMF":["9921","美利達期"],"LOF":["5880","合庫金期"],"LQF":["2356","英業達期"],"LRF":["2883","凱基金期"],"LTF":["4904","遠傳期"],"LUF":["4958","臻鼎-KY期"],"LVF":["5871","中租-KY期"],"LWF":["1476","儒鴻期"],"LXF":["2327","國巨期"],"QEF":["2327","小型國巨期"],"LYF":["8046","南電期"],"QSF":["8046","小型南電期"],"MAF":["1707","葡萄王期"],"MBF":["2355","敬鵬期"],"MJF":["2360","致茂期"],"VDF":["2360","小型致茂期"],"MKF":["2439","美律期"],"MQF":["2369","矽格期"],"MVF":["9938","百和期"],"MYF":["1565","精華期"],"OMF":["1565","小型精華期"],"NAF":["3105","穩懋期"],"QIF":["3105","小型穩懋期"],"NBF":["3152","璟德期"],"NDF":["3260","威剛期"],"NEF":["3264","欣銓期"],"NGF":["3691","碩禾期"],"NIF":["4123","晟德期"],"NJF":["2031","榮剛期"],"NLF":["5347","世界期"],"NMF":["6116","中光電期"],"NOF":["5483","中美晶期"],"NQF":["6121","新普期"],"NSF":["6147","頎邦期"],"NUF":["8044","網家期"],"NVF":["6023","元大期"],"NWF":["8299","群聯期"],"QNF":["8299","小型群聯期"],"ODF":["2231","為升期"],"OEF":["6116","彩晶期"],"OHF":["5434","胡連期"],"OPF":["2345","智邦期"],"SEF":["2345","小型智邦期"],"OQF":["6414","樺漢期"],"ORF":["1536","和大期"],"OSF":["1909","榮成期"],"OTF":["3081","聯亞期"],"OUF":["3552","同致期"],"OVF":["6213","台燿期"],"OWF":["6488","環球晶期"],"PBF":["6488","小型環球晶期"],"OXF":["6510","精測期"],"OYF":["6510","小型精測期"],"OZF":["3711","日月光投控期"],"PAF":["3227","原相期"],"PCF":["4162","智擎期"],"PDF":["4736","泰博期"],"PEF":["5425","台半期"],"PGF":["2633","台灣高鐵期"],"PHF":["5269","祥碩期"],"PNF":["5269","小型祥碩期"],"PIF":["3529","力旺期"],"PJF":["2383","台光電期"],"SFF":["2383","小型台光電期"],"PKF":["2327","信昌電期"],"PLF":["6182","合晶期"],"PMF":["8436","大江期"],"PPF":["5469","宣德期"],"PQF":["8358","金居期"],"PRF":["2455","宏捷科期"],"PSF":["2315","神達期"],"PTF":["3324","雙鴻期"],"ULF":["3324","小型雙鴻期"],"PVF":["6669","緯穎期"],"PWF":["6669","小型緯穎期"],"PXF":["3293","鈊象期"],"PYF":["3293","小型鈊象期"],"PZF":["5274","信驊期"],"QAF":["5274","小型信驊期"],"QBF":["3714","富采期"],"QCF":["2606","裕民期"],"QDF":["3532","台勝科期"],"QKF":["1907","永豐餘期"],"QLF":["3374","精材期"],"QPF":["1904","正隆期"],"QQF":["3257","僑威期"],"QTF":["2441","超豐期"],"QUF":["8150","南茂期"],"QVF":["2338","光罩期"],"QWF":["2388","威盛期"],"QXF":["2615","萬海期"],"QYF":["6547","高端疫苗期"],"QZF":["6770","力積電期"],"RAF":["3017","奇鋐期"],"UHF":["3017","小型奇鋐期"],"RBF":["5388","中磊期"],"RCF":["2634","漢翔期"],"RJF":["1609","大亞期"],"RKF":["2368","金像電期"],"RLF":["6443","元晶期"],"RMF":["8454","富邦媒期"],"RQF":["8454","小型富邦媒期"],"RNF":["4743","合一期"],"ROF":["6245","立端期"],"RPF":["2912","寶雅期"],"RRF":["2912","小型寶雅期"],"RUF":["9958","世紀鋼期"],"SWF":["9958","小型世紀鋼期"],"SAF":["1795","美時期"],"SBF":["1905","華紙期"],"SDF":["1513","中興電期"],"SJF":["2362","神基期"],"SKF":["3036","至上期"],"SYF":["3680","家登期"],"SZF":["3680","小型家登期"],"UAF":["1503","士電期"],"UBF":["2402","亞翔期"],"UCF":["6188","廣明期"],"UEF":["5876","上海商銀期"],"UFF":["6505","台塑化期"],"UGF":["6526","達發期"],"UIF":["6526","小型達發期"],"UMF":["3661","世芯-KY期"],"UOF":["3661","小型世芯-KY期"],"UPF":["6472","保瑞期"],"UQF":["6472","小型保瑞期"],"UUF":["6757","台灣虎航期"],"UVF":["6223","旺矽期"],"UWF":["6223","小型旺矽期"],"UXF":["2329","華泰期"],"VAF":["1608","華榮期"],"VBF":["2367","燿華期"],"VCF":["3060","建準期"]};
+    const stockMap = {"CAF":["1303","南亞期"],"CBF":["2002","中鋼期"],"CCF":["2303","聯電期"],"CDF":["2330","台積電期"],"QFF":["2330","小型台積電期"],"CEF":["2881","富邦金期"],"CFF":["1301","台塑期"],"CGF":["2324","仁寶期"],"CHF":["2409","友達期"],"CJF":["2880","華南金期"],"CKF":["2882","國泰金期"],"CLF":["2886","兆豐金期"],"CMF":["2887","台新金期"],"CNF":["2891","中信金期"],"CQF":["1216","統一期"],"CRF":["1402","遠東新期"],"CSF":["1605","華新期"],"CUF":["2323","中環期"],"CWF":["2352","佳世達期"],"CXF":["2371","大同期"],"CYF":["2408","南亞科期"],"CZF":["2603","長榮期"],"DAF":["2609","陽明期"],"DBF":["2610","華航期"],"DCF":["2801","彰銀期"],"DDF":["2888","新光金期"],"DEF":["2890","永豐金期"],"DFF":["1101","台泥期"],"DGF":["1326","台化期"],"DHF":["2317","鴻海期"],"DIF":["2337","旺宏期"],"DJF":["2357","華碩期"],"QRF":["2357","小型華碩期"],"DKF":["2382","廣達期"],"DLF":["2412","中華電期"],"DNF":["2884","玉山金期"],"DOF":["2885","元大金期"],"DPF":["2892","第一金期"],"DQF":["3481","群創期"],"DSF":["2353","宏碁期"],"DVF":["2454","聯發科期"],"PUF":["2454","小型聯發科期"],"DWF":["2915","潤泰全期"],"DXF":["3231","緯創期"],"DYF":["1102","亞泥期"],"DZF":["1210","大成期"],"EEF":["1310","國喬期"],"EGF":["1314","中石化期"],"EHF":["1319","東陽期"],"EKF":["1440","南紡期"],"EMF":["1504","東元期"],"EPF":["1590","亞德客-KY期"],"EYF":["1717","長興期"],"EZF":["1722","台肥期"],"FBF":["2006","東和鋼鐵期"],"FCF":["2014","中鴻期"],"FEF":["2027","大成鋼期"],"FFF":["2049","上銀期"],"QMF":["2049","小型上銀期"],"FGF":["2059","川湖期"],"SVF":["2059","小型川湖期"],"FKF":["2105","正新期"],"FNF":["2201","裕隆期"],"FQF":["2301","光寶科期"],"FRF":["2308","台達電期"],"RVF":["2308","小型台達電期"],"FSF":["2312","金寶期"],"FTF":["2313","華通期"],"FVF":["2314","精英期"],"FWF":["2332","友訊期"],"FYF":["2340","台亞期"],"FZF":["2344","華邦電期"],"GAF":["2347","聯強期"],"GCF":["2354","鴻準期"],"GHF":["2376","技嘉期"],"SLF":["2376","小型技嘉期"],"GIF":["2377","微星期"],"GJF":["2379","瑞昱期"],"QGF":["2379","小型瑞昱期"],"GKF":["2385","群光期"],"GLF":["2392","正崴期"],"GMF":["2393","億光期"],"GNF":["2401","凌陽期"],"GOF":["2404","漢唐期"],"UZF":["2404","小型漢唐期"],"GRF":["2449","京元電子期"],"GUF":["2455","全新期"],"GVF":["2457","飛宏期"],"GWF":["2458","義隆期"],"GXF":["2474","可成期"],"GYF":["2481","強茂期"],"GZF":["2485","兆赫期"],"HAF":["2489","營收期"],"HBF":["2492","華新科期"],"HCF":["2498","宏達電期"],"HHF":["2504","中工期"],"HIF":["2520","冠德期"],"HLF":["2542","興富發期"],"HOF":["2548","華固期"],"HQF":["2605","新興期"],"HSF":["2618","長榮航期"],"IAF":["2834","臺企銀期"],"IHF":["2901","農林期"],"IIF":["3006","晶豪科期"],"IJF":["3008","大立光期"],"OLF":["3008","小型大立光期"],"IMF":["3019","亞光期"],"IOF":["3034","聯詠期"],"QHF":["3034","小型聯詠期"],"IPF":["3035","智原期"],"IQF":["3036","文曄期"],"IRF":["3037","欣興期"],"ITF":["3042","晶技期"],"IXF":["3044","景碩期"],"IYF":["3045","新日興期"],"IZF":["3059","明泰期"],"JBF":["3443","創意期"],"RWF":["3443","小型創意期"],"JFF":["3533","嘉澤期"],"RFF":["3533","小型嘉澤期"],"JMF":["3653","健策期"],"RGF":["3653","小型健策期"],"JNF":["3673","TPK-KY期"],"JPF":["3702","大聯大期"],"JSF":["4938","和碩期"],"JWF":["5534","長虹期"],"JXF":["6005","群益證期"],"JZF":["6153","嘉聯益期"],"KAF":["6176","瑞儀期"],"KBF":["6213","聯茂期"],"KCF":["6239","力成期"],"KDF":["6271","同欣電期"],"KEF":["6278","台表科期"],"KFF":["2328","康舒期"],"KGF":["6285","啟碁期"],"KIF":["6269","台虹期"],"KKF":["3041","達方期"],"KLF":["9904","寶成期"],"KOF":["9939","宏全期"],"KPF":["9945","潤泰新期"],"KSF":["1477","聚陽期"],"KUF":["1802","台玻期"],"KWF":["2384","廣宇期"],"LBF":["3044","健鼎期"],"LCF":["3045","台灣大期"],"LEF":["3406","玉晶光期"],"QJF":["3406","小型玉晶光期"],"LIF":["6269","台郡期"],"LMF":["9921","美利達期"],"LOF":["5880","合庫金期"],"LQF":["2356","英業達期"],"LRF":["2883","凱基金期"],"LTF":["4904","遠傳期"],"LUF":["4958","臻鼎-KY期"],"LVF":["5871","中租-KY期"],"LWF":["1476","儒鴻期"],"LXF":["2327","國巨期"],"QEF":["2327","小型國巨期"],"LYF":["8046","南電期"],"QSF":["8046","小型南電期"],"MAF":["1707","葡萄王期"],"MBF":["2355","敬鵬期"],"MJF":["2360","致茂期"],"VDF":["2360","小型致茂期"],"MKF":["2439","美律期"],"MQF":["2369","矽格期"],"MVF":["9938","百和期"],"MYF":["1565","精華期"],"OMF":["1565","小型精華期"],"NAF":["3105","穩懋期"],"QIF":["3105","小型穩懋期"],"NBF":["3152","璟德期"],"NDF":["3260","威剛期"],"NEF":["3264","欣銓期"],"NGF":["3691","碩禾期"],"NIF":["4123","晟德期"],"NJF":["2031","榮剛期"],"NLF":["5347","世界期"],"NMF":["6116","中光電期"],"NOF":["5483","中美晶期"],"NQF":["6121","新普期"],"NSF":["6147","頎邦期"],"NUF":["8044","網家期"],"NVF":["6023","元大期"],"NWF":["8299","群聯期"],"QNF":["8299","小型群聯期"],"ODF":["2231","為升期"],"OEF":["6116","彩晶期"],"OHF":["5434","胡連期"],"OPF":["2345","智邦期"],"SEF":["2345","小型智邦期"],"OQF":["6414","樺漢期"],"ORF":["1536","和大期"],"OSF":["1909","榮成期"],"OTF":["3081","聯亞期"],"OUF":["3552","同致期"],"OVF":["6213","台燿期"],"OWF":["6488","環球晶期"],"PBF":["6488","小型環球晶期"],"OXF":["6510","精測期"],"OYF":["6510","小型精測期"],"OZF":["3711","日月光投控期"],"PAF":["3227","原相期"],"PCF":["4162","智擎期"],"PDF":["4736","過熱期"],"PEF":["5425","台半期"],"PGF":["2633","台灣高鐵期"],"PHF":["5269","祥碩期"],"PNF":["5269","小型祥碩期"],"PIF":["3529","力旺期"],"PJF":["2383","台光電期"],"SFF":["2383","小型台光電期"],"PKF":["2327","信昌電期"],"PLF":["6182","合晶期"],"PMF":["8436","大江期"],"PPF":["5469","宣德期"],"PQF":["8358","金居期"],"PRF":["2455","宏捷科期"],"PSF":["2315","神達期"],"PTF":["3324","雙鴻期"],"ULF":["3324","小型雙鴻期"],"PVF":["6669","緯穎期"],"PWF":["6669","小型緯穎期"],"PXF":["3293","鈊象期"],"PYF":["3293","小型鈊象期"],"PZF":["5274","信驊期"],"QAF":["5274","小型信驊期"],"QBF":["3714","富采期"],"QCF":["2606","裕民期"],"QDF":["3532","台勝科期"],"QKF":["1907","永豐餘期"],"QLF":["3374","精材期"],"QPF":["1904","正隆期"],"QQF":["3257","僑威期"],"QTF":["2441","超豐期"],"QUF":["8150","南茂期"],"QVF":["2338","光罩期"],"QWF":["2388","威盛期"],"QXF":["2615","萬海期"],"QYF":["6547","高端疫苗期"],"QZF":["6770","力積電期"],"RAF":["3017","奇鋐期"],"UHF":["3017","小型奇鋐期"],"RBF":["5388","中磊期"],"RCF":["2634","漢翔期"],"RJF":["1609","大亞期"],"RKF":["2368","金像電期"],"RLF":["6443","元晶期"],"RMF":["8454","富邦媒期"],"RQF":["8454","小型富邦媒期"],"RNF":["4743","合一期"],"ROF":["6245","立端期"],"RPF":["2912","寶雅期"],"RRF":["2912","小型寶雅期"],"RUF":["9958","世紀鋼期"],"SWF":["9958","小型世紀鋼期"],"SAF":["1795","美時期"],"SBF":["1905","華紙期"],"SDF":["1513","中興電期"],"SJF":["2362","神基期"],"SKF":["3036","至上期"],"SYF":["3680","家登期"],"SZF":["3680","小型家登期"],"UAF":["1503","士電期"],"UBF":["2402","亞翔期"],"UCF":["6188","廣明期"],"UEF":["5876","上海商銀期"],"UFF":["6505","台塑化期"],"UGF":["6526","達發期"],"UIF":["6526","小型達發期"],"UMF":["3661","世芯-KY期"],"UOF":["3661","小型世芯-KY期"],"UPF":["6472","保瑞期"],"UQF":["6472","小型保瑞期"],"UUF":["6757","台灣虎航期"],"UVF":["6223","旺矽期"],"UWF":["6223","小型旺矽期"],"UXF":["2329","華泰期"],"VAF":["1608","華榮期"],"VBF":["2367","燿華期"],"VCF":["3060","建準期"]};
 
     let cachedData = [];
-    let currentRankLimit = CONFIG.defaultRankLimit; 
+    let currentRankLimit = 10; 
     let currentMode = 'ai_long'; 
     let sortOrder = 'desc'; 
     let isFetching = false;
     let refreshTimer = 0;
     const REFRESH_INTERVAL = 5000;
-
-    function initApp() {
-        const slider = document.getElementById('rank-slider');
-        slider.value = CONFIG.defaultRankLimit;
-        document.getElementById('rank-val').innerText = CONFIG.defaultRankLimit >= 240 ? "全部" : `${CONFIG.defaultRankLimit} 名`;
-        fetchData();
-    }
 
     async function fetchData() {
         if (isFetching) return;
@@ -193,14 +194,11 @@
             if (data) {
                 cachedData = Object.keys(data).filter(k => stockMap[k]).map(k => {
                     const info = stockMap[k];
-                    const near = data[k].near_month;
-                    const far = data[k].next_month;
-                    const total = near + far;
-                    const isLongSignal = total >= CONFIG.longThreshold && near >= CONFIG.longNearMin && far >= 0;
+                    const total = data[k].near_month + data[k].next_month;
                     return { 
                         id: k, stockNum: info[0], name: info[1], 
-                        near: near, far: far, total: total,
-                        isLong: isLongSignal
+                        near: data[k].near_month, far: data[k].next_month, total: total,
+                        isLong: total >= 15 && data[k].near_month >= 5 && data[k].next_month >= 0
                     };
                 });
                 render();
@@ -209,143 +207,96 @@
         } catch (e) { console.error(e); } finally { isFetching = false; }
     }
 
-    function showAI(stockNum, stockName) {
-        const modal = document.getElementById('ai-modal');
-        const title = document.getElementById('ai-title');
-        const linkNews = document.getElementById('link-news');
-        const linkWantgoo = document.getElementById('link-wantgoo');
-
-        const pureName = stockName.replace('期','').replace('小型','').trim();
-
-        title.innerHTML = `🤖 ${pureName} (${stockNum})`;
-        linkNews.href = `https://www.google.com/search?q=${stockNum}+${pureName}+題材+新聞`;
-        linkWantgoo.href = `https://www.wantgoo.com/stock/${stockNum}`;
-
-        modal.style.display = 'flex';
+    function toggleHeatmap() {
+        document.getElementById('hm-container').classList.toggle('open');
     }
-
-    function closeAI() {
-        document.getElementById('ai-modal').style.display = 'none';
-    }
-
-    function setMode(mode) {
-        currentMode = mode;
-        updateUI();
-        render();
-    }
-
-    function handleSortClick() {
-        sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
-        updateUI();
-        render();
-    }
-
-    function toggleIdSort() {
-        const check = document.getElementById('sort-by-id');
-        if (event.target.tagName !== 'INPUT') check.checked = !check.checked;
-        render();
-        updateUI();
-    }
-
-    function updateUI() {
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.mode === currentMode);
-        });
-        const thTotal = document.getElementById('th-total');
-        thTotal.innerText = `總分 ${sortOrder === 'desc' ? '▼' : '▲'}`;
-    }
-
-    document.getElementById('rank-slider').oninput = function() {
-        currentRankLimit = parseInt(this.value);
-        document.getElementById('rank-val').innerText = currentRankLimit >= 240 ? "全部" : `${currentRankLimit} 名`;
-        render();
-    };
 
     function render() {
         const tbody = document.getElementById('main-table');
+        const hmGrid = document.getElementById('heatmap-grid');
         const isMiniOnly = document.getElementById('mini-only').checked;
         const isSortById = document.getElementById('sort-by-id').checked;
-        const isHotEnabled = document.getElementById('hot-filter').checked;
         
         let list = [...cachedData];
         if (isMiniOnly) list = list.filter(item => item.name.includes('小型'));
         
-        if (currentMode === 'ai_long') {
-            list = list.filter(i => i.isLong); 
-        } else if (currentMode === 'up') {
-            list = list.filter(i => i.total > 0);
-        } else if (currentMode === 'down') {
-            list = list.filter(i => i.total < 0);
-        }
+        if (currentMode === 'ai_long') list = list.filter(i => i.isLong);
+        else if (currentMode === 'up') list = list.filter(i => i.total > 0);
+        else if (currentMode === 'down') list = list.filter(i => i.total < 0);
 
-        if (currentMode !== 'ai_long' && !isHotEnabled && list.length > (CONFIG.filterTop + CONFIG.filterBottom)) {
-            list.sort((a, b) => b.total - a.total);
-            let excludeIds = new Set();
-            if (CONFIG.filterTop > 0) list.slice(0, CONFIG.filterTop).forEach(i => excludeIds.add(i.id));
-            if (CONFIG.filterBottom > 0) list.slice(-CONFIG.filterBottom).forEach(i => excludeIds.add(i.id));
-            list = list.filter(item => !excludeIds.has(item.id));
-        }
-
-        // 修改後的排序邏輯
         if (isSortById) {
             list.sort((a, b) => a.stockNum.localeCompare(b.stockNum));
         } else {
             if (currentMode === 'down') {
-                // 空頭模式下：最強(最負)的排在最上面
                 list.sort((a, b) => sortOrder === 'desc' ? a.total - b.total : b.total - a.total);
             } else {
-                // 多頭、AI、全部模式：最強(最正)的排在最上面
                 list.sort((a, b) => sortOrder === 'desc' ? b.total - a.total : a.total - b.total);
             }
         }
 
-        if (currentRankLimit < 240) {
-            list = list.slice(0, currentRankLimit);
-        }
-        
-        const currentMax = list.length > 0 ? Math.max(...list.map(i => Math.abs(i.total))) : 1;
+        // 渲染熱力圖 (固定取前 20)
+        const hmList = list.slice(0, 20);
+        document.getElementById('hm-count').innerText = `(${hmList.length} 標的)`;
+        hmGrid.innerHTML = hmList.map(item => {
+            const intensity = Math.min(Math.abs(item.total) / 35, 1);
+            const bgColor = item.total > 0 
+                ? `rgba(255, 59, 48, ${0.2 + intensity * 0.8})` 
+                : `rgba(52, 199, 89, ${0.2 + intensity * 0.8})`;
+            const goldBorder = item.isLong ? 'border-color: var(--ai-gold); border-width: 2px;' : '';
+            return `<div class="hm-box" style="background: ${bgColor}; ${goldBorder}" onclick="showAI('${item.stockNum}', '${item.name}')">
+                <div class="hm-name">${item.name.replace('期','').replace('小型','小')}</div>
+                <div class="hm-score">${Math.round(item.total)}</div>
+            </div>`;
+        }).join('');
 
-        tbody.innerHTML = list.map(item => {
+        // 渲染表格
+        const tableList = list.slice(0, currentRankLimit);
+        const currentMax = tableList.length > 0 ? Math.max(...tableList.map(i => Math.abs(i.total))) : 1;
+        tbody.innerHTML = tableList.map(item => {
             const themeColor = item.total >= 0 ? 'var(--up-red)' : 'var(--down-green)';
-            const rankStrength = (Math.abs(item.total) / (currentMax || 1)) * 100;
-            const badge = item.isLong ? `<span class="ai-badge">精選</span>` : '';
-            
-            return `
-            <tr>
+            return `<tr>
                 <td class="name-col">
                     <div class="stock-name-row">
                         <span class="stock-num">${item.stockNum}</span>
-                        <span class="stock-name" onclick="showAI('${item.stockNum}', '${item.name}')">${item.name}${badge}</span>
-                        <span class="stock-id">${item.id}</span>
+                        <span class="stock-name" onclick="showAI('${item.stockNum}', '${item.name}')">${item.name}${item.isLong?'<span class="ai-badge">精選</span>':''}</span>
                     </div>
                 </td>
-                <td><span class="score-val" style="color:${item.near >= 0 ? 'var(--up-red)' : 'var(--down-green)'}">${Math.round(item.near)}</span></td>
-                <td><span class="score-val" style="color:${item.far >= 0 ? 'var(--up-red)' : 'var(--down-green)'}">${Math.round(item.far)}</span></td>
+                <td><span class="score-val" style="color:${item.near>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(item.near)}</span></td>
+                <td><span class="score-val" style="color:${item.far>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(item.far)}</span></td>
                 <td>
                     <span class="score-val" style="color:${themeColor}">${Math.round(item.total)}</span>
-                    <div class="score-bar-bg">
-                        <div class="score-bar-fill" style="width:${Math.min((Math.abs(item.total)/30)*100, 100)}%; background:${themeColor}"></div>
-                    </div>
+                    <div class="score-bar-bg"><div class="score-bar-fill" style="width:${Math.min((Math.abs(item.total)/30)*100, 100)}%; background:${themeColor}"></div></div>
                 </td>
-                <td>
-                    <div class="rank-strength-container">
-                        <div class="rank-strength-fill" style="width:${rankStrength}%; background:${themeColor};"></div>
-                    </div>
-                </td>
+                <td><div class="rank-strength-container"><div class="rank-strength-fill" style="width:${(Math.abs(item.total)/currentMax)*100}%; background:${themeColor};"></div></div></td>
             </tr>`;
         }).join('');
     }
 
-    function updateTimer() {
-        refreshTimer += 100;
-        const rem = Math.max(0, (REFRESH_INTERVAL - refreshTimer) / 1000);
-        document.getElementById('timer-display').innerText = `${rem.toFixed(1)}s`;
-        document.getElementById('refresh-bar').style.width = (refreshTimer/REFRESH_INTERVAL)*100 + '%';
-        if (refreshTimer >= REFRESH_INTERVAL) fetchData();
+    function setMode(mode) { currentMode = mode; updateUI(); render(); }
+    function handleSortClick() { sortOrder = (sortOrder === 'desc' ? 'asc' : 'desc'); updateUI(); render(); }
+    function toggleIdSort() { const c = document.getElementById('sort-by-id'); if (event.target.tagName !== 'INPUT') c.checked = !c.checked; render(); updateUI(); }
+    function updateUI() { 
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === currentMode));
+        document.getElementById('th-total').innerText = `總分 ${sortOrder === 'desc' ? '▼' : '▲'}`;
     }
-
-    initApp();
-    setInterval(updateTimer, 100);
+    function showAI(num, name) {
+        const pure = name.replace('期','').replace('小型','').trim();
+        document.getElementById('ai-title').innerText = `🤖 ${pure} (${num})`;
+        document.getElementById('link-news').href = `https://www.google.com/search?q=${num}+${pure}+題材+新聞`;
+        document.getElementById('link-wantgoo').href = `https://www.wantgoo.com/stock/${num}`;
+        document.getElementById('ai-modal').style.display = 'flex';
+    }
+    function closeAI() { document.getElementById('ai-modal').style.display = 'none'; }
+    document.getElementById('rank-slider').oninput = function() { currentRankLimit = parseInt(this.value); document.getElementById('rank-val').innerText = this.value + ' 名'; render(); };
+    
+    setInterval(() => { 
+        refreshTimer += 100; 
+        document.getElementById('timer-display').innerText = ((REFRESH_INTERVAL - refreshTimer)/1000).toFixed(1) + 's'; 
+        document.getElementById('refresh-bar').style.width = (refreshTimer/REFRESH_INTERVAL)*100 + '%'; 
+        if (refreshTimer >= REFRESH_INTERVAL) fetchData(); 
+    }, 100);
+    
+    fetchData();
 </script>
 </body>
 </html>
