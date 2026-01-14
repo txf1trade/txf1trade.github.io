@@ -68,6 +68,375 @@
         .name-col { text-align: left; overflow: hidden; white-space: nowrap; }
         .stock-name-row { display: flex; align-items: baseline; gap: 3px; }
         .stock-num { font-size: 11px; color: var(--accent); font-family: monospace; font-weight: bold; }
+        .stock-name { font-weight: 500; color: #fff; font-size: 13px; cursor: pointer; text-decoration: underline dotted var(--text-dim); }
+        .stock-name:hover { color: var(--ai-gold); }
+        .stock-id { font-size: 10px; color: #f1adad; font-family: monospace; opacity: 0.7; }
+
+        .score-val { font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        .score-bar-bg { display: block; width: 100%; height: 2px; background: #222; border-radius: 1px; margin-top: 2px; overflow: hidden; }
+        .score-bar-fill { height: 100%; transition: width 0.3s ease; }
+
+        .rank-strength-container { width: 100%; height: 10px; background: #000; border-radius: 5px; position: relative; overflow: hidden; border: 1px solid #333; }
+        .rank-strength-fill { height: 100%; transition: width 0.4s ease; border-radius: 5px; }
+
+        .ai-badge { font-size: 9px; background: var(--ai-gold); color: #000; padding: 1px 3px; border-radius: 3px; margin-left: 4px; font-weight: bold; }
+
+        /* AI Modal Styles */
+        #ai-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background: var(--surface); width: 90%; max-width: 400px; padding: 20px;
+            border-radius: 12px; border: 1px solid var(--ai-gold); position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .close-btn { position: absolute; right: 15px; top: 10px; cursor: pointer; color: var(--text-dim); font-size: 20px; }
+        .link-btn {
+            flex: 1; padding: 10px 5px; text-align: center; border-radius: 6px;
+            text-decoration: none; font-size: 12px; font-weight: bold; color: #fff;
+            transition: opacity 0.2s;
+        }
+        .link-google { background: #4285f4; }
+        .link-info { background: #f57c00; }
+        .link-wantgoo { background: #d32f2f; }
+    </style>
+</head>
+<body>
+
+<div id="ai-modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeAI()">×</span>
+        <h3 id="ai-title" style="color:var(--ai-gold); margin: 0 0 15px 0; display: flex; align-items: center; gap: 8px;">
+            🤖 AI 標的分析
+        </h3>
+        <div id="ai-content" style="font-size: 14px; line-height: 1.6; color: #eee; min-height: 80px;">
+            正在檢索題材...
+        </div>
+        <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
+            <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 10px;">快速資訊源：</div>
+            <div id="ai-links" style="display: flex; gap: 8px;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="app-wrapper">
+    <div class="sticky-top">
+        <div class="mode-header">
+            <div class="mode-btn" data-mode="strong" onclick="setMode('strong')">全部</div>
+            <div class="mode-btn" data-mode="up" onclick="setMode('up')">多頭</div>
+            <div class="mode-btn" data-mode="down" onclick="setMode('down')">空頭</div>
+            <div class="mode-btn active" data-mode="ai_long" onclick="setMode('ai_long')">🔥 AI 潛力多頭</div>
+        </div>
+        <div class="controls-row">
+            <label class="filter-toggle" title="隱藏極端標的">
+                <input type="checkbox" id="hot-filter" onchange="render()"> 熱
+            </label>
+            <label class="filter-toggle"><input type="checkbox" id="mini-only" onchange="render()"> 小型</label>
+            <label class="filter-toggle" style="border-right: 1px solid #444; padding-right: 6px;">
+                <input type="checkbox" id="sort-by-id" onchange="toggleIdSort()"> 股代
+            </label>
+
+            <div class="slider-box">
+                <span id="rank-val">10 名</span>
+                <input type="range" id="rank-slider" min="10" max="240" step="10" value="10">
+            </div>
+            <span id="timer-display">5.0s</span>
+            <div id="refresh-bar"></div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th onclick="toggleIdSort()">代碼/名稱/期</th>
+                <th>近月</th>
+                <th>遠月</th>
+                <th id="th-total" onclick="handleSortClick()" style="color:var(--accent);">總分 ▼</th>
+                <th>排行強弱</th>
+            </tr>
+        </thead>
+        <tbody id="main-table"></tbody>
+    </table>
+</div>
+
+<script>
+    const CONFIG = {
+        filterTop: 0,
+        filterBottom: 0,
+        longThreshold: 15,
+        longNearMin: 5,
+        defaultRankLimit: 10 
+    };
+
+    // 💡 AI 題材庫 (可手動更新)
+    const AI_THEMES = {
+        "2330": "全球晶圓代工龍頭。受惠 AI 伺服器需求爆發、CoWoS 產能吃緊、先进製程領先。",
+        "2317": "鴻海。轉型 AI 伺服器組裝（GB200）、電動車佈局、低軌衛星題材。",
+        "2454": "聯發科。天璣 9400 AI 手機晶片銷售強勁，WiFi 7 規格升級，邊緣運算 AI 核心。",
+        "3231": "緯創。AI 伺服器代工大廠，受惠 GPU 基板訂單、液冷散熱技術應用。",
+        "2603": "長榮。紅海局勢推升運價，高殖利率保護，年報獲利預期樂觀。",
+        "1513": "中興電。重電族群。強韌電網計畫受益者，在手訂單充足，外銷電力設備成長。",
+        "3017": "奇鋐。散熱大廠。GB200 液冷散熱解決方案主要供應商。",
+        "2382": "廣達。伺服器代工龍頭。AI 需求帶動毛利率創新高，雲端服務供應商（CSP）大單。"
+    };
+
+    const stockMap = {"CAF":["1303","南亞期"],"CBF":["2002","中鋼期"],"CCF":["2303","聯帶期"],"CDF":["2330","台積電期"],"QFF":["2330","小型台積電期"],"CEF":["2881","富邦金期"],"CFF":["1301","台塑期"],"CGF":["2324","仁寶期"],"CHF":["2409","友達期"],"CJF":["2880","華南金期"],"CKF":["2882","國泰金期"],"CLF":["2886","兆豐金期"],"CMF":["2887","台新金期"],"CNF":["2891","中信金期"],"CQF":["1216","統一期"],"CRF":["1402","遠東新期"],"CSF":["1605","華新期"],"CUF":["2323","中環期"],"CWF":["2352","佳世達期"],"CXF":["2371","大同期"],"CYF":["2408","南亞科期"],"CZF":["2603","長榮期"],"DAF":["2609","陽明期"],"DBF":["2610","華航期"],"DCF":["2801","彰銀銀期"],"DDF":["2888","新光金期"],"DEF":["2890","永豐金期"],"DFF":["1101","台泥期"],"DGF":["1326","台化期"],"DHF":["2317","鴻海期"],"DIF":["2337","旺宏期"],"DJF":["2357","華碩期"],"QRF":["2357","小型華碩期"],"DKF":["2382","廣達期"],"DLF":["2412","中華電期"],"DNF":["2884","玉山金期"],"DOF":["2885","元大金期"],"DPF":["2892","第一金期"],"DQF":["3481","群創期"],"DSF":["2353","宏碁期"],"DVF":["2454","聯發科期"],"PUF":["2454","小型聯發科期"],"DWF":["2915","潤泰全期"],"DXF":["3231","緯創期"],"DYF":["1102","亞泥期"],"DZF":["1210","大成期"],"EEF":["1310","國喬期"],"EGF":["1314","中石化期"],"EHF":["1319","東陽期"],"EKF":["1440","南紡期"],"EMF":["1504","東元期"],"EPF":["1590","亞德客-KY期"],"EYF":["1718","長興期"],"EZF":["1722","台肥期"],"FBF":["2006","東和鋼鐵期"],"FCF":["2014","中鴻期"],"FEF":["2027","大成鋼期"],"FFF":["2049","上銀期"],"QMF":["2049","小型上銀期"],"FGF":["2059","川湖期"],"SVF":["2059","小型川湖期"],"FKF":["2105","正新期"],"FNF":["2201","裕隆期"],"FQF":["2301","光寶科期"],"FRF":["2308","台達電期"],"RVF":["2308","小型台達電期"],"FSF":["2312","金寶期"],"FTF":["2313","華通期"],"FVF":["2314","精英期"],"FWF":["2332","友訊期"],"FYF":["2340","台亞期"],"FZF":["2344","華邦電期"],"GAF":["2347","聯強期"],"GCF":["2354","鴻準期"],"GHF":["2376","技嘉期"],"SLF":["2376","小型技嘉期 "],"GIF":["2377","微星期"],"GJF":["2379","瑞昱期"],"QGF":["2379","小型瑞昱期"],"GKF":["2385","群光期"],"GLF":["2392","正崴期"],"GMF":["2393","億光期"],"GNF":["2401","聯強期"],"GOF":["2404","漢唐期"],"UZF":["2404","小型漢唐期"],"GRF":["2449","京元電子期"],"GUF":["2455","全新期"],"GVF":["2457","飛宏期"],"GWF":["2458","義隆期"],"COF":["2474","可成期"],"GXF":["2474","可成期"],"GYF":["2481","強茂期"],"GZF":["2485","兆赫期"],"HAF":["2489","瑞軒期"],"HBF":["2492","華新科期"],"HCF":["2498","宏達電期"],"HHF":["2504","中工期"],"HIF":["2520","冠德期"],"HLF":["2542","興富發期"],"HOF":["2548","華固期"],"HQF":["2605","新興期"],"HSF":["2618","長榮航期"],"IAF":["2834","臺企銀期"],"IHF":["2901","農林期"],"IIF":["3006","晶豪科期"],"IJF":["3008","大立光期"],"OLF":["3008","小型大立光期"],"IMF":["3019","亞光期"],"IOF":["3034","聯詠期"],"QHF":["3034","小型聯詠期"],"IPF":["3035","智原期"],"IQF":["3036","文曄期"],"IRF":["3037","欣興期"],"ITF":["3042","晶技期"],"IXF":["3044","景碩期"],"IYF":["3045","新日興期"],"IZF":["3059","明泰期"],"JBF":["3443","創意期"],"RWF":["3443","小型創意期"],"JFF":["3533","嘉澤期"],"RFF":["3533","小型嘉澤期"],"JMF":["3653","健策期"],"RGF":["3653","小型健策期"],"JNF":["3673","TPK-KY期"],"JPF":["3702","大聯大期"],"JSF":["4938","和碩期"],"JWF":["5534","長虹期"],"JXF":["6005","群益證期"],"JZF":["6153","嘉聯益期"],"KAF":["6176","瑞儀期"],"KBF":["6213","聯茂期"],"KCF":["6239","力成期"],"KDF":["6271","同欣電期"],"KEF":["6278","台表科期"],"KFF":["2328","康舒期"],"KGF":["6285","啟碁期"],"KIF":["6269","台虹期"],"KKF":["3041","達方期"],"KLF":["9904","寶成期"],"KOF":["9939","宏全期"],"KPF":["9945","潤泰新期"],"KSF":["1477","聚陽期"],"KUF":["1802","台玻期"],"KWF":["2384","廣宇期"],"LBF":["3044","健鼎期"],"LCF":["3045","台灣大期"],"LEF":["3406","玉晶光期"],"QJF":["3406","小型玉晶光期"],"LIF":["6269","台郡期"],"LMF":["9921","美利達期"],"LOF":["5880","合庫金期"],"LQF":["2356","英業達期"],"LRF":["2883","凱基金期"],"LTF":["4904","遠傳期"],"LUF":["4958","臻鼎-KY期"],"LVF":["5871","愛情期"],"LWF":["1476","儒鴻期"],"LXF":["2327","國巨期"],"QEF":["2327","小型國巨期"],"LYF":["8046","南電期"],"QSF":["8046","小型南電期"],"MAF":["1707","葡萄王期"],"MBF":["2355","敬鵬期"],"MJF":["2360","致茂期"],"VDF":["2360","小型致茂期"],"MKF":["2439","美律期"],"MQF":["2369","矽格期"],"MVF":["9938","百和期"],"MYF":["1565","精華期"],"OMF":["1565","小型精華期"],"NAF":["3105","穩懋期"],"QIF":["3105","小型穩懋期"],"NBF":["3152","璟德期"],"NDF":["3260","威剛期"],"NEF":["3264","欣銓期"],"NGF":["3691","碩禾期"],"NIF":["4123","晟德期"],"NJF":["2031","榮剛期"],"NLF":["5347","世界期"],"NMF":["6116","中光電期"],"NOF":["5483","中美晶期"],"NQF":["6121","新普期"],"NSF":["6147","頎邦期"],"NUF":["8044","網家期"],"NVF":["6023","元大期"],"NWF":["8299","群聯期"],"QNF":["8299","小型群聯期"],"ODF":["2231","為升期"],"OEF":["6116","彩晶期"],"OHF":["5434","胡連期"],"OPF":["2345","智邦期"],"SEF":["2345","小型智邦期"],"OQF":["6414","樺漢期"],"ORF":["1536","和大期"],"OSF":["1909","榮成期"],"OTF":["3081","聯亞期"],"OUF":["3552","同致期"],"OVF":["6213","台燿期"],"OWF":["6488","環球晶期"],"PBF":["6488","小型環球晶期"],"OXF":["6510","精測期"],"OYF":["6510","小型精測期"],"OZF":["3711","日月光投控期"],"PAF":["3227","原相期"],"PCF":["4162","智擎期"],"PDF":["4736","泰博期"],"PEF":["5425","台半期"],"PGF":["2633","台灣高鐵期"],"PHF":["5274","祥碩期"],"PNF":["5274","小型祥碩期"],"PIF":["3529","力旺期"],"PJF":["2383","台光電期"],"SFF":["2383","小型台光電期"],"PKF":["2327","信昌電期"],"PLF":["6182","合晶期"],"PMF":["8436","大江期"],"PPF":["5469","宣德期"],"PQF":["8358","金居期"],"PRF":["2455","宏捷科期"],"PSF":["2315","神達期"],"PTF":["3324","雙鴻期"],"ULF":["3324","小型雙鴻期"],"PVF":["6669","緯穎期"],"PWF":["6669","小型緯穎期"],"PXF":["3293","鈊象期"],"PYF":["3293","小型鈊象期"],"PZF":["5274","信驊期"],"QAF":["5274","小型信驊期"],"QBF":["3714","富采期"],"QCF":["2606","裕民期"],"QDF":["3532","台勝科科期"],"QKF":["1907","永豐餘期"],"QLF":["3374","精材期"],"QOF":["1717","長興期"],"QPF":["1904","正隆期"],"QQF":["3257","僑威期"],"QTF":["2441","超豐期"],"QUF":["8150","南茂期"],"QVF":["2338","光罩期"],"QWF":["2388","威盛期"],"QXF":["2615","萬海期"],"QYF":["6547","高端疫苗期"],"QZF":["6770","力積電期"],"RAF":["3017","奇鋐期"],"UHF":["3017","小型奇鋐期"],"RBF":["5388","中磊期"],"RCF":["2634","漢翔期"],"RDF":["4128","中天期"],"REF":["4919","新唐期"],"RJF":["1609","大亞期"],"RKF":["2368","金像電期"],"RLF":["6443","元晶期"],"RMF":["8454","富邦媒期"],"RQF":["8454","小型富邦媒期"],"RNF":["4743","合一期"],"ROF":["6245","立端期"],"RPF":["2912","寶雅期"],"RRF":["2912","小型寶雅期"],"RUF":["9958","世紀鋼期"],"SWF":["9958","小型世紀鋼期"],"SAF":["1795","美時期"],"SBF":["1905","華紙期"],"SDF":["1513","中興電期"],"SJF":["2362","神基期"],"SKF":["3036","至上期"],"SYF":["3680","家登期"],"SZF":["3680","小型家登期"],"UAF":["1503","士電期"],"UBF":["2402","亞翔期"],"UCF":["6188","廣明期"],"UEF":["5876","上海商銀期"],"UFF":["6505","台塑化期"],"UGF":["6526","達發期"],"UIF":["6526","小型達發期"],"UMF":["3661","世芯-KY期"],"UOF":["3661","小型世芯-KY期"],"UPF":["6472","保瑞期"],"UQF":["6472","小型保瑞期"],"UUF":["6757","台灣虎航期"],"UVF":["6223","旺矽期"],"UWF":["6223","小型旺矽期"],"UXF":["2369","華泰期"],"UYF":["2369","良維期"],"VAF":["1608","華榮期"],"VBF":["2367","燿華期"],"VCF":["3060","建準期"]};
+
+    let cachedData = [];
+    let currentRankLimit = CONFIG.defaultRankLimit; 
+    let currentMode = 'ai_long'; 
+    let sortOrder = 'desc'; 
+    let isFetching = false;
+    let refreshTimer = 0;
+    const REFRESH_INTERVAL = 5000;
+
+    function initApp() {
+        const slider = document.getElementById('rank-slider');
+        slider.value = CONFIG.defaultRankLimit;
+        document.getElementById('rank-val').innerText = CONFIG.defaultRankLimit >= 240 ? "全部" : `${CONFIG.defaultRankLimit} 名`;
+        fetchData();
+    }
+
+    async function fetchData() {
+        if (isFetching) return;
+        isFetching = true;
+        try {
+            const response = await fetch('https://market-data-api.futures-ai.com/stkfut_tradeinfo/');
+            const data = await response.json();
+            if (data) {
+                cachedData = Object.keys(data).filter(k => stockMap[k]).map(k => {
+                    const info = stockMap[k];
+                    const near = data[k].near_month;
+                    const far = data[k].next_month;
+                    const total = near + far;
+                    const isLongSignal = total >= CONFIG.longThreshold && near >= CONFIG.longNearMin && far >= 0;
+                    return { 
+                        id: k, stockNum: info[0], name: info[1], 
+                        near: near, far: far, total: total,
+                        isLong: isLongSignal
+                    };
+                });
+                render();
+                refreshTimer = 0; 
+            }
+        } catch (e) { console.error(e); } finally { isFetching = false; }
+    }
+
+    // 🤖 AI 分析功能
+    function showAI(stockNum, stockName) {
+        const modal = document.getElementById('ai-modal');
+        const content = document.getElementById('ai-content');
+        const links = document.getElementById('ai-links');
+        const title = document.getElementById('ai-title');
+
+        title.innerHTML = `🤖 AI 分析: ${stockName} (${stockNum})`;
+        modal.style.display = 'flex';
+
+        // 模擬題材檢索
+        const theme = AI_THEMES[stockNum] || "目前標的為強勢成交標的。請注意該產業板塊動能，並觀察大盤對應成分股之領先指標。";
+        content.innerHTML = `<div style="background:rgba(255,204,0,0.1); padding:10px; border-radius:8px; border-left:4px solid var(--ai-gold);">
+                                <strong>核心題材：</strong><br>${theme}
+                             </div>`;
+
+        // 生成外部連結
+        links.innerHTML = `
+            <a href="https://www.google.com/search?q=${stockNum}+${stockName}+題材+新聞" target="_blank" class="link-btn link-google">Google 新聞</a>
+            <a href="https://goodinfo.com.tw/tw/StockDetail.asp?STOCK_ID=${stockNum}" target="_blank" class="link-btn link-info">財報資料</a>
+            <a href="https://www.wantgoo.com/stock/${stockNum}" target="_blank" class="link-btn link-wantgoo">主力籌碼</a>
+        `;
+    }
+
+    function closeAI() {
+        document.getElementById('ai-modal').style.display = 'none';
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        updateUI();
+        render();
+    }
+
+    function handleSortClick() {
+        sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
+        updateUI();
+        render();
+    }
+
+    function toggleIdSort() {
+        const check = document.getElementById('sort-by-id');
+        if (event.target.tagName !== 'INPUT') check.checked = !check.checked;
+        render();
+        updateUI();
+    }
+
+    function updateUI() {
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === currentMode);
+        });
+        const thTotal = document.getElementById('th-total');
+        thTotal.innerText = `總分 ${sortOrder === 'desc' ? '▼' : '▲'}`;
+    }
+
+    document.getElementById('rank-slider').oninput = function() {
+        currentRankLimit = parseInt(this.value);
+        document.getElementById('rank-val').innerText = currentRankLimit >= 240 ? "全部" : `${currentRankLimit} 名`;
+        render();
+    };
+
+    function render() {
+        const tbody = document.getElementById('main-table');
+        const isMiniOnly = document.getElementById('mini-only').checked;
+        const isSortById = document.getElementById('sort-by-id').checked;
+        const isHotEnabled = document.getElementById('hot-filter').checked;
+        
+        let list = [...cachedData];
+        if (isMiniOnly) list = list.filter(item => item.name.includes('小型'));
+        
+        if (currentMode === 'ai_long') {
+            list = list.filter(i => i.isLong); 
+        } else if (currentMode === 'up') {
+            list = list.filter(i => i.total > 0);
+        } else if (currentMode === 'down') {
+            list = list.filter(i => i.total < 0);
+        }
+
+        if (currentMode !== 'ai_long' && !isHotEnabled && list.length > (CONFIG.filterTop + CONFIG.filterBottom)) {
+            list.sort((a, b) => b.total - a.total);
+            let excludeIds = new Set();
+            if (CONFIG.filterTop > 0) list.slice(0, CONFIG.filterTop).forEach(i => excludeIds.add(i.id));
+            if (CONFIG.filterBottom > 0) list.slice(-CONFIG.filterBottom).forEach(i => excludeIds.add(i.id));
+            list = list.filter(item => !excludeIds.has(item.id));
+        }
+
+        if (isSortById) {
+            list.sort((a, b) => a.stockNum.localeCompare(b.stockNum));
+        } else {
+            list.sort((a, b) => sortOrder === 'desc' ? b.total - a.total : a.total - b.total);
+        }
+
+        if (currentRankLimit < 240) {
+            list = list.slice(0, currentRankLimit);
+        }
+        
+        const currentMax = list.length > 0 ? Math.max(...list.map(i => Math.abs(i.total))) : 1;
+
+        tbody.innerHTML = list.map(item => {
+            const themeColor = item.total >= 0 ? 'var(--up-red)' : 'var(--down-green)';
+            const rankStrength = (Math.abs(item.total) / (currentMax || 1)) * 100;
+            const badge = item.isLong ? `<span class="ai-badge">精選</span>` : '';
+            
+            return `
+            <tr>
+                <td class="name-col">
+                    <div class="stock-name-row">
+                        <span class="stock-num">${item.stockNum}</span>
+                        <span class="stock-name" onclick="showAI('${item.stockNum}', '${item.name.replace('期','')}')">${item.name}${badge}</span>
+                        <span class="stock-id">${item.id}</span>
+                    </div>
+                </td>
+                <td><span class="score-val" style="color:${item.near >= 0 ? 'var(--up-red)' : 'var(--down-green)'}">${Math.round(item.near)}</span></td>
+                <td><span class="score-val" style="color:${item.far >= 0 ? 'var(--up-red)' : 'var(--down-green)'}">${Math.round(item.far)}</span></td>
+                <td>
+                    <span class="score-val" style="color:${themeColor}">${Math.round(item.total)}</span>
+                    <div class="score-bar-bg">
+                        <div class="score-bar-fill" style="width:${Math.min((Math.abs(item.total)/30)*100, 100)}%; background:${themeColor}"></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="rank-strength-container">
+                        <div class="rank-strength-fill" style="width:${rankStrength}%; background:${themeColor};"></div>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function updateTimer() {
+        refreshTimer += 100;
+        const rem = Math.max(0, (REFRESH_INTERVAL - refreshTimer) / 1000);
+        document.getElementById('timer-display').innerText = `${rem.toFixed(1)}s`;
+        document.getElementById('refresh-bar').style.width = (refreshTimer/REFRESH_INTERVAL)*100 + '%';
+        if (refreshTimer >= REFRESH_INTERVAL) fetchData();
+    }
+
+    initApp();
+    setInterval(updateTimer, 100);
+</script>
+</body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>股期監控-AI做多精選</title>
+    <style>
+        :root {
+            --bg-black: #121212;
+            --text-main: #e0e0e0;
+            --text-dim: #777; 
+            --up-red: #ff3b30;
+            --down-green: #34c759;
+            --accent: #64ffda;
+            --ai-gold: #ffcc00;
+            --surface: #1e1e1e;
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--text-main);
+            font-family: -apple-system, "PingFang TC", sans-serif;
+            margin: 0; padding: 0;
+            display: flex; justify-content: center;
+        }
+
+        .app-wrapper { width: 98%; max-width: 550px; background: var(--bg-black); min-height: 100vh; }
+
+        .sticky-top {
+            position: sticky; top: 0; background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px); z-index: 100; padding: 4px 2px;
+            border-bottom: 1px solid #333;
+        }
+
+        .mode-header { display: flex; gap: 4px; margin-bottom: 4px; }
+        .mode-btn {
+            flex: 1; padding: 8px 2px; text-align: center; font-size: 13px;
+            font-weight: bold; border-radius: 4px; border: 1px solid #333;
+            cursor: pointer; background: #111; color: var(--text-dim);
+        }
+        .mode-btn.active[data-mode="strong"] { border-color: var(--accent); color: var(--accent); background: rgba(100, 255, 218, 0.1); }
+        .mode-btn.active[data-mode="up"] { border-color: var(--up-red); color: var(--up-red); background: rgba(255, 59, 48, 0.1); }
+        .mode-btn.active[data-mode="down"] { border-color: var(--down-green); color: var(--down-green); background: rgba(52, 199, 89, 0.1); }
+        .mode-btn.active[data-mode="ai_long"] { border-color: var(--ai-gold); color: var(--ai-gold); background: rgba(255, 204, 0, 0.1); }
+
+        .controls-row {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--surface); padding: 4px 8px; border-radius: 4px;
+            position: relative; overflow: hidden;
+        }
+
+        .filter-toggle { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--accent); white-space: nowrap; cursor: pointer; }
+        .slider-box { flex-grow: 1; display: flex; align-items: center; gap: 4px; margin: 0 5px; }
+        #rank-val { color: #fff; min-width: 45px; font-size: 11px; font-weight: bold; }
+        #timer-display { font-family: monospace; color: var(--accent); font-size: 10px; margin-left: auto; }
+        
+        input[type=range] { flex-grow: 1; height: 3px; accent-color: var(--accent); }
+        #refresh-bar { position: absolute; bottom: 0; left: 0; height: 1.5px; background: var(--accent); width: 0%; }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 2px; }
+        th { color: var(--text-dim); font-size: 10px; padding: 8px 2px; border-bottom: 1px solid #333; cursor: pointer; }
+        th:nth-child(1) { text-align: left; width: 42%; } 
+        th:nth-child(2), th:nth-child(3) { text-align: right; width: 11%; } 
+        th:nth-child(4) { text-align: right; width: 17%; } 
+        th:nth-child(5) { width: 19%; text-align: center; } 
+        
+        td { padding: 6px 2px; border-bottom: 1px solid #1a1a1a; text-align: right; }
+        .name-col { text-align: left; overflow: hidden; white-space: nowrap; }
+        .stock-name-row { display: flex; align-items: baseline; gap: 3px; }
+        .stock-num { font-size: 11px; color: var(--accent); font-family: monospace; font-weight: bold; }
         .stock-name { font-weight: 500; color: #fff; font-size: 13px; }
         .stock-id { font-size: 10px; color: #f1adad; font-family: monospace; opacity: 0.7; }
 
@@ -298,4 +667,4 @@
     setInterval(updateTimer, 100);
 </script>
 </body>
-</html>
+</html> -->
