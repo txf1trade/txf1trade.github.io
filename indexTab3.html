@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI期權戰情室-法人邏輯強化版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI期權戰情室-專業版</title>
     <style>
         :root {
             --bg: #0d1117; --card: #161b22; --blue: #58a6ff;
@@ -12,8 +12,29 @@
             --ai-glow: rgba(88, 166, 255, 0.3);
         }
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: #c9d1d9; margin: 0; padding: 6px; line-height: 1.2; }
-        .container { max-width: 550px; margin: auto; }
+        
+        /* 修正手機版背景與顯示完整度 */
+        html, body {
+            background: var(--bg);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        body { 
+            font-family: -apple-system, "Segoe UI", sans-serif; 
+            color: #c9d1d9; 
+            padding: 6px; 
+            line-height: 1.2; 
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .container { 
+            max-width: 550px; 
+            margin: auto; 
+            /* 核心修正：增加底部安全區域 Padding，避免 AI 區塊被遮擋 */
+            padding-bottom: calc(50px + env(safe-area-inset-bottom));
+        }
         
         table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; background: var(--card); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
         th { background: var(--header); color: #8b949e; padding: 6px 2px; border: 1px solid var(--border); font-size: 10px; text-align: center; }
@@ -32,7 +53,16 @@
             color: var(--gold) !important;
         }
         
-        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 1px solid var(--blue); border-radius: 10px; padding: 12px; margin-top: 10px; box-shadow: 0 4px 15px var(--ai-glow); }
+        .ai-box { 
+            background: linear-gradient(145deg, #1c2128, #161b22); 
+            border: 1px solid var(--blue); 
+            border-radius: 10px; 
+            padding: 12px; 
+            margin-top: 10px; 
+            box-shadow: 0 4px 15px var(--ai-glow);
+            /* 確保在舊版瀏覽器也能顯示 */
+            display: block;
+        }
         .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
         .trend-val { font-size: 20px; font-weight: 900; }
         
@@ -47,7 +77,6 @@
         .exposure-info { font-size: 10px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; }
         .sub-header { background: #1c2128 !important; color: var(--blue) !important; font-weight: bold; text-align: left !important; padding-left: 10px !important; }
 
-        /* 結算日提醒呼吸效果 */
         .settlement-warning { 
             color: var(--gold); 
             border: 1px solid var(--gold); 
@@ -250,7 +279,6 @@
         `;
     }
 
-    // 結算日提醒邏輯
     function updateSettlementUI() {
         const now = new Date();
         const year = now.getFullYear(); const month = now.getMonth();
