@@ -1,5 +1,113 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>期貨交易監控面板</title>
+    <style>
+        * { box-sizing: border-box; }
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            overflow: hidden; font-family: "PingFang TC", sans-serif;
+            background-color: #1a1a1a; color: #eee;
+        }
+        /* 標籤按鈕容器 */
+        .nav-tabs {
+            display: flex; background-color: #2c2c2c;
+            padding: 8px 10px 0 10px; border-bottom: 2px solid #007bff;
+        }
+        .tab-btn {
+            padding: 8px 16px; cursor: pointer; border: none;
+            background: #444; color: #bbb; border-radius: 6px 6px 0 0;
+            margin-right: 4px; transition: 0.2s;
+        }
+        .tab-btn.active { background: #007bff; color: white; font-weight: bold; }
+        /* 內容區：自動計算剩餘高度 */
+        .content-wrapper { height: calc(100vh - 43px); width: 100%; }
+        iframe { width: 100%; height: 100%; border: none; display: none; }
+        iframe.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="tabContainer" class="nav-tabs"></div>
+    <div id="frameContainer" class="content-wrapper"></div>
+
+    <script>
+        // 配置資料
+        const config = [
+            { name: "台指籌碼", url: "https://txf1trade.github.io/indexTab1.html" },
+            { name: "股期動能", url: "https://txf1trade.github.io/indexTab2.html" },
+            { name: "盤後籌碼", url: "https://txf1trade.github.io/indexTab3.html" }
+        ];
+
+        const tabContainer = document.getElementById('tabContainer');
+        const frameContainer = document.getElementById('frameContainer');
+
+        function init() {
+            config.forEach((item, index) => {
+                // 1. 建立按鈕
+                const btn = document.createElement('button');
+                btn.className = 'tab-btn';
+                btn.id = 'btn-' + index;
+                btn.innerText = item.name;
+                btn.onclick = () => updatePage(index);
+                tabContainer.appendChild(btn);
+
+                // 2. 建立 iframe
+                const ifr = document.createElement('iframe');
+                ifr.id = 'ifr-' + index;
+                frameContainer.appendChild(ifr);
+            });
+
+            // 檢查 URL 參數
+            const params = new URLSearchParams(window.location.search);
+            let tabIndex = params.get('tab');
+            tabIndex = (tabIndex === null) ? 0 : parseInt(tabIndex);
+            
+            if (isNaN(tabIndex) || tabIndex < 0 || tabIndex >= config.length) {
+                tabIndex = 0;
+            }
+
+            updatePage(tabIndex, true);
+        }
+
+        function updatePage(index, isInitial = false) {
+            const item = config[index];
+            const targetIfr = document.getElementById('ifr-' + index);
+
+            // 更新網址列格式
+            const newSearch = (index === 0) ? "" : `?tab=${index}`;
+            const newFullUrl = window.location.origin + window.location.pathname + newSearch;
+            
+            if (isInitial) {
+                window.history.replaceState({index}, '', newFullUrl);
+            } else {
+                window.history.pushState({index}, '', newFullUrl);
+            }
+
+            // 載入與切換內容
+            if (!targetIfr.src) targetIfr.src = item.url;
+
+            // UI 狀態更新
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-' + index));
+            document.querySelectorAll('iframe').forEach(f => f.classList.toggle('active', f.id === 'ifr-' + index));
+        }
+
+        // 處理瀏覽器返回鍵
+        window.onpopstate = () => {
+            const params = new URLSearchParams(window.location.search);
+            const tabIndex = parseInt(params.get('tab')) || 0;
+            updatePage(tabIndex, true);
+        };
+
+        init();
+    </script>
+</body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="zh-TW">
 <head> 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -116,107 +224,6 @@
         window.onload = init;
         // 監聽網址變化（如果在頁面內切換網址）
         window.onhashchange = init;
-    </script>
-
-</body>
-</html>
-
-<!-- <!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>期貨交易監控面板</title>
-    <style>
-        /* 基礎樣式重置 */
-        * { box-sizing: border-box; }
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden; /* 防止主頁面出現捲軸 */
-            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
-            background-color: #1a1a1a; /* 深色背景符合交易風格 */
-        }
-
-        /* 導覽列容器 */
-        .nav-tabs {
-            display: flex;
-            background-color: #2c2c2c;
-            padding: 8px 10px 0 10px;
-            border-bottom: 2px solid #007bff;
-        }
-
-        /* 個別按鈕樣式 */
-        .tab-btn {
-            padding: 5px 15px; /* 分頁按鈕大小 */
-            cursor: pointer;
-            border: none;
-            background: #444;
-            color: #bbb;
-            font-size: 16px;
-            border-radius: 8px 8px 0 0;
-            margin-right: 4px;
-            transition: all 0.3s ease;
-        }
-
-        /* 滑鼠移過樣式 */
-        .tab-btn:hover {
-            background: #555;
-            color: #fff;
-        }
-
-        /* 被選中的按鈕樣式 */
-        .tab-btn.active {
-            background: #007bff;
-            color: white;
-            font-weight: bold;
-        }
-
-        /* 內容區塊：填滿剩餘空間 */
-        .content-wrapper {
-            height: calc(100vh - 50px); /* 扣除導覽列高度 */
-            width: 100%;
-        }
-
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            display: none; /* 預設隱藏所有 iframe */
-        }
-
-        /* 顯示當前的 iframe */
-        iframe.active {
-            display: block;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="nav-tabs">
-        <button class="tab-btn active" onclick="showTab(0)">台指籌碼</button>
-        <button class="tab-btn" onclick="showTab(1)">股期動能</button>
-    </div>
-
-    <div class="content-wrapper">
-        <iframe class="active" src="https://txf1trade.github.io/indexTab1.html"></iframe>
-        <iframe src="https://txf1trade.github.io/indexTab2.html"></iframe>
-    </div>
-
-    <script>
-        function showTab(index) {
-            const tabs = document.querySelectorAll('.tab-btn');
-            const frames = document.querySelectorAll('iframe');
-
-            // 清除所有 active 狀態
-            tabs.forEach(tab => tab.classList.remove('active'));
-            frames.forEach(frame => frame.classList.remove('active'));
-
-            // 賦予點選的標籤 active 狀態
-            tabs[index].classList.add('active');
-            frames[index].classList.add('active');
-        }
     </script>
 
 </body>
