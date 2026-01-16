@@ -29,19 +29,18 @@
         .retail-text { color: var(--gold); font-weight: bold; }
         .retail-highlight { border: 1.5px solid var(--gold) !important; background: rgba(241, 224, 90, 0.15); font-size: 11px; color: var(--gold) !important; }
         
-        /* 💡 標籤樣式 */
         .ai-tag { display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 9px; margin: 1px; font-weight: bold; color: #fff; }
         
-        /* 💡 賣方曝險專用 (金黃底黑字) */
+        /* 賣方曝險專用 (金黃底黑字) */
         .tag-sell-exposure { background: var(--gold) !important; color: #000 !important; border: 1px solid #fff; }
         .exposure-text { color: var(--gold); font-weight: bold; font-size: 10px; margin-left: 2px; }
         
         .tag-bull { background: #da3633; } 
         .tag-bear { background: #238636; } 
 
-        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 1px solid var(--blue); border-radius: 10px; padding: 12px; margin-top: 10px; box-shadow: 0 4px 15px var(--ai-glow); }
+        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 2px solid var(--blue); border-radius: 10px; padding: 12px; margin-top: 10px; box-shadow: 0 4px 15px var(--ai-glow); }
         .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-        .trend-val { font-size: 20px; font-weight: 900; }
+        .trend-val { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
         
         .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
         .battle-card { background: #0d1117; padding: 8px; border-radius: 6px; border-top: 2px solid var(--border); }
@@ -80,23 +79,22 @@
     <div class="ai-box">
         <div class="trend-header">
             <div>
-                <span class="ai-tag" style="background:var(--blue)">AI 戰略評級</span>
-                <span style="font-size: 11px; color: #8b949e; font-weight: bold;">展望：</span>
+                <span class="ai-tag" style="background:var(--blue)">AI 多空布局評級</span>
             </div>
             <span id="trend-indicator" class="trend-val">--</span>
         </div>
         <div class="battle-grid">
             <div class="battle-card" style="border-color: #bc8cff;">
-                <div class="card-title">自營商佈局</div>
+                <div class="card-title">自營商方向</div>
                 <div id="d-action" class="card-val">分析中...</div>
             </div>
             <div class="battle-card" style="border-color: var(--blue);">
-                <div class="card-title">外資佈局</div>
+                <div class="card-title">外資方向</div>
                 <div id="f-action" class="card-val">分析中...</div>
             </div>
         </div>
         <div class="strategy-box">
-            <div id="strategy-desc">正在進行盤後大數據交叉分析...</div>
+            <div id="strategy-desc">正在根據盤後數據交叉計算布局建議...</div>
         </div>
     </div>
 </div>
@@ -114,6 +112,7 @@
             const txData = await txRes.json();
             const optData = await optRes.json();
             renderSpot(spotData);
+            
             let fTX = 0, retailMTX = 0, retailMicro = 0;
             txData.forEach(r => {
                 if(r[0] === '外資') fTX = parseFloat(String(r[1]).replace(/,/g,'')) || 0;
@@ -122,6 +121,7 @@
                     retailMicro = parseFloat(String(r[4]).replace(/,/g,'')) || 0;
                 }
             });
+            
             renderTX(txData);
             renderOption(optData, fTX, retailMTX, retailMicro);
         } catch (e) { console.error("抓取失敗:", e); }
@@ -177,12 +177,11 @@
             const amtV = parseFloat(String(amt).replace(/,/g, '')) || 0;
             const isC = t.includes('買權');
 
-            // 💡 賣方判斷：OI 為負數
             let isSell = (oiV < 0);
             let actType = isC ? (oiV >= 0 ? "BC" : "SC") : (oiV >= 0 ? "BP" : "SP");
             
-            // 💡 標籤與文字邏輯
-            let tagClass = isSell ? "tag-sell-exposure" : (isC ? "tag-buy-bull" : "tag-buy-bear");
+            let tagClass = (actType === "BC" || actType === "SP") ? "tag-bull" : "tag-bear";
+            if(isSell) tagClass = "tag-sell-exposure";
             let exposureTxt = isSell ? "<span class='exposure-text'>(曝險)</span>" : "";
 
             rows[id] += `<tr>
@@ -214,37 +213,70 @@
     }
 
     function enhancedAnalyze(s, fTX, rMTX, rMicro) {
-        let score = 0; let dTags = [], fTags = [];
+        let score = 0; 
+        let dTags = [], fTags = [];
         const fSpot = globalSpot.foreign;
-        if (s.dc < 0) dTags.push('<span class="neg">SC(壓)</span>');
-        if (s.dc > 0) dTags.push('<span class="pos">BC(多)</span>');
-        if (s.dp < 0) dTags.push('<span class="pos">SP(撐)</span>');
-        if (s.dp > 0) dTags.push('<span class="neg">BP(險)</span>');
-        if (s.fc < 0) fTags.push('<span class="neg">SC</span>');
-        if (s.fc > 0) fTags.push('<span class="pos">BC</span>');
-        if (s.fp < 0) fTags.push('<span class="pos">SP</span>');
-        if (s.fp > 0) fTags.push('<span class="neg">BP</span>');
 
-        if (fSpot > 30) score += 2; if (fTX > 0) score += 1.5;
-        if (fSpot < -30) score -= 2; if (fTX < -5000) score -= 1.5;
+        // --- 核心評分邏輯 ---
+        // 1. 現貨權重
+        if (fSpot > 50) score += 3; else if (fSpot > 0) score += 1;
+        if (fSpot < -50) score -= 3; else if (fSpot < 0) score -= 1;
+
+        // 2. 期貨權重 (外資)
+        if (fTX > 2000) score += 2; else if (fTX < -5000) score -= 2;
+
+        // 3. 散戶反向權重 (散戶多 = 看空)
         const retailTotal = rMTX + (rMicro / 5);
-        if (retailTotal > 3000) score -= 2; if (retailTotal < -3000) score += 2;
+        if (retailTotal > 5000) score -= 3; else if (retailTotal < -5000) score += 3;
 
-        let trend = "⚖️ 中性震盪"; let color = "var(--blue)";
-        if (score >= 2.5) { trend = "🚀 強勢看多"; color = "var(--red)"; }
-        else if (score >= 0.5) { trend = "↗️ 偏多震盪"; color = "var(--red)"; }
-        else if (score <= -2.5) { trend = "📉 強勢看空"; color = "var(--green)"; }
-        else if (score <= -0.5) { trend = "↘️ 偏空整理"; color = "var(--green)"; }
+        // 4. 選擇權金額權重
+        if ((s.fAmtC - s.fAmtP) > 100000) score += 1;
+        if ((s.fAmtC - s.fAmtP) < -100000) score -= 1;
+
+        // 自營商標籤
+        if (s.dc < 0) dTags.push('<span class="neg">壓(SC)</span>');
+        if (s.dc > 0) dTags.push('<span class="pos">多(BC)</span>');
+        if (s.dp < 0) dTags.push('<span class="pos">撐(SP)</span>');
+        if (s.dp > 0) dTags.push('<span class="neg">空(BP)</span>');
+        
+        // 外資標籤
+        if (s.fc > 0 || s.fp < 0) fTags.push('<span class="pos">偏多</span>');
+        else fTags.push('<span class="neg">偏空</span>');
+
+        // --- 評級與布局建議 ---
+        let trend = "⚖️ 中性整理"; 
+        let color = "var(--blue)";
+        let plan = "";
+
+        if (score >= 4) { 
+            trend = "🚀 極度樂觀"; color = "var(--red)"; 
+            plan = "籌碼全面翻多。建議：逢拉回尋求支撐，佈局多單或賣出 PUT 鎖利。";
+        } else if (score >= 1) { 
+            trend = "↗️ 震盪偏多"; color = "#ffab70"; 
+            plan = "法人現貨支撐仍存。建議：區間操作偏多，留意壓力位是否帶量突破。";
+        } else if (score <= -4) { 
+            trend = "📉 極度悲觀"; color = "var(--green)"; 
+            plan = "籌碼強烈套現。建議：保守觀望，或建立避險空單，慎防連續性賣壓。";
+        } else if (score <= -1) { 
+            trend = "↘️ 震盪偏空"; color = "#88d18d"; 
+            plan = "散戶接刀或法人調節中。建議：不輕易追多，反彈遇壓力可適度避險。";
+        } else {
+            plan = "多空籌碼拉鋸，方向不明。建議：減碼觀望，靜待結算或大數據轉向。";
+        }
 
         document.getElementById('trend-indicator').innerText = trend;
         document.getElementById('trend-indicator').style.color = color;
-        document.getElementById('d-action').innerHTML = dTags.join(" + ") || "中性";
+        document.getElementById('d-action').innerHTML = dTags.join(" | ") || "中性";
         document.getElementById('f-action').innerHTML = fTags.join(" ") || "中性";
+        
         document.getElementById('strategy-desc').innerHTML = `
-            <div style="margin-bottom:4px;"><b>AI 戰略：</b> <span style="color:var(--gold)">${(score > 0) ? "偏多思維，留意權值帶動。" : "保守因應，避開權值賣壓。"}</span></div>
-            <div style="font-size:11px; opacity:0.7;">
-                診斷：目前${s.dc < 0 ? '掛出 SC 壓力' : '上方無壓'}，${s.dp < 0 ? 'SP 支撐明顯' : '支撐偏弱'}。
-                散戶小微台累計 ${retailTotal > 0 ? '偏多(防洗盤)' : '偏空(防軋空)'}。
+            <div style="margin-bottom:6px;"><b>📊 布局指引：</b> <span style="color:${color}">${plan}</span></div>
+            <hr style="border:0; border-top:1px solid var(--border); margin:8px 0;">
+            <div style="font-size:11px; opacity:0.8; line-height:1.4;">
+                <b style="color:var(--gold)">AI 數據摘要：</b><br>
+                1. 外資現貨今日 ${fSpot >= 0 ? '買超' : '賣超'} ${Math.abs(fSpot).toFixed(2)} 億。<br>
+                2. 散戶小微台目前持有 <span style="color:${retailTotal > 0 ? 'var(--red)' : 'var(--green)'}">${Math.abs(retailTotal).toFixed(0)} 口 ${retailTotal > 0 ? '多單' : '空單'}</span>。<br>
+                3. 市場壓力點(SC)位能：${Math.abs(s.dc).toLocaleString()} 口。
             </div>
         `;
     }
