@@ -22,6 +22,7 @@
             margin: 0; padding: 0;
             min-height: 100%;
             -webkit-overflow-scrolling: touch;
+            height: -webkit-fill-available;
         }
 
         body {
@@ -30,12 +31,23 @@
             display: flex; justify-content: center;
         }
 
-        .app-wrapper { 
+        /* .app-wrapper { 
             width: 98%; 
             max-width: 550px; 
             background: var(--bg-black); 
             min-height: 100svh; 
             padding-bottom: calc(60px + env(safe-area-inset-bottom)); 
+        } */
+        .app-wrapper { 
+            width: 98%; 
+            max-width: 550px; 
+            background: var(--bg-black); 
+            /* 1. 使用更好的高度定義 */
+            min-height: 100vh;
+            min-height: -webkit-fill-available; 
+            /* 2. 增加底部緩衝，確保內容能完全滑出底部小白條上方 */
+            padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
+            box-sizing: border-box;
         }
 
         .sticky-top {
