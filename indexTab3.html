@@ -3,41 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>AI期權戰情室-專業版</title>
+    <title>AI期權戰情室-整合專業版</title>
     <style>
         :root {
             --bg: #0d1117; --card: #161b22; --blue: #58a6ff;
             --red: #ff7b72; --green: #7ee787; --border: #30363d;
             --header: #21262d; --gold: #f1e05a;
             --ai-glow: rgba(88, 166, 255, 0.3);
+            --vh: 1vh;
         }
         * { box-sizing: border-box; }
+        html, body { 
+            background: var(--bg); margin: 0; padding: 0; 
+            min-height: 100vh;
+            min-height: calc(var(--vh, 1vh) * 100);
+            -webkit-overflow-scrolling: touch;
+        }
+        body { font-family: -apple-system, "Segoe UI", sans-serif; color: #c9d1d9; padding: 6px; line-height: 1.2; }
         
-        html, body { background: var(--bg); margin: 0; padding: 0; min-height: 100vh; }
-        body { font-family: -apple-system, "Segoe UI", sans-serif; color: #c9d1d9; padding: 6px; line-height: 1.2; -webkit-text-size-adjust: 100%; }
-        .container { max-width: 550px; margin: auto; padding-bottom: calc(50px + env(safe-area-inset-bottom)); }
-        
+        .container { 
+            max-width: 550px; margin: auto; 
+            padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
+        }
+
+        /* 指數看板樣式 */
+        .index-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; margin-top: 5px; }
+        .index-card { background: var(--card); padding: 8px 2px; border-radius: 6px; border: 1px solid var(--border); text-align: center; }
+        .index-name { font-size: 10px; color: #8b949e; margin-bottom: 4px; }
+        .index-price { font-family: "Consolas", monospace; font-size: 15px; font-weight: 900; color: #fff; }
+        .index-change { font-family: "Consolas", monospace; font-size: 11px; font-weight: bold; display: block; margin-top: 2px; }
+
+        /* 價差監控 */
+        .basis-box { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); font-size: 12px; }
+        .basis-tag { padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+
+        /* 表格共用樣式 */
         table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; background: var(--card); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
         th { background: var(--header); color: #8b949e; padding: 6px 2px; border: 1px solid var(--border); font-size: 10px; text-align: center; }
         td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
         
         .section-title { font-size: 14px; font-weight: bold; margin: 12px 0 6px 2px; color: var(--blue); border-left: 4px solid var(--blue); padding-left: 8px; display: flex; align-items: center; justify-content: space-between; }
+        .unit-text { font-size: 10px; color: #8b949e; font-weight: normal; margin-left: auto; }
+        
         .num-cell { font-family: "Consolas", "Monaco", monospace; font-weight: bold; }
         .pos { color: var(--red); } .neg { color: var(--green); }
 
+        /* 散戶高亮 */
         .retail-row { background: rgba(241, 224, 90, 0.03) !important; }
         .retail-text { color: var(--gold); font-weight: bold; }
         .retail-highlight { border: 1.5px solid var(--gold) !important; background: rgba(241, 224, 90, 0.15); font-size: 11px; color: var(--gold) !important; }
         
+        /* 移植 C 程式的曝險標籤 */
         .ai-tag { display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 9px; margin: 1px; font-weight: bold; color: #fff; }
-        
-        /* 賣方曝險專用 (金黃底黑字) */
         .tag-sell-exposure { background: var(--gold) !important; color: #000 !important; border: 1px solid #fff; }
-        .exposure-text { color: var(--gold); font-weight: bold; font-size: 10px; margin-left: 2px; }
-        
+        .exposure-text { color: var(--gold); font-weight: bold; font-size: 9px; margin-left: 2px; }
         .tag-bull { background: #da3633; } 
         .tag-bear { background: #238636; } 
 
+        /* AI 診斷盒 */
         .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 2px solid var(--blue); border-radius: 10px; padding: 12px; margin-top: 10px; box-shadow: 0 4px 15px var(--ai-glow); }
         .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
         .trend-val { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
@@ -50,7 +73,7 @@
         .strategy-box { background: rgba(88, 166, 255, 0.08); padding: 10px; border-radius: 6px; border: 1px dashed var(--blue); font-size: 12px; color: #ffffff; }
         .exposure-info { font-size: 10px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; }
         .sub-header { background: #1c2128 !important; color: var(--blue) !important; font-weight: bold; text-align: left !important; padding-left: 10px !important; }
-
+        
         .settlement-warning { color: var(--gold); border: 1px solid var(--gold); padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px; animation: breathe 2s ease-in-out infinite; }
         @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     </style>
@@ -58,29 +81,50 @@
 <body>
 
 <div class="container">
+    <div class="index-grid">
+        <div class="index-card" style="border-top: 3px solid var(--red);">
+            <div class="index-name">加權指數</div>
+            <div id="price-tsec" class="index-price">--</div>
+            <div id="change-tsec" class="index-change">--</div>
+        </div>
+        <div class="index-card" style="border-top: 3px solid var(--gold);">
+            <div class="index-name">櫃買指數</div>
+            <div id="price-otc" class="index-price">--</div>
+            <div id="change-otc" class="index-change">--</div>
+        </div>
+        <div class="index-card" style="border-top: 3px solid var(--blue);">
+            <div class="index-name">台指期貨</div>
+            <div id="price-fitx" class="index-price">--</div>
+            <div id="change-fitx" class="index-change">--</div>
+        </div>
+    </div>
+
+    <div class="basis-box">
+        <span>價差監控：<b id="basis-value" class="num-cell">--</b></span>
+        <span id="basis-status" class="basis-tag" style="background: #30363d;">計算中</span>
+    </div>
+
     <div class="section-title">
         <span>🏛️ 法人現貨買賣超 (<span id="spot-date">--/--</span>)</span>
-        <span style="font-size: 10px; color: #8b949e;">單位: 億元</span>
+        <span class="unit-text">單位: 億元</span>
     </div>
     <table id="spot-table">
         <thead><tr><th>外資</th><th>投信</th><th>自營商</th><th>合計</th></tr></thead>
-        <tbody id="spot-table-body"><tr><td colspan="4">讀取數據中...</td></tr></tbody>
+        <tbody id="spot-table-body"><tr><td colspan="4">數據載入中...</td></tr></tbody>
     </table>
 
     <div class="section-title">📊 台指期沖銷動能</div>
-    <div id="tx-table-container">讀取數據中...</div>
+    <div id="tx-table-container">載入中...</div>
 
     <div class="section-title">
         <span>📜 選擇權曝險診斷 <span id="settlement-ui"></span></span>
     </div>
     <div id="exposure-summary" class="exposure-info">計算中...</div>
-    <div id="opt-data-table">讀取數據中...</div>
+    <div id="opt-data-table">載入中...</div>
 
     <div class="ai-box">
         <div class="trend-header">
-            <div>
-                <span class="ai-tag" style="background:var(--blue)">AI 多空布局評級</span>
-            </div>
+            <div><span class="ai-tag" style="background:var(--blue)">AI 多空布局評級</span></div>
             <span id="trend-indicator" class="trend-val">--</span>
         </div>
         <div class="battle-grid">
@@ -94,16 +138,65 @@
             </div>
         </div>
         <div class="strategy-box">
-            <div id="strategy-desc">正在根據盤後數據交叉計算布局建議...</div>
+            <div id="strategy-desc">正在進行籌碼交叉運算...</div>
         </div>
     </div>
 </div>
 
 <script>
+    // iPhone 視窗高度修正
+    function updateHeight() {
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    window.addEventListener('resize', updateHeight);
+    updateHeight();
+
     const apiUrl = 'https://script.google.com/macros/s/AKfycbwrpivopZpaws8MTK-_PGHakBsglDJ9XUZMWtYhmIz5DWgJO5TvE_ucWIiNafIbKC7F/exec';
     let globalSpot = { foreign: 0, trust: 0, dealer: 0, total: 0 };
+    let curTSEC = 0, curFITX = 0;
+
+    async function fetchPrices() {
+        const urls = {
+            tsec: 'https://histock.tw/stock/module/function.aspx?m=stocktop2017&no=0000',
+            otc: 'https://histock.tw/stock/module/function.aspx?m=stocktop2017&no=TWOI',
+            fitx: 'https://histock.tw/stock/module/function.aspx?m=stocktop2017&no=FITXA'
+        };
+
+        const parseInfo = (h) => {
+            const pMatch = h.match(/<div class="ci_value"><span[^>]*>([\d,.]+)<\/span>/);
+            const cMatch = h.match(/<li><div class="ci_title">漲跌<\/div><div class="ci_value"><span[^>]*>([^<]+)<\/span>/);
+            return { price: pMatch ? pMatch[1] : "--", change: cMatch ? cMatch[1].trim() : "--" };
+        };
+
+        const updateUI = (id, info) => {
+            const pEl = document.getElementById(`price-${id}`);
+            const cEl = document.getElementById(`change-${id}`);
+            pEl.innerText = info.price;
+            cEl.innerText = info.change;
+
+            if (info.change.includes('▲')) {
+                cEl.style.color = "var(--red)"; pEl.style.color = "var(--red)";
+            } else if (info.change.includes('▼')) {
+                cEl.style.color = "var(--green)"; pEl.style.color = "var(--green)";
+            }
+        };
+
+        try {
+            const res = await Promise.all(Object.keys(urls).map(k => fetch(urls[k]).then(r => r.text()).then(h => ({k, info: parseInfo(h)}))));
+            res.forEach(item => {
+                if(item.info) {
+                    updateUI(item.k, item.info);
+                    if (item.k === 'tsec') curTSEC = parseFloat(item.info.price.replace(/,/g, ''));
+                    if (item.k === 'fitx') curFITX = parseFloat(item.info.price.replace(/,/g, ''));
+                }
+            });
+            calcBasis();
+        } catch (e) {}
+    }
 
     async function fetchAllData() {
+        fetchPrices();
         try {
             const [spotRes, txRes, optRes] = await Promise.all([
                 fetch(`${apiUrl}?type=spot`), fetch(`${apiUrl}?type=tx`), fetch(apiUrl)
@@ -121,10 +214,21 @@
                     retailMicro = parseFloat(String(r[4]).replace(/,/g,'')) || 0;
                 }
             });
-            
             renderTX(txData);
             renderOption(optData, fTX, retailMTX, retailMicro);
-        } catch (e) { console.error("抓取失敗:", e); }
+        } catch (e) { console.error(e); }
+    }
+
+    function calcBasis() {
+        if (!curTSEC || !curFITX) return;
+        const diff = (curFITX - curTSEC).toFixed(2);
+        const elV = document.getElementById('basis-value');
+        const elS = document.getElementById('basis-status');
+        elV.innerText = (diff > 0 ? '+' : '') + diff;
+        elV.className = 'num-cell ' + (diff >= 0 ? 'pos' : 'neg');
+        elS.innerText = diff >= 0 ? "正價差" : "逆價差";
+        elS.style.background = diff >= 0 ? "var(--red)" : "var(--green)";
+        elS.style.color = "#000";
     }
 
     function renderSpot(data) {
@@ -164,6 +268,7 @@
         document.getElementById('tx-table-container').innerHTML = html + "</tbody></table>";
     }
 
+    // --- 重點移植：整合 C 程式的曝險與賣方邏輯 ---
     function renderOption(opt, fTX, rMTX, rMicro) {
         let s = { dc: 0, dp: 0, fc: 0, fp: 0, dAmtC: 0, dAmtP: 0, fAmtC: 0, fAmtP: 0 };
         let rows = { "自營商": "", "外資": "" };
@@ -177,9 +282,11 @@
             const amtV = parseFloat(String(amt).replace(/,/g, '')) || 0;
             const isC = t.includes('買權');
 
+            // 判斷是否為賣方曝險
             let isSell = (oiV < 0);
             let actType = isC ? (oiV >= 0 ? "BC" : "SC") : (oiV >= 0 ? "BP" : "SP");
             
+            // 決定標籤顏色 (移植自 C 程式)
             let tagClass = (actType === "BC" || actType === "SP") ? "tag-bull" : "tag-bear";
             if(isSell) tagClass = "tag-sell-exposure";
             let exposureTxt = isSell ? "<span class='exposure-text'>(曝險)</span>" : "";
@@ -203,7 +310,7 @@
             <span>外資淨曝險: <b class="${fNet>=0?'pos':'neg'}">${fNet.toFixed(2)} 億</b></span>`;
 
         document.getElementById('opt-data-table').innerHTML = `<table>
-            <thead><tr><th>權別</th><th>買賣差</th><th>未平倉OI</th><th>金額(千)</th><th>狀態</th></tr></thead>
+            <thead><tr><th>權別</th><th>差額</th><th>OI</th><th>金額(千)</th><th>狀態</th></tr></thead>
             <tbody>
                 <tr><td colspan="5" class="sub-header">🟣 自營商</td></tr>${rows["自營商"]}
                 <tr><td colspan="5" class="sub-header">🔵 外資</td></tr>${rows["外資"]}
@@ -217,70 +324,37 @@
         let dTags = [], fTags = [];
         const fSpot = globalSpot.foreign;
 
-        // --- 核心評分邏輯 ---
-        // 1. 現貨權重
+        // 核心評分邏輯 (移植 C 程式)
         if (fSpot > 50) score += 3; else if (fSpot > 0) score += 1;
         if (fSpot < -50) score -= 3; else if (fSpot < 0) score -= 1;
-
-        // 2. 期貨權重 (外資)
         if (fTX > 2000) score += 2; else if (fTX < -5000) score -= 2;
-
-        // 3. 散戶反向權重 (散戶多 = 看空)
         const retailTotal = rMTX + (rMicro / 5);
         if (retailTotal > 5000) score -= 3; else if (retailTotal < -5000) score += 3;
 
-        // 4. 選擇權金額權重
-        if ((s.fAmtC - s.fAmtP) > 100000) score += 1;
-        if ((s.fAmtC - s.fAmtP) < -100000) score -= 1;
-
-        // 自營商標籤
-        if (s.dc < 0) dTags.push('<span class="neg">壓(SC)</span>');
-        if (s.dc > 0) dTags.push('<span class="pos">多(BC)</span>');
-        if (s.dp < 0) dTags.push('<span class="pos">撐(SP)</span>');
-        if (s.dp > 0) dTags.push('<span class="neg">空(BP)</span>');
+        // 自營商動作標籤
+        if (s.dc < 0) dTags.push('<span class="neg">SC壓盤</span>');
+        if (s.dc > 0) dTags.push('<span class="pos">BC多</span>');
+        if (s.dp < 0) dTags.push('<span class="pos">SP撐</span>');
+        if (s.dp > 0) dTags.push('<span class="neg">BP空</span>');
         
-        // 外資標籤
-        if (s.fc > 0 || s.fp < 0) fTags.push('<span class="pos">偏多</span>');
-        else fTags.push('<span class="neg">偏空</span>');
+        // 外資方向標籤
+        if (s.fc > 0 || s.fp < 0) fTags.push('<span class="pos">偏多佈局</span>');
+        else fTags.push('<span class="neg">避險偏空</span>');
 
-        // --- 評級與布局建議 ---
-        let trend = "⚖️ 中性整理"; 
-        let color = "var(--blue)";
-        let plan = "";
-
-        if (score >= 4) { 
-            trend = "🚀 極度樂觀"; color = "var(--red)"; 
-            plan = "籌碼全面翻多。建議：逢拉回尋求支撐，佈局多單或賣出 PUT 鎖利。";
-        } else if (score >= 1) { 
-            trend = "↗️ 震盪偏多"; color = "#ffab70"; 
-            plan = "法人現貨支撐仍存。建議：區間操作偏多，留意壓力位是否帶量突破。";
-        } else if (score <= -4) { 
-            trend = "📉 極度悲觀"; color = "var(--green)"; 
-            plan = "籌碼強烈套現。建議：保守觀望，或建立避險空單，慎防連續性賣壓。";
-        } else if (score <= -1) { 
-            trend = "↘️ 震盪偏空"; color = "#88d18d"; 
-            plan = "散戶接刀或法人調節中。建議：不輕易追多，反彈遇壓力可適度避險。";
-        } else {
-            plan = "多空籌碼拉鋸，方向不明。建議：減碼觀望，靜待結算或大數據轉向。";
-        }
+        let trend = "⚖️ 中性整理"; let color = "var(--blue)"; let plan = "";
+        if (score >= 4) { trend = "🚀 極度樂觀"; color = "var(--red)"; plan = "法人買盤強力支撐，建議逢低布局。"; }
+        else if (score >= 1) { trend = "↗️ 震盪偏多"; color = "#ffab70"; plan = "籌碼偏向多方，宜區間偏多操作。"; }
+        else if (score <= -4) { trend = "📉 極度悲觀"; color = "var(--green)"; plan = "籌碼面調節壓力大，宜保守避險。"; }
+        else if (score <= -1) { trend = "↘️ 震盪偏空"; color = "#88d18d"; plan = "散戶接刀或法人反手，不宜追高。"; }
+        else { plan = "多空角力，靜待趨勢突破或結算引導。"; }
 
         document.getElementById('trend-indicator').innerText = trend;
         document.getElementById('trend-indicator').style.color = color;
         document.getElementById('d-action').innerHTML = dTags.join(" | ") || "中性";
         document.getElementById('f-action').innerHTML = fTags.join(" ") || "中性";
-        
-        document.getElementById('strategy-desc').innerHTML = `
-            <div style="margin-bottom:6px;"><b>📊 布局指引：</b> <span style="color:${color}">${plan}</span></div>
-            <hr style="border:0; border-top:1px solid var(--border); margin:8px 0;">
-            <div style="font-size:11px; opacity:0.8; line-height:1.4;">
-                <b style="color:var(--gold)">AI 數據摘要：</b><br>
-                1. 外資現貨今日 ${fSpot >= 0 ? '買超' : '賣超'} ${Math.abs(fSpot).toFixed(2)} 億。<br>
-                2. 散戶小微台目前持有 <span style="color:${retailTotal > 0 ? 'var(--red)' : 'var(--green)'}">${Math.abs(retailTotal).toFixed(0)} 口 ${retailTotal > 0 ? '多單' : '空單'}</span>。<br>
-                3. 市場壓力點(SC)位能：${Math.abs(s.dc).toLocaleString()} 口。
-            </div>
-        `;
+        document.getElementById('strategy-desc').innerText = "AI建議：" + plan;
     }
-
+    
     function updateSettlementUI() {
         const now = new Date();
         const date = now.getDate(); const day = now.getDay();
@@ -293,8 +367,8 @@
             ui.innerHTML = `<span class="settlement-warning">${label}</span>`;
         }
     }
-    updateSettlementUI();
-    fetchAllData();
+    
+    updateSettlementUI(); fetchAllData();
 </script>
 </body>
 </html>
