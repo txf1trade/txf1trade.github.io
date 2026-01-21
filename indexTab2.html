@@ -407,7 +407,7 @@
                         ${marketTag} <span class="stock-num">${item.stockNum}</span>
                         <span class="stock-name" onclick="showAI('${item.stockNum}', '${item.name}')">${item.name}</span>
                         <span class="stock-id-tag">${item.id}</span>
-                        ${item.isLong?'<span class="ai-badge">精選</span>':''}
+                        ${item.isLong?'<span class="ai-badge">標</span>':''} 
                     </div>
                 </td>
                 <td><span class="score-val" style="color:${item.near>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(item.near)}</span></td>
