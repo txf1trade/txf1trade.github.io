@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>股期監控-自選搜尋優化版</title>
+    <title>股期監控-優化版</title>
     <style>
         :root {
             --bg-black: #121212;
@@ -372,19 +372,20 @@
             finalDisplayList = searchQuery ? modeFilteredList : modeFilteredList.slice(0, currentRankLimit);
         }
 
-        // --- 修正後的熱力圖邏輯 ---
+        // --- 熱力圖顯示邏輯：修正自選股排序 ---
         let hmShowList = [];
         if (currentMode === 'all') {
-            // "全部" 模式：顯示 多頭前 10 + 空頭前 10
             let longs = baseList.filter(i => i.total > 0).sort((a, b) => b.total - a.total).slice(0, 10);
             let shorts = baseList.filter(i => i.total < 0).sort((a, b) => a.total - b.total).slice(0, 10);
             hmShowList = [...longs, ...shorts];
         } else if (currentMode === 'down') {
             hmShowList = baseList.filter(i => i.total < 0).sort((a,b) => a.total - b.total).slice(0, 20);
         } else if (currentMode === 'fav') {
-            hmShowList = baseList.filter(i => favList.includes(i.id)).sort((a,b) => Math.abs(b.total) - Math.abs(a.total)).slice(0, 20);
+            // 自選股修正：從正分最大排到負分最大
+            hmShowList = baseList.filter(i => favList.includes(i.id))
+                                 .sort((a,b) => b.total - a.total)
+                                 .slice(0, 20);
         } else {
-            // 其餘模式 (多頭, 強勢, AI潛力)
             hmShowList = baseList.filter(i => i.total > 0).sort((a,b) => b.total - a.total).slice(0, 20);
         }
 
