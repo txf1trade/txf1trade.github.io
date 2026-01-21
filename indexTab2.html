@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>股期監控-極簡自選版</title>
+    <title>股期監控-自選搜尋優化版</title>
     <style>
         :root {
             --bg-black: #121212;
@@ -44,7 +44,6 @@
             border-bottom: 1px solid #333;
         }
 
-        /* 模式按鈕 */
         .mode-header { display: flex; gap: 4px; margin-bottom: 4px; }
         .mode-btn {
             flex: 1; padding: 10px 2px; text-align: center; font-size: 11px;
@@ -59,12 +58,11 @@
         .mode-btn.active[data-mode="ai_long"] { border-color: var(--ai-gold); color: var(--ai-gold); background: rgba(255, 204, 0, 0.1); }
         .mode-btn.active[data-mode="fav"] { border-color: var(--fav-star); color: var(--fav-star); background: rgba(255, 204, 0, 0.1); }
 
-        /* 搜尋欄 - 修正 iOS 縮放問題 */
         .search-row { padding: 4px 2px; position: relative; display: flex; align-items: center; }
         #search-input {
             width: 100%; background: #222; border: 1px solid #444; border-radius: 4px;
             padding: 8px; padding-right: 32px; color: #fff; 
-            font-size: 16px; /* 關鍵：設定為 16px 防止 iOS 自動放大 */
+            font-size: 16px; 
             box-sizing: border-box;
             outline: none;
         }
@@ -73,7 +71,6 @@
             display: none; font-size: 20px; padding: 0 5px; line-height: 1;
         }
 
-        /* 動態標籤列 */
         .fav-chips-wrapper {
             padding: 6px 2px;
             overflow-x: auto;
@@ -101,7 +98,6 @@
             border-color: var(--ai-gold);
         }
 
-        /* 控制列 */
         .controls-row { display: flex; align-items: center; gap: 4px; background: var(--surface); padding: 6px 8px; border-radius: 4px; position: relative; overflow: hidden; flex-wrap: nowrap; }
         .filter-toggle { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--accent); white-space: nowrap; cursor: pointer; }
         .slider-box { flex: 1 1 auto; min-width: 50px; display: flex; align-items: center; gap: 4px; margin: 0 4px; }
@@ -110,7 +106,6 @@
         #timer-display { font-family: monospace; color: var(--accent); font-size: 10px; margin-left: auto; }
         #refresh-bar { position: absolute; bottom: 0; left: 0; height: 1.5px; background: var(--accent); width: 0%; }
 
-        /* 熱力圖 */
         .heatmap-container { margin: 10px 0; }
         .heatmap-header {
             font-size: 13px; color: var(--ai-gold); background: #252525;
@@ -131,7 +126,6 @@
         .hm-name { font-size: 10px; color: #fff; font-weight: bold; text-align: center; }
         .hm-score { font-size: 9px; color: #fff; opacity: 0.9; }
 
-        /* 表格樣式 */
         table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 5px; }
         th { color: var(--text-dim); font-size: 10px; padding: 8px 2px; border-bottom: 1px solid #333; }
         th:nth-child(1) { text-align: left; width: 45%; } 
@@ -161,7 +155,8 @@
         .rank-strength-container { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; border: 1px solid #333; }
         .rank-strength-fill { height: 100%; }
 
-        /* 彈窗 */
+        .section-divider { background: #333; color: #aaa; font-size: 10px; padding: 4px 8px; text-align: left; }
+
         #ai-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;
@@ -197,7 +192,7 @@
         </div>
         
         <div class="search-row">
-            <input type="text" id="search-input" placeholder="🔍 搜尋代碼、名稱、股期代碼..." oninput="render()">
+            <input type="text" id="search-input" placeholder="🔍 搜尋代碼、名稱..." oninput="render()">
             <span id="clear-search" onclick="clearSearch()">&times;</span>
         </div>
 
@@ -226,7 +221,7 @@
 
     <div class="heatmap-container" id="hm-container">
         <div class="heatmap-header" onclick="toggleHeatmap()">
-            <span>🔥 市場前 20 強矩陣熱力圖 <small id="hm-count" style="color: var(--text-dim); margin-left: 5px;"></small></span>
+            <span>🔥 市場強度熱力圖 <small id="hm-count" style="color: var(--text-dim); margin-left: 5px;"></small></span>
             <span class="arrow-icon">▼</span>
         </div>
         <div id="heatmap-grid" class="heatmap-grid"></div>
@@ -313,55 +308,90 @@
         const isShowTse = document.getElementById('show-tse').checked;
         const isShowOtc = document.getElementById('show-otc').checked;
         const isSortById = document.getElementById('sort-by-id').checked;
-        const searchQuery = document.getElementById('search-input').value.toLowerCase();
+        const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
         
         document.getElementById('clear-search').style.display = searchQuery ? 'block' : 'none';
 
         const favBar = document.getElementById('fav-chips-bar');
-        const favCountTxt = document.getElementById('fav-count-text');
         if (favList.length > 0) {
             favBar.style.display = 'block';
-            favCountTxt.innerText = favList.length;
+            document.getElementById('fav-count-text').innerText = favList.length;
         } else {
             favBar.style.display = 'none';
         }
 
-        let baseList = [...cachedData];
-
-        if (currentMode === 'ai_long') {
-            baseList = baseList.filter(i => i.isLong);
-        } else if (currentMode === 'strong_buy') {
-            baseList = baseList.filter(i => i.total >= 10 && i.near > 0 && i.far > 0);
-        } else if (currentMode === 'up') {
-            baseList = baseList.filter(i => i.total > 0);
-        } else if (currentMode === 'down') {
-            baseList = baseList.filter(i => i.total < 0);
-        } else if (currentMode === 'fav') {
-            baseList = baseList.filter(i => favList.includes(i.id));
-        }
-
-        let filteredList = baseList.filter(i => {
+        let baseList = cachedData.filter(i => {
             if (i.market === '市' && !isShowTse) return false;
             if (i.market === '櫃' && !isShowOtc) return false;
             if (!isShowEtf && i.stockNum.startsWith('00')) return false;
+            if (isMiniOnly && !i.name.includes('小型')) return false;
             return true;
         });
 
-        let hmFinalList = [];
-        if (currentMode === 'all') {
-            const topLong = filteredList.filter(i => i.total > 0).sort((a,b) => b.total - a.total).slice(0, 10);
-            const topShort = filteredList.filter(i => i.total < 0).sort((a,b) => a.total - b.total).slice(0, 10);
-            hmFinalList = [...topLong, ...topShort];
+        let finalDisplayList = [];
+
+        if (currentMode === 'fav' && searchQuery !== "") {
+            let searchResult = baseList.filter(i => 
+                i.stockNum.includes(searchQuery) || 
+                i.name.includes(searchQuery) || 
+                i.id.toLowerCase().includes(searchQuery)
+            );
+            let favPart = searchResult.filter(i => favList.includes(i.id));
+            let otherPart = searchResult.filter(i => !favList.includes(i.id));
+            const sortFn = (a, b) => {
+                if (isSortById) return a.stockNum.localeCompare(b.stockNum);
+                return sortOrder === 'desc' ? b.total - a.total : a.total - b.total;
+            };
+            favPart.sort(sortFn);
+            otherPart.sort(sortFn);
+            finalDisplayList = [...favPart, { isDivider: true, text: "以下為搜尋結果 (未加入自選)" }, ...otherPart];
         } else {
-            hmFinalList = filteredList.sort((a, b) => Math.abs(b.total) - Math.abs(a.total)).slice(0, 20);
+            let modeFilteredList = [...baseList];
+            if (searchQuery === "") {
+                if (currentMode === 'ai_long') modeFilteredList = baseList.filter(i => i.isLong);
+                else if (currentMode === 'strong_buy') modeFilteredList = baseList.filter(i => i.total >= 10 && i.near > 0);
+                else if (currentMode === 'up') modeFilteredList = baseList.filter(i => i.total > 0);
+                else if (currentMode === 'down') modeFilteredList = baseList.filter(i => i.total < 0);
+                else if (currentMode === 'fav') modeFilteredList = baseList.filter(i => favList.includes(i.id));
+            } else {
+                modeFilteredList = baseList.filter(i => 
+                    i.stockNum.includes(searchQuery) || 
+                    i.name.includes(searchQuery) || 
+                    i.id.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            if (isSortById) {
+                modeFilteredList.sort((a, b) => a.stockNum.localeCompare(b.stockNum));
+            } else {
+                modeFilteredList.sort((a, b) => {
+                    if (currentMode === 'down' && searchQuery === "") return sortOrder === 'desc' ? a.total - b.total : b.total - a.total;
+                    return sortOrder === 'desc' ? b.total - a.total : a.total - b.total;
+                });
+            }
+            finalDisplayList = searchQuery ? modeFilteredList : modeFilteredList.slice(0, currentRankLimit);
         }
 
-        document.getElementById('hm-count').innerText = `(${hmFinalList.length} 標的)`;
-        hmGrid.innerHTML = hmFinalList.map(item => {
+        // --- 修正後的熱力圖邏輯 ---
+        let hmShowList = [];
+        if (currentMode === 'all') {
+            // "全部" 模式：顯示 多頭前 10 + 空頭前 10
+            let longs = baseList.filter(i => i.total > 0).sort((a, b) => b.total - a.total).slice(0, 10);
+            let shorts = baseList.filter(i => i.total < 0).sort((a, b) => a.total - b.total).slice(0, 10);
+            hmShowList = [...longs, ...shorts];
+        } else if (currentMode === 'down') {
+            hmShowList = baseList.filter(i => i.total < 0).sort((a,b) => a.total - b.total).slice(0, 20);
+        } else if (currentMode === 'fav') {
+            hmShowList = baseList.filter(i => favList.includes(i.id)).sort((a,b) => Math.abs(b.total) - Math.abs(a.total)).slice(0, 20);
+        } else {
+            // 其餘模式 (多頭, 強勢, AI潛力)
+            hmShowList = baseList.filter(i => i.total > 0).sort((a,b) => b.total - a.total).slice(0, 20);
+        }
+
+        document.getElementById('hm-count').innerText = `(${hmShowList.length} 標的)`;
+        hmGrid.innerHTML = hmShowList.map(item => {
             const intensity = Math.min(Math.abs(item.total) / 35, 1);
-            let bgColor = item.total >= 0 
-                ? `rgba(255, 59, 48, ${0.2 + intensity * 0.8})` 
-                : `rgba(52, 199, 89, ${0.2 + intensity * 0.8})`;
+            let bgColor = item.total >= 0 ? `rgba(255, 59, 48, ${0.2 + intensity * 0.8})` : `rgba(52, 199, 89, ${0.2 + intensity * 0.8})`;
             const goldBorder = item.isLong ? 'border-color: var(--ai-gold); border-width: 2px;' : '';
             return `<div class="hm-box" style="background: ${bgColor}; ${goldBorder}" onclick="showAI('${item.stockNum}', '${item.name}')">
                 <div class="hm-name">${item.name.replace('期','').replace('小型','小')}</div>
@@ -369,33 +399,12 @@
             </div>`;
         }).join('');
 
-        let tableList = filteredList;
-        if (isMiniOnly) tableList = tableList.filter(item => item.name.includes('小型'));
-        if (searchQuery) {
-            tableList = tableList.filter(i => 
-                i.stockNum.includes(searchQuery) || 
-                i.name.includes(searchQuery) || 
-                i.id.toLowerCase().includes(searchQuery)
-            );
-        }
-
-        if (isSortById) {
-            tableList.sort((a, b) => a.stockNum.localeCompare(b.stockNum));
-        } else {
-            tableList.sort((a, b) => {
-                if (currentMode === 'down') return sortOrder === 'desc' ? a.total - b.total : b.total - a.total;
-                return sortOrder === 'desc' ? b.total - a.total : a.total - b.total;
-            });
-        }
-
-        const displayList = tableList.slice(0, currentRankLimit);
-        const currentMax = displayList.length > 0 ? Math.max(...displayList.map(i => Math.abs(i.total))) : 1;
-        
-        tbody.innerHTML = displayList.map(item => {
+        const currentMax = cachedData.length > 0 ? Math.max(...cachedData.map(i => Math.abs(i.total))) : 1;
+        tbody.innerHTML = finalDisplayList.map(item => {
+            if (item.isDivider) return `<tr><td colspan="5" class="section-divider">${item.text}</td></tr>`;
             const themeColor = item.total >= 0 ? 'var(--up-red)' : 'var(--down-green)';
             const marketTag = item.market === '櫃' ? `<span class="mkt-tag tag-otc">櫃</span>` : `<span class="mkt-tag tag-tse">市</span>`;
             const isFaved = favList.includes(item.id);
-            
             return `<tr>
                 <td class="name-col">
                     <div class="stock-info-line">
@@ -403,7 +412,7 @@
                         ${marketTag} <span class="stock-num">${item.stockNum}</span>
                         <span class="stock-name" onclick="showAI('${item.stockNum}', '${item.name}')">${item.name}</span>
                         <span class="stock-id-tag">${item.id}</span>
-                        ${item.isLong?'<span class="ai-badge">精選</span>':''}
+                        ${item.isLong?'<span class="ai-badge">推</span>':''}
                     </div>
                 </td>
                 <td><span class="score-val" style="color:${item.near>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(item.near)}</span></td>
@@ -453,14 +462,6 @@
         document.getElementById('rank-val').innerText = this.value + ' 名'; 
         render(); 
     };
-
-    // 解決 iOS 鍵盤收起後畫面不回正的問題
-    document.getElementById('search-input').addEventListener('blur', () => {
-        setTimeout(() => {
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-        }, 100);
-    });
 
     setInterval(() => { 
         refreshTimer += 100; 
