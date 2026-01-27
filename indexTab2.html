@@ -3,6 +3,372 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>股期監控-吸附懸浮版</title>
+    <style>
+        :root {
+            --bg-black: #121212;
+            --text-main: #e0e0e0;
+            --text-dim: #f3e859; 
+            --up-red: #ff3b30;
+            --down-green: #34c759;
+            --accent: #64ffda;
+            --ai-gold: #ffcc00;
+            --aistock-gold: #ff0098;
+            --surface: #1e1e1e;
+            --fav-star: #ffcc00;
+            --section-bg: #252525;
+        }
+
+        html, body { background-color: var(--bg-black); margin: 0; padding: 0; color: var(--text-main); font-family: -apple-system, "PingFang TC", sans-serif; overflow-x: hidden; width: 100%; height: 100%; }
+        .app-wrapper { width: 100%; max-width: 600px; margin: 0 auto; min-height: 100vh; padding-bottom: 60px; }
+
+        /* 頂部導覽 */
+        .sticky-top { position: sticky; top: 0; background: rgba(18, 18, 18, 0.95); backdrop-filter: blur(10px); z-index: 100; padding: 4px; border-bottom: 1px solid #333; }
+        .mode-header { display: flex; gap: 2px; margin-bottom: 4px; }
+        .mode-btn { flex: 1; padding: 10px 0; text-align: center; font-size: 11px; font-weight: bold; border-radius: 4px; border: 1px solid #333; cursor: pointer; background: #111; color: var(--text-dim); }
+        .mode-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(100, 255, 218, 0.1); }
+        #search-input { width: 100%; background: #222; border: 1px solid #444; border-radius: 4px; padding: 10px; color: #fff; font-size: 15px; outline: none; box-sizing: border-box; }
+
+        /* 吸附式懸浮按鈕 */
+        #fab-ball { 
+            position: fixed; bottom: 100px; right: 10px; width: 48px; height: 48px; 
+            background: var(--accent); color: #000; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; font-size: 24px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6); cursor: pointer; z-index: 1000;
+            touch-action: none; transition: transform 0.1s;
+        }
+        
+        /* 過濾視窗 - 靠邊彈出 */
+        .filter-popup { 
+            position: fixed; background: var(--surface); 
+            border: 1px solid #444; border-radius: 12px; padding: 15px; width: 200px;
+            display: none; flex-direction: column; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.9);
+            z-index: 1001; pointer-events: auto;
+        }
+        .filter-popup.show { display: flex; }
+        .filter-item { display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
+        .filter-item input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
+
+        /* 表格樣式 (保持一致) */
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { color: var(--text-dim); font-size: 10px; padding: 10px 2px; border-bottom: 1px solid #333; text-align: right; cursor: pointer; }
+        th:nth-child(1) { text-align: left; width: 30%; padding-left: 8px; } 
+        .section-header { background: var(--section-bg); color: var(--accent); font-size: 11px; font-weight: bold; padding: 6px 10px; text-align: left; border-left: 3px solid var(--accent); }
+        td { padding: 8px 2px; border-bottom: 1px solid #1a1a1a; text-align: right; vertical-align: middle; }
+        .name-col { text-align: left; padding-left: 8px; }
+        .row-id { display: flex; align-items: center; gap: 4px; line-height: 1.1; }
+        .fav-star { cursor: pointer; font-size: 14px; color: #444; }
+        .fav-star.active { color: var(--fav-star); }
+        .stock-num { font-size: 12px; color: #fff; font-weight: bold; font-family: monospace; }
+        .stock-id-tag { font-size: 9px; color: var(--accent); background: #222; padding: 0 2px; border-radius: 2px; }
+        .stock-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+        .mkt-tag { font-size: 9px; padding: 0 2px; border-radius: 2px; border: 1px solid #555; font-weight: bold; min-width: 14px; text-align: center; }
+        .tag-otc { color: #ff7fe5; border-color: #ff7fe5; }
+        .tag-etf { color: #00e5ff; border-color: #00e5ff; }
+        .price-val { font-weight: bold; font-family: monospace; font-size: 13px; color: #fff; }
+        .fut-price-val { font-weight: bold; font-family: monospace; font-size: 13px; color: var(--accent); }
+        .chg-val { font-size: 11px; font-family: monospace; font-weight: 800; }
+        .score-val { font-weight: 700; font-family: monospace; font-size: 12px; }
+        .score-bar { height: 2px; background: #222; margin-top: 2px; width: 100%; position: relative; }
+        .score-fill { height: 100%; position: absolute; right: 0; }
+
+        #timer-display { position: fixed; top: 12px; right: 10px; font-family: monospace; color: var(--accent); font-size: 10px; z-index: 101; pointer-events: none; }
+        #ai-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: var(--surface); width: 85%; max-width: 350px; padding: 20px; border-radius: 12px; border: 1px solid var(--ai-gold); }
+    </style>
+</head>
+<body>
+
+<div id="timer-display">5.0s</div>
+
+<div id="fab-ball">⚙️</div>
+
+<div id="filter-popup" class="filter-popup">
+    <div style="font-size: 13px; color: var(--text-dim); border-bottom: 1px solid #444; padding-bottom: 6px; margin-bottom: 4px;">🎯 過濾顯示設定</div>
+    <label class="filter-item">上市股票 <input type="checkbox" id="show-tse" checked></label>
+    <label class="filter-item">上櫃股票 <input type="checkbox" id="show-otc" checked></label>
+    <label class="filter-item">ETF 標的 <input type="checkbox" id="show-etf"></label>
+    <label class="filter-item">僅看小型 <input type="checkbox" id="mini-only"></label>
+    <div style="margin-top: 4px;">
+        <div id="rank-val" style="font-size:12px; margin-bottom:4px;">顯示數量: 10名</div>
+        <input type="range" id="rank-slider" min="10" max="240" step="10" value="10" style="width:100%; accent-color:var(--accent);">
+    </div>
+</div>
+
+<div id="ai-modal" onclick="closeAI()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 id="ai-title" style="color:var(--ai-gold); margin: 0 0 20px 0; text-align: center;">🤖 標題檢索</h3>
+        <div style="display: flex; gap: 10px;">
+            <a id="link-news" href="#" target="_blank" style="flex:1; padding: 12px; text-align:center; background:#4285f4; color:#fff; border-radius:8px; text-decoration:none; font-weight:bold;">題材新聞</a>
+            <a id="link-wantgoo" href="#" target="_blank" style="flex:1; padding: 12px; text-align:center; background:#d32f2f; color:#fff; border-radius:8px; text-decoration:none; font-weight:bold;">主力籌碼</a>
+        </div>
+    </div>
+</div>
+
+<div class="app-wrapper">
+    <div class="sticky-top">
+        <div class="mode-header" id="mode-selector">
+            <div class="mode-btn" data-mode="all">全部</div>
+            <div class="mode-btn" data-mode="up">多頭</div>
+            <div class="mode-btn" data-mode="down">空頭</div>
+            <div class="mode-btn" data-mode="strong_buy">🔥強勢</div>
+            <div class="mode-btn active" data-mode="ai_long">💎AI潛力</div>
+            <div class="mode-btn" data-mode="fav">★自選股</div>
+        </div>
+        <input type="text" id="search-input" placeholder="搜尋代碼、名稱...">
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th onclick="setSort('num')">代碼/名稱</th>
+                <th onclick="setSort('chg')">現價/幅</th>
+                <th onclick="setSort('fChg')">股期/幅</th>
+                <th>近月</th>
+                <th>遠月</th> 
+                <th onclick="setSort('total')">總分 ▼</th>
+            </tr>
+        </thead>
+        <tbody id="main-table"></tbody>
+    </table>
+</div>
+
+<script>
+    const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼期", "市"], "CCF": ["2303", "聯電期", "市"], "CDF": ["2330", "台積電期", "市"], "QFF": ["2330", "小型台積電期", "市"], "CEF": ["2881", "富邦金期", "市"], "CFF": ["1301", "台塑期", "市"], "CGF": ["2324", "仁寶期", "市"], "CHF": ["2409", "友達期", "市"], "CJF": ["2880", "華南金期", "市"], "CKF": ["2882", "國泰金期", "市"], "CLF": ["2886", "兆豐金期", "市"], "CMF": ["2887", "台新金期", "市"], "CNF": ["2891", "中信金期", "市"], "CQF": ["1216", "統一期", "市"], "CRF": ["1402", "遠東新期", "市"], "CSF": ["1605", "華新期", "市"], "CUF": ["2323", "中環期", "市"], "CWF": ["2352", "佳世達期", "市"], "CXF": ["2371", "大同期", "市"], "CYF": ["2408", "南亞科期", "市"], "CZF": ["2603", "長榮期", "市"], "DAF": ["2609", "陽明期", "市"], "DBF": ["2610", "華航期", "市"], "DCF": ["2801", "彰銀期", "市"], "DEF": ["2890", "永豐金期", "市"], "DFF": ["1101", "台泥期", "市"], "DGF": ["1326", "台化期", "市"], "DHF": ["2317", "鴻海期", "市"], "DIF": ["2337", "旺宏期", "市"], "DJF": ["2357", "華碩期", "市"], "QRF": ["2357", "小型華碩期", "市"], "DKF": ["2382", "廣達期", "市"], "DLF": ["2412", "中華電期", "市"], "DNF": ["2884", "玉山金期", "市"], "DOF": ["2885", "元大金期", "市"], "DPF": ["2892", "第一金期", "市"], "DQF": ["3481", "群創期", "市"], "DSF": ["2353", "宏碁期", "市"], "DVF": ["2454", "聯發科期", "市"], "PUF": ["2454", "小型聯發科期", "市"], "DWF": ["2915", "潤泰全期", "市"], "DXF": ["3231", "緯創期", "市"], "DYF": ["1102", "亞泥期", "市"], "DZF": ["1210", "大成期", "市"], "EEF": ["1312", "國喬期", "市"], "EGF": ["1314", "中石化期", "市"], "EHF": ["1319", "東陽期", "市"], "EKF": ["1440", "南紡期", "市"], "EMF": ["1504", "東元期", "市"], "EPF": ["1590", "亞德客-KY期", "市"], "EYF": ["1718", "中纖期", "市"], "EZF": ["1722", "台肥期", "市"], "FBF": ["2006", "東和鋼鐵期", "市"], "FCF": ["2014", "中鴻期", "市"], "FEF": ["2027", "大成鋼期", "市"], "FFF": ["2049", "上銀期", "市"], "QMF": ["2049", "小型上銀期", "市"], "FGF": ["2059","川湖期", "市"], "SVF": ["2059", "小型川湖期", "市"], "FKF": ["2105", "正新期", "市"], "FNF": ["2201", "裕隆期", "市"], "FQF": ["2301", "光寶科期", "市"], "FRF": ["2308", "台達電期", "市"], "RVF": ["2308", "小型台達電期", "市"], "FSF": ["2312", "金寶期", "市"], "FTF": ["2313", "華通期", "市"], "FVF": ["2331", "精英期", "市"], "FWF": ["2332", "友訊期", "市"], "FYF": ["2340", "台亞期", "市"], "FZF": ["2344", "華邦電期", "市"], "GAF": ["2347", "聯強期", "市"], "GCF": ["2354", "鴻準期", "市"], "GHF": ["2376", "技嘉期", "市"], "SLF": ["2376", "小型技嘉期", "市"], "GIF": ["2377", "微星期", "市"], "GJF": ["2379", "瑞昱期", "市"], "QGF": ["2379", "小型瑞昱期", "市"], "GKF": ["2385", "群光期", "市"], "GLF": ["2392", "正崴期", "市"], "GMF": ["2393", "億光期", "市"], "GNF": ["2401", "聯陽期", "市"], "GOF": ["2404", "漢唐期", "市"], "UZF": ["2404", "小型漢唐期", "市"], "GRF": ["2449", "京元電子期", "市"], "GUF": ["2455", "全新期", "市"], "GVF": ["2457", "飛宏期", "市"], "GWF": ["2458", "義隆期", "市"], "GXF": ["2474", "可成期", "市"], "GYF": ["2481", "強茂期", "市"], "GZF": ["2485", "兆赫期", "市"], "HAF": ["2489", "瑞軒期", "市"], "HBF": ["2492", "華新科期", "市"], "HCF": ["2498", "宏達電期", "市"], "HHF": ["2515", "中工期", "市"], "IHF": ["2913", "農林期", "市"], "IIF": ["3006", "晶豪科期", "市"], "IJF": ["3008", "大立光期", "市"], "OLF": ["3008", "小型大立光期", "市"], "IMF": ["3019", "亞光期", "市"], "IOF": ["3034", "聯詠期", "市"], "IPF": ["3035", "智原期", "市"], "IQF": ["3036", "文曄期", "市"], "IRF": ["3037", "欣興期", "市"], "ITF": ["3042", "晶技期", "市"], "IYF": ["3376", "新日興期", "市"], "IZF": ["3380", "明泰期", "市"], "JBF": ["3443", "創意期", "市"], "JFF": ["3533", "嘉澤期", "市"], "JMF": ["3653", "健策期", "市"], "JNF": ["3673", "TPK-KY期", "市"], "JSF": ["4938", "和碩期", "市"], "JXF": ["6005", "群益證期", "市"], "JZF": ["6153", "嘉聯益期", "市"], "KAF": ["6176", "瑞儀期", "市"], "KBF": ["6213", "聯茂期", "市"], "KCF": ["6239", "力成期", "市"], "KDF": ["6271", "同欣電期", "市"], "KEF": ["6278", "台表科期", "市"], "KFF": ["6282", "康舒期", "市"], "KGF": ["6285", "啟碁期", "市"], "KIF": ["8039", "台虹期", "市"], "KKF": ["8163", "達方期", "市"], "KLF": ["9904", "寶成期", "市"], "KOF": ["9939", "宏全期", "市"], "KPF": ["9945", "潤泰新期", "市"], "KSF": ["1477", "聚陽期", "市"], "SCF": ["1477", "小型聚陽期", "市"], "KUF": ["1802", "台玻期", "市"], "KWF": ["2328", "廣宇期", "市"], "LBF": ["3044", "健鼎期", "市"], "LCF": ["3045", "台灣大期", "市"], "LEF": ["3406", "玉晶光期", "市"], "LIF": ["6269", "台郡期", "市"], "LMF": ["9914", "美利達期", "市"], "LOF": ["5880", "合庫金期", "市"], "LQF": ["2356", "英業達期", "市"], "LRF": ["2883", "凱基金期", "市"], "LTF": ["4904", "遠傳期", "市"], "LUF": ["4958", "臻鼎-KY期", "市"], "LVF": ["5871", "中租-KY期", "市"], "LWF": ["1476", "儒鴻期", "市"], "LXF": ["2327", "國巨*期", "市"], "QEF": ["2327", "小型國巨*期", "市"], "LYF": ["8046", "南電期", "市"], "QSF": ["8046", "小型南電期", "市"], "MAF": ["1707", "葡萄王期", "市"], "MBF": ["2355", "順德期", "市"], "MJF": ["2360", "致茂期", "市"], "VDF": ["2360", "小型致茂期", "市"], "MKF": ["2439", "美律期", "市"], "MQF": ["6257", "矽格期", "市"], "MVF": ["9938", "百和期", "市"], "MYF": ["1565", "精華期","櫃"], "OMF": ["1565", "小型精華期", "櫃"], "NAF": ["3105", "穩懋期", "櫃"], "QIF": ["3105", "小型穩懋期", "櫃"], "NBF": ["3152", "璟德期", "櫃"], "NDF": ["3260", "威剛期", "櫃"], "NEF": ["3264", "欣銓期", "櫃"], "NGF": ["3691", "碩禾期", "櫃"], "NIF": ["4123", "晟德期", "櫃"], "NJF": ["5009", "榮剛期", "櫃"], "NLF": ["5347", "世界期", "櫃"], "NMF": ["5371", "中光電期", "櫃"], "NOF": ["5483", "中美晶期", "櫃"], "NSF": ["6147", "頎邦期", "櫃"], "NUF": ["8044", "網家期", "櫃"], "NVF": ["8069", "元太期", "櫃"], "NWF": ["8299", "群聯期", "櫃"], "QNF": ["8299", "小型群聯期", "櫃"], "NYF": ["0050", "元大台灣50ETF期", "ETF"], "OEF": ["6116", "彩晶期", "市"], "OHF": ["6279", "胡連期", "櫃"], "OPF": ["2345", "智邦期", "市"], "SEF": ["2345", "小型智邦期", "市"], "OQF": ["6414", "樺漢期", "市"], "ORF": ["1536", "和大期", "市"], "OSF": ["1909", "榮成期", "市"], "OTF": ["3081", "聯亞期", "櫃"], "OUF": ["3552", "同致期", "櫃"], "OVF": ["6274", "台燿期", "櫃"], "OWF": ["6488", "環球晶期", "櫃"], "PBF": ["6488", "小型環球晶期", "櫃"], "OXF": ["6510", "精測期", "櫃"], "OYF": ["6510", "小型精測期", "櫃"], "OZF": ["3711", "日月光投控期", "市"], "PAF": ["3227", "原相期", "櫃"], "PCF": ["4162", "智擎期", "櫃"], "PDF": ["4736", "泰博期", "市"], "PEF": ["5425", "台半期", "櫃"], "PFF": ["0056", "元大高股息ETF期", "ETF"], "PGF": ["2633", "台灣高鐵期", "市"], "PHF": ["5269", "祥碩期", "市"], "PNF": ["5269", "小型祥碩期", "市"], "PIF": ["3529", "力旺期", "櫃"], "RSF": ["3529", "小型力旺期", "櫃"], "PJF": ["2383", "台光電期", "市"], "SFF": ["2383", "小型台光電期", "市"], "PKF": ["6173", "信昌電期", "櫃"], "PLF": ["6182", "合晶期", "櫃"], "PMF": ["8436", "大江期", "櫃"], "PPF": ["5457", "宣德期", "櫃"], "PQF": ["8358", "金居期", "櫃"], "PRF": ["8086", "宏捷科期", "櫃"], "PSF": ["3706", "神達期", "市"], "PTF": ["3324", "雙鴻期", "櫃"], "ULF": ["3324", "小型雙鴻期", "櫃"], "PVF": ["6669", "緯穎期", "市"], "PWF": ["6669", "小型緯穎期", "市"], "PXF": ["3293", "鈊象期", "櫃"], "PYF": ["3293", "小型鈊象期", "櫃"], "PZF": ["5274", "信驊期", "櫃"], "QAF": ["5274", "小型信驊期", "櫃"], "QBF": ["3714", "富采期", "市"], "QCF": ["2606", "裕民期", "市"], "QDF": ["3532", "台勝科期", "市"], "QHF": ["3034", "小型聯詠期", "市"], "QJF": ["3406", "小型玉晶光期", "市"], "QKF": ["1907", "開展期", "市"], "QLF": ["3374", "精材期", "櫃"], "QOF": ["1717", "長興期", "市"], "QPF": ["1904", "正隆期", "市"], "QQF": ["3078", "僑威期", "櫃"], "QTF": ["2441", "超豐期", "市"], "QUF": ["8150", "南茂期", "市"], "QVF": ["2338", "光罩期", "市"], "QWF": ["2388", "威盛期", "市"], "QXF": ["2615", "萬海期", "市"], "QYF": ["6547", "高端疫苗期", "櫃"], "QZF": ["6770", "力積電期", "市"], "RAF": ["3017", "奇鋐期", "市"], "UHF": ["3017", "小型奇鋐期", "市"], "RBF": ["5388", "中磊期", "市"], "RCF": ["2634", "漢翔期", "市"], "RDF": ["4128", "中天期", "櫃"], "REF": ["4919", "新唐期", "市"], "RFF": ["3533", "小型嘉澤期", "市"], "RGF": ["3653", "小型健策期", "市"], "RIF": ["00878", "國泰永續高股息ETF期", "ETF"], "RJF": ["1609", "大亞期", "市"], "RKF": ["2368", "金像電期", "市"], "RLF": ["6443", "元晶期", "市"], "RNF": ["4743", "合一期", "櫃"], "ROF": ["6245", "立端期", "櫃"], "RPF": ["5904", "寶雅期", "櫃"], "RRF": ["5904", "小型寶雅期", "櫃"], "RUF": ["9958", "世紀鋼期", "市"], "SWF": ["9958", "小型世紀鋼期", "市"], "RWF": ["3443", "小型創意期", "市"], "RXF": ["00885", "富邦越南ETF期", "ETF"], "RYF": ["00923", "群益台ESG低碳50ETF期", "ETF"], "RZF": ["00679B", "元大美債20年ETF期", "ETF"], "SAF": ["1795", "美時期", "市"], "SBF": ["1905", "華紙期", "市"], "SDF": ["1513", "中興電期", "市"], "SGF": ["00893", "國泰智能電動車ETF期", "ETF"], "SIF": ["00719B", "元大美債1-3ETF期", "ETF"], "SJF": ["3005", "神基期", "市"], "SKF": ["8112", "至上期", "市"], "SMF": ["00919", "群益台灣精選高息ETF期", "ETF"], "SNF": ["00929", "復華台灣科技優息ETF期", "ETF"], "SRF": ["0050", "元大台灣50ETF期", "ETF"], "SSF": ["0056", "元大高股息ETF期", "ETF"], "SUF": ["00940", "元大台灣價值高息ETF期", "ETF"], "SYF": ["3680", "家登期", "櫃"], "SZF": ["3680", "小型家登期", "市"], "UAF": ["1503", "士電期", "市"], "UBF": ["6139", "亞翔期", "市"], "UCF": ["6188", "廣明期", "櫃"], "UEF": ["5876", "上海商銀期", "市"], "UFF": ["6505", "台塑化期", "市"], "UGF": ["6526", "達發期", "市"], "UIF": ["6526", "小型達發期", "市"], "UMF": ["3661", "世芯-KY期", "市"], "UOF": ["3661", "小型世芯-KY期", "市"], "UPF": ["6472", "保瑞期", "市"], "UQF": ["6472", "小型保瑞期", "市"], "UTF": ["2486", "一詮期", "市"], "UUF": ["6757", "台灣虎航期", "市"], "UVF": ["6223", "旺矽期", "櫃"], "UWF": ["6223", "小型旺矽期", "櫃"], "UXF": ["2329", "華泰期", "市"], "UYF": ["6290", "良維期", "櫃"], "VAF": ["1608", "華榮期", "市"], "VBF": ["2367", "燿華期", "市"], "VCF": ["2421", "建準期", "市"] }; 
+
+    let cachedData = [];
+    let favList = JSON.parse(localStorage.getItem('stk_favs_v2') || '[]');
+    let currentMode = 'ai_long', currentSort = 'total', refreshCounter = 50;
+
+    const mainTable = document.getElementById('main-table');
+    const fab = document.getElementById('fab-ball');
+    const popup = document.getElementById('filter-popup');
+
+    // --- 吸附懸浮球邏輯 ---
+    let isDragging = false;
+    let startX, startY;
+
+    fab.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        startX = e.touches[0].clientX - fab.offsetLeft;
+        startY = e.touches[0].clientY - fab.offsetTop;
+        fab.style.transition = 'none';
+    });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        let x = e.touches[0].clientX - startX;
+        let y = e.touches[0].clientY - startY;
+        // 限制在螢幕內
+        x = Math.max(0, Math.min(window.innerWidth - 48, x));
+        y = Math.max(0, Math.min(window.innerHeight - 48, y));
+        fab.style.left = x + 'px';
+        fab.style.top = y + 'px';
+    });
+
+    document.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        fab.style.transition = 'all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+        const centerX = window.innerWidth / 2;
+        const currentX = parseInt(fab.style.left) + 24;
+        
+        if (currentX < centerX) {
+            fab.style.left = '10px'; // 靠左
+        } else {
+            fab.style.left = (window.innerWidth - 58) + 'px'; // 靠右
+        }
+    });
+
+    // 點擊懸浮球打開過濾器
+    fab.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (popup.classList.contains('show')) {
+            popup.classList.remove('show');
+        } else {
+            // 計算彈窗位置
+            const rect = fab.getBoundingClientRect();
+            popup.style.top = (rect.top - 200) + 'px';
+            popup.style.left = (rect.left < window.innerWidth/2) ? '10px' : (window.innerWidth - 210) + 'px';
+            popup.classList.add('show');
+        }
+    });
+
+    // 點擊外部關閉
+    document.addEventListener('click', (e) => {
+        if (!popup.contains(e.target) && e.target !== fab) {
+            popup.classList.remove('show');
+        }
+    });
+
+    // --- 核心資料邏輯 ---
+    async function fetchData() {
+        try {
+            const res = await fetch('https://market-data-api.futures-ai.com/stkfut_tradeinfo/');
+            const data = await res.json();
+            cachedData = Object.keys(data).filter(k => stockMap[k]).map(k => {
+                const [num, name, mkt] = stockMap[k];
+                const near = data[k].near_month || 0, far = data[k].next_month || 0, total = near + far;
+                const prev = cachedData.find(o => o.id === k);
+                return {
+                    id: k, num, name, mkt, near, far, total,
+                    isLong: total >= 15 && near >= 5 && far >= 0,
+                    price: prev?.price || '--', chg: prev?.chg || '0.00%',
+                    fPrice: prev?.fPrice || '--', fChg: prev?.fChg || '0.00%'
+                };
+            });
+            render();
+            updatePrices();
+        } catch(e) {}
+    }
+
+    async function updatePrices() {
+        const targets = [...cachedData].sort((a,b)=>b.total-a.total).slice(0, 240);
+        await Promise.all(targets.map(async (item) => {
+            try {
+                const [hRes, fRes] = await Promise.all([
+                    fetch(`https://tvapi.futures-op.com/v2/history?agent=futuresai&symbol=${item.num}&resolution=1m`),
+                    fetch(`https://tvapi.futures-op.com/v2/history?agent=futuresai&symbol=${item.id}-1&resolution=1m`)
+                ]);
+                const h = await hRes.json();
+                if(h.s === "ok") {
+                    item.price = h.c[h.c.length-1];
+                    item.chg = ((item.price - h.o[0])/h.o[0]*100).toFixed(2) + '%';
+                }
+                const f = await fRes.json();
+                if(f.s === "ok") {
+                    item.fPrice = f.c[f.c.length-1];
+                    item.fChg = ((item.fPrice - f.o[0])/f.o[0]*100).toFixed(2) + '%';
+                }
+                refreshRow(item);
+            } catch(e){}
+        }));
+    }
+
+    function refreshRow(item) {
+        const row = mainTable.querySelector(`tr[data-id="${item.id}"]`);
+        if (!row) return;
+        const pCell = row.cells[1], fCell = row.cells[2];
+        const pChgV = parseFloat(item.chg), fChgV = parseFloat(item.fChg);
+        pCell.style.backgroundColor = pChgV > 0 ? `rgba(255,59,48,${Math.min(pChgV/10, 0.4)})` : (pChgV < 0 ? `rgba(52,199,89,${Math.min(Math.abs(pChgV)/10, 0.4)})` : 'transparent');
+        fCell.style.backgroundColor = fChgV > 0 ? `rgba(255,59,48,${Math.min(fChgV/10, 0.4)})` : (fChgV < 0 ? `rgba(52,199,89,${Math.min(Math.abs(fChgV)/10, 0.4)})` : 'transparent');
+        row.querySelector('.price-val').innerText = item.price;
+        row.querySelector('.p-chg').innerText = item.chg;
+        row.querySelector('.fut-price-val').innerText = item.fPrice;
+        row.querySelector('.f-chg').innerText = item.fChg;
+    }
+
+    function setSort(key) { currentSort = key; render(); }
+
+    function render() {
+        const q = document.getElementById('search-input').value.toLowerCase();
+        const showTse = document.getElementById('show-tse').checked;
+        const showOtc = document.getElementById('show-otc').checked;
+        const showEtf = document.getElementById('show-etf').checked;
+        const miniOnly = document.getElementById('mini-only').checked;
+        const limit = parseInt(document.getElementById('rank-slider').value);
+
+        let filtered = cachedData.filter(i => {
+            if (i.mkt === '市' && !showTse) return false;
+            if (i.mkt === '櫃' && !showOtc) return false;
+            if (i.mkt === 'ETF' && !showEtf) return false;
+            if (miniOnly && !i.name.includes('小型')) return false;
+            if (q) return i.num.includes(q) || i.name.includes(q) || i.id.toLowerCase().includes(q);
+            return true;
+        });
+
+        if (!q) {
+            if (currentMode === 'ai_long') filtered = filtered.filter(i => i.isLong);
+            else if (currentMode === 'up') filtered = filtered.filter(i => i.total > 0);
+            else if (currentMode === 'down') filtered = filtered.filter(i => i.total < 0);
+            else if (currentMode === 'strong_buy') filtered = filtered.filter(i => i.total >= 10);
+            else if (currentMode === 'fav') filtered = filtered.filter(i => favList.includes(i.id));
+        }
+
+        filtered.sort((a,b) => {
+            if (currentSort === 'num') return a.num.localeCompare(b.num);
+            if (currentSort === 'chg') return parseFloat(b.chg) - parseFloat(a.chg);
+            if (currentSort === 'fChg') return parseFloat(b.fChg) - parseFloat(a.fChg);
+            return b.total - a.total;
+        });
+
+        const displayList = q ? filtered : filtered.slice(0, limit);
+        const favs = displayList.filter(i => favList.includes(i.id));
+        const nonFavs = displayList.filter(i => !favList.includes(i.id));
+
+        let html = "";
+        if (favs.length > 0) {
+            html += `<tr><td colspan="6" class="section-header">★ 已收藏 (${favs.length})</td></tr>`;
+            html += favs.map(i => rowHtml(i)).join('');
+        }
+        if (nonFavs.length > 0) {
+            const title = q ? `🔍 搜尋結果 (${nonFavs.length})` : `📊 市場監控 (${nonFavs.length})`;
+            html += `<tr><td colspan="6" class="section-header">${title}</td></tr>`;
+            html += nonFavs.map(i => rowHtml(i)).join('');
+        }
+        mainTable.innerHTML = html;
+    }
+
+    function rowHtml(i) {
+        const isFav = favList.includes(i.id), scoreColor = i.total >= 0 ? 'var(--up-red)' : 'var(--down-green)';
+        const mktClass = i.mkt === '櫃' ? 'tag-otc' : (i.mkt === 'ETF' ? 'tag-etf' : '');
+        const pChgV = parseFloat(i.chg), fChgV = parseFloat(i.fChg);
+        const pBg = pChgV > 0 ? `rgba(255,59,48,${Math.min(pChgV/10, 0.4)})` : (pChgV < 0 ? `rgba(52,199,89,${Math.min(Math.abs(pChgV)/10, 0.4)})` : 'transparent');
+        const fBg = fChgV > 0 ? `rgba(255,59,48,${Math.min(fChgV/10, 0.4)})` : (fChgV < 0 ? `rgba(52,199,89,${Math.min(Math.abs(fChgV)/10, 0.4)})` : 'transparent');
+
+        return `<tr data-id="${i.id}">
+            <td class="name-col">
+                <div class="row-id"><span class="fav-star ${isFav?'active':''}" onclick="toggleFav('${i.id}', event)">${isFav?'★':'☆'}</span><span class="stock-num">${i.num}</span><span class="stock-id-tag">${i.id}</span></div>
+                <div class="row-name"><span class="mkt-tag ${mktClass}">${i.mkt}</span><span class="stock-name" style="color:${i.isLong?'var(--aistock-gold)':'#fff'}" onclick="showAI('${i.num}','${i.name}')">${i.name}</span></div>
+            </td>
+            <td style="background-color:${pBg}"><div class="price-val">${i.price}</div><div class="chg-val p-chg" style="color:${Math.abs(pChgV)>0?'#fff':'#888'}">${i.chg}</div></td>
+            <td style="background-color:${fBg}"><div class="fut-price-val">${i.fPrice}</div><div class="chg-val f-chg" style="color:${Math.abs(fChgV)>0?'#fff':'#888'}">${i.fChg}</div></td>
+            <td><span class="score-val" style="color:${i.near>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(i.near)}</span></td>
+            <td><span class="score-val" style="color:${i.far>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(i.far)}</span></td>
+            <td><span class="score-val" style="color:${scoreColor}">${Math.round(i.total)}</span><div class="score-bar"><div class="score-fill" style="width:${Math.min(Math.abs(i.total)*4, 100)}%; background:${scoreColor}; ${i.total<0?'left:0;right:auto;':'right:0;'}"></div></div></td>
+        </tr>`;
+    }
+
+    function toggleFav(id, e) {
+        e.stopPropagation();
+        const idx = favList.indexOf(id);
+        idx > -1 ? favList.splice(idx, 1) : favList.push(id);
+        localStorage.setItem('stk_favs_v2', JSON.stringify(favList));
+        render();
+    }
+
+    function showAI(n, nm) {
+        const pure = nm.replace('期','').replace('小型','').trim();
+        document.getElementById('ai-title').innerText = `🤖 ${pure} (${n})`;
+        document.getElementById('link-news').href = `https://www.google.com/search?q=${n}+${pure}+新聞`;
+        document.getElementById('link-wantgoo').href = `https://www.wantgoo.com/stock/${n}`;
+        document.getElementById('ai-modal').style.display = 'flex';
+    }
+    function closeAI() { document.getElementById('ai-modal').style.display = 'none'; }
+
+    document.getElementById('mode-selector').onclick = e => { if(e.target.dataset.mode) { currentMode = e.target.dataset.mode; document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active', b===e.target)); render(); }};
+    document.getElementById('search-input').oninput = render;
+    document.getElementById('rank-slider').oninput = function() { document.getElementById('rank-val').innerText = '顯示數量: ' + this.value + '名'; render(); };
+    document.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = render);
+
+    setInterval(() => {
+        refreshCounter--;
+        document.getElementById('timer-display').innerText = (refreshCounter/10).toFixed(1) + 's';
+        if(refreshCounter <= 0) { refreshCounter = 50; fetchData(); }
+    }, 100);
+
+    fetchData();
+</script>
+</body>
+</html>
+
+
+<!-- 漲跌停板本 -->
+<!-- <!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>股期監控-分類標題版</title>
     <style>
         :root {
@@ -776,4 +1142,4 @@
     fetchData();
 </script>
 </body>
-</html> -->
+</html> --> -->
