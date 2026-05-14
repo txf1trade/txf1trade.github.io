@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI期權戰情室-即時監控版</title>
+    <style>
+        :root {
+            --bg: #0d1117; --card: #161b22; --blue: #58a6ff;
+            --red: #ff7b72; --green: #7ee787; --border: #30363d;
+            --header: #21262d; --gold: #f1e05a;
+            --ai-glow: rgba(88, 166, 255, 0.3);
+            --vh: 1vh;
+        }
+        * { box-sizing: border-box; }
+        html, body { 
+            background: var(--bg); margin: 0; padding: 0; 
+            min-height: 100vh;
+            min-height: calc(var(--vh, 1vh) * 100);
+            -webkit-overflow-scrolling: touch;
+        }
+        body { font-family: -apple-system, "Segoe UI", sans-serif; color: #c9d1d9; padding: 6px; line-height: 1.2; }
+        
+        .container { 
+            max-width: 550px; margin: auto; 
+            padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
+        }
+
+        /* 指數看板樣式 */
+        .index-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; margin-top: 5px; }
+        .index-card { background: var(--card); padding: 8px 2px; border-radius: 6px; border: 1px solid var(--border); text-align: center; transition: all 0.3s ease; }
+        .index-name { font-size: 10px; color: #8b949e; margin-bottom: 4px; }
+        .index-price { font-family: "Consolas", monospace; font-size: 15px; font-weight: 900; color: #fff; }
+        .index-change { font-family: "Consolas", monospace; font-size: 11px; font-weight: bold; display: block; margin-top: 2px; }
+
+        /* 價差監控 */
+        .basis-box { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); font-size: 12px; }
+        .basis-tag { padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+
+        /* 表格共用樣式 */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; background: var(--card); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+        th { background: var(--header); color: #8b949e; padding: 6px 2px; border: 1px solid var(--border); font-size: 10px; text-align: center; }
+        td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
+        
+        .section-title { font-size: 14px; font-weight: bold; margin: 12px 0 6px 2px; color: var(--blue); border-left: 4px solid var(--blue); padding-left: 8px; display: flex; align-items: center; justify-content: space-between; }
+        .unit-text { font-size: 10px; color: #8b949e; font-weight: normal; margin-left: auto; }
+        
+        .num-cell { font-family: "Consolas", "Monaco", monospace; font-weight: bold; }
+        .pos { color: var(--red); } .neg { color: var(--green); }
+
+        .retail-row { background: rgba(241, 224, 90, 0.03) !important; }
+        .retail-text { color: var(--gold); font-weight: bold; }
+        .retail-highlight { border: 1.5px solid var(--gold) !important; background: rgba(241, 224, 90, 0.15); font-size: 11px; color: var(--gold) !important; }
+        
+        .ai-tag { display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 9px; margin: 1px; font-weight: bold; color: #fff; }
+        .tag-sell-exposure { background: var(--gold) !important; color: #000 !important; border: 1px solid #fff; }
+        .exposure-text { color: var(--gold); font-weight: bold; font-size: 9px; margin-left: 2px; }
+        .tag-bull { background: #da3633; } 
+        .tag-bear { background: #238636; } 
+
+        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 2px solid var(--blue); border-radius: 10px; padding: 12px; margin-top: 10px; box-shadow: 0 4px 15px var(--ai-glow); }
+        .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+        .trend-val { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
+        
+        .battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .battle-card { background: #0d1117; padding: 8px; border-radius: 6px; border-top: 2px solid var(--border); }
+        .card-title { font-size: 10px; color: #8b949e; margin-bottom: 4px; }
+        .card-val { font-size: 11px; font-weight: bold; line-height: 1.5; color: #fff; }
+        
+        .strategy-box { background: rgba(88, 166, 255, 0.08); padding: 10px; border-radius: 6px; border: 1px dashed var(--blue); font-size: 12px; color: #ffffff; }
+        .exposure-info { font-size: 10px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .sub-header { background: #1c2128 !important; color: var(--blue) !important; font-weight: bold; text-align: left !important; padding-left: 10px !important; }
+        
+        .settlement-warning { color: var(--gold); border: 1px solid var(--gold); padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px; animation: breathe 2s ease-in-out infinite; }
+        @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        
+        /* 刷新提示動畫 */
+        .refresh-dot { width: 6px; height: 6px; background: var(--blue); border-radius: 50%; display: inline-block; margin-right: 5px; opacity: 0; }
+        .refreshing .refresh-dot { animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(2); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="index-grid">
+        <div class="index-card" id="card-tsec" style="border-top: 3px solid var(--red);">
+            <div class="index-name">加權指數</div>
+            <div id="price-tsec" class="index-price">--</div>
+            <div id="change-tsec" class="index-change">--</div>
+        </div>
+        <div class="index-card" id="card-otc" style="border-top: 3px solid var(--gold);">
+            <div class="index-name">櫃買指數</div>
+            <div id="price-otc" class="index-price">--</div>
+            <div id="change-otc" class="index-change">--</div>
+        </div>
+        <div class="index-card" id="card-fitx" style="border-top: 3px solid var(--blue);">
+            <div class="index-name">台指期貨</div>
+            <div id="price-fitx" class="index-price">--</div>
+            <div id="change-fitx" class="index-change">--</div>
+        </div>
+    </div>
+
+    <div class="basis-box" id="basis-container">
+        <span><span class="refresh-dot"></span>價差監控：<b id="basis-value" class="num-cell">--</b></span>
+        <span id="basis-status" class="basis-tag" style="background: #30363d;">計算中</span>
+    </div>
+
+    <div class="section-title">
+        <span>🏛️ 法人現貨買賣超 (<span id="spot-date">--/--</span>)</span>
+        <span class="unit-text">單位: 億元</span>
+    </div>
+    <table id="spot-table">
+        <thead><tr><th>外資</th><th>投信</th><th>自營商</th><th>合計</th></tr></thead>
+        <tbody id="spot-table-body"><tr><td colspan="4">數據載入中...</td></tr></tbody>
+    </table>
+
+    <div class="section-title">📊 台指期沖銷動能</div>
+    <div id="tx-table-container">載入中...</div>
+
+    <div class="section-title">
+        <span>📜 選擇權曝險診斷 <span id="settlement-ui"></span></span>
+    </div>
+    <div id="exposure-summary" class="exposure-info">計算中...</div>
+    <div id="opt-data-table">載入中...</div>
+
+    <div class="ai-box">
+        <div class="trend-header">
+            <div><span class="ai-tag" style="background:var(--blue)">AI 多空布局評級</span></div>
+            <span id="trend-indicator" class="trend-val">--</span>
+        </div>
+        <div class="battle-grid">
+            <div class="battle-card" style="border-color: #bc8cff;">
+                <div class="card-title">自營商方向</div>
+                <div id="d-action" class="card-val">分析中...</div>
+            </div>
+            <div class="battle-card" style="border-color: var(--blue);">
+                <div class="card-title">外資方向</div>
+                <div id="f-action" class="card-val">分析中...</div>
+            </div>
+        </div>
+        <div class="strategy-box">
+            <div id="strategy-desc">正在進行籌碼交叉運算...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateHeight() {
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    window.addEventListener('resize', updateHeight);
+    updateHeight();
+    
+    // API 路徑
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbxs-H4wl6KsXP_TJ8xBmNR5Xp3vXr4mjb12PloSaux-5C5Qcb4hbQoyPmNoFWe_0fqtBg/exec';
+    const twseUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://www.twse.com.tw/rwd/zh/fund/BFI82U');
+    
+    let globalSpot = { foreign: 0, trust: 0, dealer: 0, total: 0 };
+    let curTSEC = 0, curFITX = 0;
+
+    async function fetchPrices() {
+        const basisBox = document.getElementById('basis-container');
+        basisBox.classList.add('refreshing');
+
+        const urls = {
+            tsec: 'https://histock.tw/stock/module/function.aspx?m=stocktop2017&no=0000',
+            otc: 'https://histock.tw/stock/module/function.aspx?m=stocktop2017&no=TWOI',
+            fitx: 'https://histock.tw/stock/module/function.aspx?m=stocktop2017&no=FITXA'
+        };
+
+        const parseInfo = (h) => {
+            const pMatch = h.match(/<div class="ci_value"><span[^>]*>([\d,.]+)<\/span>/);
+            const cMatch = h.match(/<li><div class="ci_title">漲跌<\/div><div class="ci_value"><span[^>]*>([^<]+)<\/span>/);
+            return { price: pMatch ? pMatch[1] : "--", change: cMatch ? cMatch[1].trim() : "--" };
+        };
+
+        const updateUI = (id, info) => {
+            const pEl = document.getElementById(`price-${id}`);
+            const cEl = document.getElementById(`change-${id}`);
+            if(!pEl || !cEl) return;
+            pEl.innerText = info.price;
+            cEl.innerText = info.change;
+            if (info.change.includes('▲')) {
+                cEl.style.color = "var(--red)"; pEl.style.color = "var(--red)";
+            } else if (info.change.includes('▼')) {
+                cEl.style.color = "var(--green)"; pEl.style.color = "var(--green)";
+            }
+        };
+
+        try {
+            const results = await Promise.all(Object.keys(urls).map(k => 
+                fetch(urls[k]).then(r => r.text()).then(h => ({k, info: parseInfo(h)}))
+            ));
+            results.forEach(item => {
+                if(item.info) {
+                    updateUI(item.k, item.info);
+                    if (item.k === 'tsec') curTSEC = parseFloat(item.info.price.replace(/,/g, ''));
+                    if (item.k === 'fitx') curFITX = parseFloat(item.info.price.replace(/,/g, ''));
+                }
+            });
+            calcBasis();
+        } catch (e) { console.warn("Update Failed"); }
+        setTimeout(() => basisBox.classList.remove('refreshing'), 1000);
+    }
+
+    setInterval(fetchPrices, 6000);
+
+    async function fetchAllData() {
+        fetchPrices(); 
+        try {
+            // 同時抓取 GAS 與 TWSE 數據[cite: 3]
+            const [twseRes, txRes, optRes] = await Promise.all([
+                fetch(twseUrl), fetch(`${apiUrl}?type=tx`), fetch(apiUrl)
+            ]);
+            
+            const spotData = await twseRes.json();
+            const txData = await txRes.json();
+            const optData = await optRes.json();
+
+            renderSpot(spotData); // 渲染來自證交所的數據[cite: 1]
+            
+            let fTX = 0, retailMTX = 0, retailMicro = 0;
+            txData.forEach(r => {
+                if(r[0] === '外資') fTX = parseFloat(String(r[1]).replace(/,/g,'')) || 0;
+                if(r[0] && r[0].includes('散戶')) {
+                    retailMTX = parseFloat(String(r[3]).replace(/,/g,'')) || 0;
+                    retailMicro = parseFloat(String(r[4]).replace(/,/g,'')) || 0;
+                }
+            });
+            renderTX(txData);
+            renderOption(optData, fTX, retailMTX, retailMicro);
+        } catch (e) { console.error("Data fetch error:", e); }
+    }
+
+    function calcBasis() {
+        if (!curTSEC || !curFITX) return;
+        const diff = (curFITX - curTSEC).toFixed(2);
+        const elV = document.getElementById('basis-value');
+        const elS = document.getElementById('basis-status');
+        elV.innerText = (diff > 0 ? '+' : '') + diff;
+        elV.className = 'num-cell ' + (diff >= 0 ? 'pos' : 'neg');
+        elS.innerText = diff >= 0 ? "正價差" : "逆價差";
+        elS.style.background = diff >= 0 ? "var(--red)" : "var(--green)";
+        elS.style.color = "#000";
+    }
+
+    // --- 專門處理 TWSE JSON 的函式[cite: 1, 2, 3] ---
+    function renderSpot(jsonData) {
+        if (jsonData.stat !== "OK") return;
+        
+        // 更新日期
+        const d = jsonData.date;
+        document.getElementById('spot-date').innerText = d.substring(4,6) + "/" + d.substring(6,8); 
+        
+        const toBillion = (valStr) => {
+            if (!valStr) return 0;
+            let n = parseFloat(String(valStr).replace(/,/g, '')) || 0;
+            return n / 100000000;
+        };
+
+        // 索引：[0]自營自行, [1]自營避險, [2]投信, [3]外資, [5]合計[cite: 2]
+        const d_self = toBillion(jsonData.data[0][3]); 
+        const d_hedge = toBillion(jsonData.data[1][3]);
+        
+        globalSpot = { 
+            dealer: d_self + d_hedge, // 加總自營商[cite: 2]
+            trust: toBillion(jsonData.data[2][3]),
+            foreign: toBillion(jsonData.data[3][3]),
+            total: toBillion(jsonData.data[5][3])
+        };
+
+        const getColor = (val) => val >= 0 ? 'pos' : 'neg';
+        const format = (val) => (val >= 0 ? '+' : '') + val.toFixed(2);
+
+        document.getElementById('spot-table-body').innerHTML = `<tr>
+            <td class="num-cell ${getColor(globalSpot.foreign)}">${format(globalSpot.foreign)}</td>
+            <td class="num-cell ${getColor(globalSpot.trust)}">${format(globalSpot.trust)}</td>
+            <td class="num-cell ${getColor(globalSpot.dealer)}">${format(globalSpot.dealer)}</td>
+            <td class="num-cell ${getColor(globalSpot.total)}">${format(globalSpot.total)}</td>
+        </tr>`;
+    }
+
+    function renderTX(data) {
+        let html = `<table><thead><tr><th>身份</th><th>大台</th><th>小台</th><th>微台</th><th>成本</th></tr></thead><tbody>`;
+        data.slice(1).forEach(r => {
+            const [name, tx, cost, mtx, micro] = r;
+            if(!name) return;
+            const txV = parseFloat(String(tx).replace(/,/g,'')) || 0;
+            const mtxV = parseFloat(String(mtx).replace(/,/g,'')) || 0;
+            const microV = parseFloat(String(micro).replace(/,/g,'')) || 0;
+            const isRetail = name.includes('散戶');
+            html += `<tr class="${isRetail ? 'retail-row' : ''}">
+                <td class="${isRetail ? 'retail-text' : ''}">${name}</td>
+                <td class="num-cell ${txV >= 0 ? 'pos' : 'neg'}">${isRetail ? '--' : txV.toLocaleString()}</td>
+                <td class="num-cell ${isRetail ? 'retail-highlight' : (mtxV >= 0 ? 'pos' : 'neg')}">${mtxV.toLocaleString()}</td>
+                <td class="num-cell ${isRetail ? 'retail-highlight' : (microV >= 0 ? 'pos' : 'neg')}">${microV.toLocaleString()}</td>
+                <td class="num-cell">${isRetail ? '--' : cost}</td>
+            </tr>`;
+        });
+        document.getElementById('tx-table-container').innerHTML = html + "</tbody></table>";
+    }
+
+    function renderOption(opt, fTX, rMTX, rMicro) {
+        let s = { dc: 0, dp: 0, fc: 0, fp: 0, dAmtC: 0, dAmtP: 0, fAmtC: 0, fAmtP: 0 };
+        let rows = { "自營商": "", "外資": "" };
+        let lastT = "";
+
+        opt.slice(1).forEach(r => {
+            let [t, id, diff, oi, amt] = r; 
+            if (t && t.trim() !== "") lastT = t; else t = lastT;
+            if(!id || rows[id] === undefined) return;
+            const oiV = parseFloat(String(oi).replace(/,/g, '')) || 0;
+            const amtV = parseFloat(String(amt).replace(/,/g, '')) || 0;
+            const isC = t.includes('買權');
+            let isSell = (oiV < 0);
+            let actType = isC ? (oiV >= 0 ? "BC" : "SC") : (oiV >= 0 ? "BP" : "SP");
+            let tagClass = (actType === "BC" || actType === "SP") ? "tag-bull" : "tag-bear";
+            if(isSell) tagClass = "tag-sell-exposure";
+            let exposureTxt = isSell ? "<span class='exposure-text'>(曝險)</span>" : "";
+
+            rows[id] += `<tr>
+                <td style="color:${isC ? 'var(--red)' : 'var(--green)'}">${t.replace('臺指選擇權','')}</td>
+                <td class="num-cell ${parseFloat(diff)>=0?'pos':'neg'}">${diff}</td>
+                <td class="num-cell ${oiV>=0?'pos':'neg'}">${oi}</td>
+                <td class="num-cell ${amtV>=0?'pos':'neg'}">${amtV.toLocaleString()}</td>
+                <td><span class="ai-tag ${tagClass}">${actType}</span>${exposureTxt}</td>
+            </tr>`;
+
+            if(id === "自營商") { if(isC){s.dc=oiV; s.dAmtC=amtV;}else{s.dp=oiV; s.dAmtP=amtV;} }
+            else { if(isC){s.fc=oiV; s.fAmtC=amtV;}else{s.fp=oiV; s.fAmtP=amtV;} }
+        });
+
+        const dNet = (s.dAmtC - s.dAmtP) / 10000;
+        const fNet = (s.fAmtC - s.fAmtP) / 10000;
+        document.getElementById('exposure-summary').innerHTML = `
+            <span>自營淨曝險: <b class="${dNet>=0?'pos':'neg'}">${dNet.toFixed(2)} 億</b></span>
+            <span>外資淨曝險: <b class="${fNet>=0?'pos':'neg'}">${fNet.toFixed(2)} 億</b></span>`;
+
+        document.getElementById('opt-data-table').innerHTML = `<table>
+            <thead><tr><th>權別</th><th>差額</th><th>OI</th><th>金額(千)</th><th>狀態</th></tr></thead>
+            <tbody>
+                <tr><td colspan="5" class="sub-header">🟣 自營商</td></tr>${rows["自營商"]}
+                <tr><td colspan="5" class="sub-header">🔵 外資</td></tr>${rows["外資"]}
+            </tbody>
+        </table>`;
+        enhancedAnalyze(s, fTX, rMTX, rMicro);
+    }
+
+    function enhancedAnalyze(s, fTX, rMTX, rMicro) {
+        let score = 0; 
+        let dTags = [], fTags = [];
+        const fSpot = globalSpot.foreign;
+
+        if (fSpot > 50) score += 3; else if (fSpot > 0) score += 1;
+        if (fSpot < -50) score -= 3; else if (fSpot < 0) score -= 1;
+        if (fTX > 2000) score += 2; else if (fTX < -5000) score -= 2;
+        const retailTotal = rMTX + (rMicro / 5);
+        if (retailTotal > 5000) score -= 3; else if (retailTotal < -5000) score += 3;
+
+        if (s.dc < 0) dTags.push('<span class="neg">SC壓盤</span>');
+        if (s.dc > 0) dTags.push('<span class="pos">BC多</span>');
+        if (s.dp < 0) dTags.push('<span class="pos">SP撐</span>');
+        if (s.dp > 0) dTags.push('<span class="neg">BP空</span>');
+        if (s.fc > 0 || s.fp < 0) fTags.push('<span class="pos">偏多佈局</span>');
+        else fTags.push('<span class="neg">避險偏空</span>');
+
+        let trend = "⚖️ 中性整理"; let color = "var(--blue)"; let plan = "";
+        if (score >= 4) { trend = "🚀 極度樂觀"; color = "var(--red)"; plan = "法人買盤強力支撐，建議逢低布局。"; }
+        else if (score >= 1) { trend = "↗️ 震盪偏多"; color = "#ffab70"; plan = "籌碼偏向多方，宜區間偏多操作。"; }
+        else if (score <= -4) { trend = "📉 極度悲觀"; color = "var(--green)"; plan = "籌碼面調節壓力大，宜保守避險。"; }
+        else if (score <= -1) { trend = "↘️ 震盪偏空"; color = "#88d18d"; plan = "散戶接刀或法人反手，不宜追高。"; }
+        else { plan = "多空角力，靜待趨勢突破或結算引導。"; }
+
+        document.getElementById('trend-indicator').innerText = trend;
+        document.getElementById('trend-indicator').style.color = color;
+        document.getElementById('d-action').innerHTML = dTags.join(" | ") || "中性";
+        document.getElementById('f-action').innerHTML = fTags.join(" ") || "中性";
+        document.getElementById('strategy-desc').innerText = "AI建議：" + plan;
+    }
+    
+    function updateSettlementUI() {
+        const now = new Date();
+        const date = now.getDate(); const day = now.getDay();
+        let firstWed = new Date(now.getFullYear(), now.getMonth(), 1);
+        while (firstWed.getDay() !== 3) { firstWed.setDate(firstWed.getDate() + 1); }
+        const monthlyWed = firstWed.getDate() + 14;
+        const ui = document.getElementById('settlement-ui');
+        if (ui && day >= 1 && day <= 3) {
+            let label = (day === 3) ? (date === monthlyWed ? "🔥 月結算" : "⚡ 週結算") : `⏳ 結算 D-${3-day}`;
+            ui.innerHTML = `<span class="settlement-warning">${label}</span>`;
+        }
+    }
+    
+    updateSettlementUI(); fetchAllData();
+</script>
+</body>
+</html>
