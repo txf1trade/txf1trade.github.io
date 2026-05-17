@@ -2,6 +2,151 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <!-- viewport-fit=cover 允許網頁內容填滿整個螢幕（包含安全區域） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>期貨交易監控面板</title>
+    
+    <!-- ================= iOS PWA 設定 ================= -->
+    <!-- 允許網頁被加入主畫面後以全螢幕 APP 模式執行 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- 設定狀態列為透明透明，讓網頁底色能延伸到頂端瀏海區 -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- 設定加入主畫面後的 APP 顯示名稱 -->
+    <meta name="apple-mobile-web-app-title" content="期貨監控">
+    <!-- 設定 APP 的桌面圖示 (建議使用 192x192 以上的 PNG 圖檔) -->
+    <link rel="apple-touch-icon" href="https://txf1trade.github.io/icon.png">
+    <!-- ================================================= -->
+
+    <style>
+        * { box-sizing: border-box; }
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            overflow: hidden; font-family: "PingFang TC", sans-serif;
+            background-color: #1a1a1a; color: #eee;
+            /* 改用 Flex 佈局，避免 100vh 在 iOS 造成底部溢出滾動條 */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 標籤按鈕容器 */
+        .nav-tabs {
+            display: flex; 
+            background-color: #2c2c2c;
+            /* env(safe-area-inset-top) 會自動取得 iPhone 頂部瀏海的高度，避免按鈕被遮擋 */
+            padding: calc(env(safe-area-inset-top) + 8px) 10px 0 10px; 
+            border-bottom: 2px solid #007bff;
+            flex-shrink: 0; /* 固定高度，不被壓縮 */
+        }
+        
+        .tab-btn {
+            padding: 8px 16px; cursor: pointer; border: none;
+            background: #444; color: #bbb; border-radius: 6px 6px 0 0;
+            margin-right: 4px; transition: 0.2s;
+            font-size: 14px;
+        }
+        
+        .tab-btn.active { 
+            background: #007bff; 
+            color: white; 
+            font-weight: bold; 
+        }
+        
+        /* 內容區：自動吃滿剩下所有高度 */
+        .content-wrapper { 
+            flex-grow: 1;
+            width: 100%; 
+            /* env(safe-area-inset-bottom) 自動留出 iPhone 底部系統橫條的安全距離 */
+            padding-bottom: env(safe-area-inset-bottom);
+            background: #1a1a1a;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; display: none; }
+        iframe.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="tabContainer" class="nav-tabs"></div>
+    <div id="frameContainer" class="content-wrapper"></div>
+
+    <script>
+        // 配置資料
+        const config = [
+            { name: "台指籌碼", url: "https://txf1trade.github.io/indexTab1.html" },
+            { name: "股期動能", url: "https://txf1trade.github.io/indexTab2.html" },
+            { name: "盤後籌碼", url: "https://txf1trade.github.io/indexTab3.html" },
+            { name: "AI戰情室", url: "https://txf1trade.github.io/indexTab4.html" },
+        ];
+
+        const tabContainer = document.getElementById('tabContainer');
+        const frameContainer = document.getElementById('frameContainer');
+
+        function init() {
+            config.forEach((item, index) => {
+                // 1. 建立按鈕
+                const btn = document.createElement('button');
+                btn.className = 'tab-btn';
+                btn.id = 'btn-' + index;
+                btn.innerText = item.name;
+                btn.onclick = () => updatePage(index);
+                tabContainer.appendChild(btn);
+
+                // 2. 建立 iframe
+                const ifr = document.createElement('iframe');
+                ifr.id = 'ifr-' + index;
+                frameContainer.appendChild(ifr);
+            });
+
+            // 檢查 URL 參數
+            const params = new URLSearchParams(window.location.search);
+            let tabIndex = params.get('tab');
+            tabIndex = (tabIndex === null) ? 0 : parseInt(tabIndex);
+            
+            if (isNaN(tabIndex) || tabIndex < 0 || tabIndex >= config.length) {
+                tabIndex = 0;
+            }
+
+            updatePage(tabIndex, true);
+        }
+
+        function updatePage(index, isInitial = false) {
+            const item = config[index];
+            const targetIfr = document.getElementById('ifr-' + index);
+
+            // 更新網址列格式
+            const newSearch = (index === 0) ? "" : `?tab=${index}`;
+            const newFullUrl = window.location.origin + window.location.pathname + newSearch;
+            
+            if (isInitial) {
+                window.history.replaceState({index}, '', newFullUrl);
+            } else {
+                window.history.pushState({index}, '', newFullUrl);
+            }
+
+            // 載入與切換內容
+            if (!targetIfr.src) targetIfr.src = item.url;
+
+            // UI 狀態更新
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-' + index));
+            document.querySelectorAll('iframe').forEach(f => f.classList.toggle('active', f.id === 'ifr-' + index));
+        }
+
+        // 處理瀏覽器返回鍵
+        window.onpopstate = () => {
+            const params = new URLSearchParams(window.location.search);
+            const tabIndex = parseInt(params.get('tab')) || 0;
+            updatePage(tabIndex, true);
+        };
+
+        init();
+    </script>
+</body>
+</html>
+
+<!-- <!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>期貨交易監控面板</title>
     <style>
@@ -106,4 +251,4 @@
     </script>
 </body>
 </html>
-
+ -->
