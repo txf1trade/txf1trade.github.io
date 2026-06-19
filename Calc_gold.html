@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>微型黃金期貨 (MGC) 損益計算機</title>
+    <title>微型黃金期貨 (MGC) 損益計算機 - 含台幣換算</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -14,6 +14,7 @@
             --buy-color: #ff4d4d;
             --sell-color: #00b359;
             --border-color: #404040;
+            --twd-color: #4da6ff;
         }
 
         * {
@@ -39,7 +40,7 @@
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
             padding: 25px;
         }
 
@@ -54,7 +55,18 @@
         }
 
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 16px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
         }
 
         label {
@@ -123,23 +135,27 @@
 
         /* 結果顯示區 */
         .result-container {
-            margin-top: 25px;
+            margin-top: 22px;
             background-color: #1a1a1a;
             border-radius: 8px;
-            padding: 15px;
+            padding: 18px;
             border: 1px solid var(--border-color);
         }
 
         .result-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             font-size: 1rem;
         }
 
-        .result-row:last-child {
+        .result-row.highlight-usd {
+            padding-top: 6px;
+        }
+
+        .result-row.highlight-twd {
             margin-bottom: 0;
-            padding-top: 10px;
+            padding-top: 12px;
             border-top: 1px dashed var(--border-color);
         }
 
@@ -147,12 +163,17 @@
             font-weight: bold;
         }
 
-        .pnl-total {
-            font-size: 1.4rem;
+        .pnl-usd {
+            font-size: 1.3rem;
         }
 
+        .pnl-twd {
+            font-size: 1.5rem;
+        }
+
+        /* 顏色標記（亞洲習慣：紅賺綠賠） */
         .profit {
-            color: #ff4d4d; /* 華人習慣：紅賺綠賠。如習慣美股可自行與下行調換顏色 */
+            color: #ff4d4d;
         }
 
         .loss {
@@ -167,7 +188,7 @@
 <body>
 
 <div class="calculator-card">
-    <h2>微型黃金 (MGC) 損益計算</h2>
+    <h2>微型黃金 (MGC) 損益計算機</h2>
     
     <label>交易方向</label>
     <div class="direction-group">
@@ -175,30 +196,41 @@
         <button type="button" class="direction-btn sell" onclick="setDirection('SELL')">做空 (Sell)</button>
     </div>
 
-    <div class="form-group">
-        <label for="entryPrice">進場成本價 (美元/盎司)</label>
-        <input type="number" id="entryPrice" step="0.1" placeholder="例如: 2050.5" oninput="calculatePnL()">
+    <div class="form-row">
+        <div class="form-group">
+            <label for="entryPrice">進場成本價 (美元)</label>
+            <input type="number" id="entryPrice" step="0.1" placeholder="例: 2050.5" oninput="calculatePnL()">
+        </div>
+        <div class="form-group">
+            <label for="currentPrice">目前價格 / 出場價</label>
+            <input type="number" id="currentPrice" step="0.1" placeholder="例: 2062.3" oninput="calculatePnL()">
+        </div>
     </div>
 
-    <div class="form-group">
-        <label for="currentPrice">目前價格 / 出場價 (美元/盎司)</label>
-        <input type="number" id="currentPrice" step="0.1" placeholder="例如: 2062.3" oninput="calculatePnL()">
+    <div class="form-row">
+        <div class="form-group">
+            <label for="quantity">交易口數</label>
+            <input type="number" id="quantity" value="1" min="1" step="1" oninput="calculatePnL()">
+        </div>
+        <div class="form-group">
+            <label for="exchangeRate">美金兌台幣匯率</label>
+            <input type="number" id="exchangeRate" value="32.5" step="0.01" placeholder="例: 32.5" oninput="calculatePnL()">
+        </div>
     </div>
-
-    <div class="form-group">
-        <label for="quantity">交易口數</label>
-        <input type="number" id="quantity" value="1" min="1" step="1" oninput="calculatePnL()">
-        <div class="hint">* 微型黃金每口為 10 盎司 (每 1 美元點值 = $10 USD)</div>
-    </div>
+    <div class="hint" style="margin-top: -8px; margin-bottom: 15px;">* 微型黃金每口 10 盎司 (每 1 美元點值 = $10 USD)</div>
 
     <div class="result-container">
         <div class="result-row">
             <span>價差點數：</span>
-            <span id="pointDifference" class="result-value">0.0</span>
+            <span id="pointDifference" class="result-value">0.0 美元</span>
         </div>
-        <div class="result-row">
+        <div class="result-row highlight-usd">
             <span>總損益 (USD)：</span>
-            <span id="pnlUSD" class="result-value pnl-total neutral">$0.00</span>
+            <span id="pnlUSD" class="result-value pnl-usd neutral">$0.00</span>
+        </div>
+        <div class="result-row highlight-twd">
+            <span>估算損益 (TWD)：</span>
+            <span id="pnlTWD" class="result-value pnl-twd neutral">NT$ 0</span>
         </div>
     </div>
 </div>
@@ -209,7 +241,6 @@
     function setDirection(direction) {
         currentDirection = direction;
         
-        // 切換按鈕激活狀態
         const buyBtn = document.querySelector('.direction-btn.buy');
         const sellBtn = document.querySelector('.direction-btn.sell');
         
@@ -221,7 +252,6 @@
             buyBtn.classList.remove('active');
         }
         
-        // 重新計算損益
         calculatePnL();
     }
 
@@ -230,16 +260,20 @@
         const entryPrice = parseFloat(document.getElementById('entryPrice').value);
         const currentPrice = parseFloat(document.getElementById('currentPrice').value);
         const quantity = parseInt(document.getElementById('quantity').value);
+        const exchangeRate = parseFloat(document.getElementById('exchangeRate').value);
 
         // 元素引用
         const pointDiffEl = document.getElementById('pointDifference');
         const pnlUSDEl = document.getElementById('pnlUSD');
+        const pnlTWDEl = document.getElementById('pnlTWD');
 
         // 驗證輸入，若未輸入完整則清空結果
-        if (isNaN(entryPrice) || !entryPrice || isNaN(currentPrice) || !currentPrice || isNaN(quantity) || quantity <= 0) {
-            pointDiffEl.innerText = "0.0";
+        if (isNaN(entryPrice) || !entryPrice || isNaN(currentPrice) || !currentPrice || isNaN(quantity) || quantity <= 0 || isNaN(exchangeRate) || exchangeRate <= 0) {
+            pointDiffEl.innerText = "0.0 美元";
             pnlUSDEl.innerText = "$0.00";
-            pnlUSDEl.className = "result-value pnl-total neutral";
+            pnlTWDEl.innerText = "NT$ 0";
+            pnlUSDEl.className = "result-value pnl-usd neutral";
+            pnlTWDEl.className = "result-value pnl-twd neutral";
             return;
         }
 
@@ -251,22 +285,37 @@
             pointDiff = entryPrice - currentPrice;
         }
 
-        // 2. 計算總損益 (微型黃金乘數為 10)
+        // 2. 計算美金總損益 (微型黃金合約乘數為 10)
         const contractSize = 10; 
-        const totalPnL = pointDiff * contractSize * quantity;
+        const totalPnLUSD = pointDiff * contractSize * quantity;
 
-        // 3. 渲染畫面 (保留小數點後兩位)
-        pointDiffEl.innerText = (currentDirection === 'BUY' ? '+' : '') + pointDiff.toFixed(1) + " 美元";
+        // 3. 計算台幣總損益 (四捨五入至整數)
+        const totalPnLTWD = Math.round(totalPnLUSD * exchangeRate);
+
+        // 4. 渲染畫面
+        pointDiffEl.innerText = (pointDiff > 0 ? '+' : '') + pointDiff.toFixed(1) + " 美元";
         
-        if (totalPnL > 0) {
-            pnlUSDEl.innerText = `+$${totalPnL.toFixed(2)}`;
-            pnlUSDEl.className = "result-value pnl-total profit";
-        } else if (totalPnL < 0) {
-            pnlUSDEl.innerText = `-$${Math.abs(totalPnL).toFixed(2)}`;
-            pnlUSDEl.className = "result-value pnl-total loss";
+        // 格式化千分位用
+        const formatterTWD = new Intl.NumberFormat('zh-TW');
+
+        if (totalPnLUSD > 0) {
+            pnlUSDEl.innerText = `+$${totalPnLUSD.toFixed(2)}`;
+            pnlTWDEl.innerText = `+NT$ ${formatterTWD.format(totalPnLTWD)}`;
+            
+            pnlUSDEl.className = "result-value pnl-usd profit";
+            pnlTWDEl.className = "result-value pnl-twd profit";
+        } else if (totalPnLUSD < 0) {
+            pnlUSDEl.innerText = `-$${Math.abs(totalPnLUSD).toFixed(2)}`;
+            pnlTWDEl.innerText = `-NT$ ${formatterTWD.format(Math.abs(totalPnLTWD))}`;
+            
+            pnlUSDEl.className = "result-value pnl-usd loss";
+            pnlTWDEl.className = "result-value pnl-twd loss";
         } else {
-            pnlUSDEl.innerText = `$${totalPnL.toFixed(2)}`;
-            pnlUSDEl.className = "result-value pnl-total neutral";
+            pnlUSDEl.innerText = `$${totalPnLUSD.toFixed(2)}`;
+            pnlTWDEl.innerText = `NT$ 0`;
+            
+            pnlUSDEl.className = "result-value pnl-usd neutral";
+            pnlTWDEl.className = "result-value pnl-twd neutral";
         }
     }
 </script>
