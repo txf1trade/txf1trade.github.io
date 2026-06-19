@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>微型黃金損益計算機</title>
     
-    <!-- PWA 元標籤 -->
     <meta name="theme-color" content="#1a1a1a" id="theme-meta-color">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="微金計算機">
     
-    <!-- PWA Web Manifest (透過 Data URI 內嵌，免去額外檔案) -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%232d2d2d%22/><text y=%22.9em%22 font-size=%2280%22 fill=%22%23d4af37%22>MGC</text></svg>">
+    
     <link rel="manifest" href='data:application/manifest+json,{"name":"微型黃金期貨損益計算機","short_name":"微金計算機","start_url":".","display":"standalone","background_color":"#1a1a1a","theme_color":"#1a1a1a","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%232d2d2d%22/><text y=%22.9em%22 font-size=%2280%22 fill=%22%23d4af37%22>MGC</text></svg>","sizes":"512x512","type":"image/svg+xml"}]}'>
 
     <style>
@@ -65,8 +65,8 @@
             border-radius: 10px;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
             width: 100%;
-            max-width: 400px; /* 縮小卡片寬度 */
-            padding: 18px;     /* 縮小內邊距 */
+            max-width: 400px;
+            padding: 18px;
             position: relative;
         }
 
@@ -89,11 +89,11 @@
             text-align: center;
             color: var(--gold-accent);
             margin-bottom: 15px;
-            font-size: 1.25rem; /* 字體縮小 */
+            font-size: 1.25rem;
             letter-spacing: 0.5px;
             border-bottom: 2px solid var(--border-color);
             padding-bottom: 8px;
-            padding-right: 40px; /* 留位置給按鈕 */
+            padding-right: 40px;
         }
 
         .form-group {
@@ -114,7 +114,7 @@
         label {
             display: block;
             margin-bottom: 4px;
-            font-size: 0.85rem; /* 字體縮小 */
+            font-size: 0.85rem;
             color: var(--label-color);
         }
 
@@ -127,7 +127,7 @@
 
         .direction-btn {
             flex: 1;
-            padding: 9px; /* 縮小按鈕 */
+            padding: 9px;
             border: 1.5px solid var(--border-color);
             background: transparent;
             color: var(--label-color);
@@ -153,12 +153,12 @@
         /* 輸入框樣式 */
         input[type="number"] {
             width: 100%;
-            padding: 9px; /* 縮小輸入框 */
+            padding: 9px;
             background-color: var(--input-bg);
             border: 1px solid var(--border-color);
             border-radius: 5px;
             color: var(--text-color);
-            font-size: 0.95rem; /* 字體縮小 */
+            font-size: 0.95rem;
             transition: border-color 0.2s, background-color 0.3s, color 0.3s;
         }
 
@@ -168,7 +168,7 @@
         }
 
         .hint {
-            font-size: 0.75rem; /* 字體縮小 */
+            font-size: 0.75rem;
             color: #888;
             margin-top: 3px;
         }
@@ -187,7 +187,7 @@
             display: flex;
             justify-content: space-between;
             margin-bottom: 8px;
-            font-size: 0.9rem; /* 字體縮小 */
+            font-size: 0.9rem;
         }
 
         .result-row.highlight-usd {
@@ -205,11 +205,11 @@
         }
 
         .pnl-usd {
-            font-size: 1.1rem; /* 字體縮小 */
+            font-size: 1.1rem;
         }
 
         .pnl-twd {
-            font-size: 1.3rem; /* 字體縮小 */
+            font-size: 1.3rem;
         }
 
         /* 顏色標記 */
@@ -221,19 +221,16 @@
 <body>
 
 <div class="calculator-card">
-    <!-- 燈號主題切換 -->
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">☀️ 淺色</button>
 
     <h2>微型黃金 (MGC) 計算機</h2>
     
-    <!-- 多空選擇 -->
     <label>交易方向</label>
     <div class="direction-group">
         <button type="button" class="direction-btn buy active" onclick="setDirection('BUY')">做多 (Buy)</button>
         <button type="button" class="direction-btn sell" onclick="setDirection('SELL')">做空 (Sell)</button>
     </div>
 
-    <!-- 成本價與現價 -->
     <div class="form-row">
         <div class="form-group">
             <label for="entryPrice">進場成本 (美元)</label>
@@ -245,7 +242,6 @@
         </div>
     </div>
 
-    <!-- 口數與匯率 -->
     <div class="form-row">
         <div class="form-group">
             <label for="quantity">交易口數</label>
@@ -258,7 +254,6 @@
     </div>
     <div class="hint" style="margin-top: -6px; margin-bottom: 12px;">* 1口=10盎司 (1美元點值 = $10 USD)</div>
 
-    <!-- 計算結果顯示 -->
     <div class="result-container">
         <div class="result-row">
             <span>價差點數：</span>
@@ -278,9 +273,7 @@
 <script>
     let currentDirection = 'BUY';
 
-    // ---- 主題切換邏輯 ----
     function initTheme() {
-        // 偵測系統是否為淺色模式
         const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
         if (prefersLight) {
             document.documentElement.setAttribute('data-theme', 'light');
@@ -305,7 +298,6 @@
         }
     }
 
-    // ---- 核心計算邏輯 ----
     function setDirection(direction) {
         currentDirection = direction;
         const buyBtn = document.querySelector('.direction-btn.buy');
@@ -366,13 +358,10 @@
         }
     }
 
-    // 初始化執行
     initTheme();
 
-    // ---- PWA Service Worker 註冊 (支援離線使用) ----
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            // 利用 Data URI 產生一個虛擬的 Service Worker 腳本，免去外部檔案
             const swCode = `
                 const CACHE_NAME = 'mgc-calc-v1';
                 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.add(location.href))));
