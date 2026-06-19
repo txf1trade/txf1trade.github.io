@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微型黃金期貨 (MGC) 損益計算機</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #ffffff;
+            --gold-accent: #d4af37;
+            --gold-hover: #f3e5ab;
+            --buy-color: #ff4d4d;
+            --sell-color: #00b359;
+            --border-color: #404040;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, "Microsoft JhengHei";
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .calculator-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--gold-accent);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 450px;
+            padding: 25px;
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--gold-accent);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: #ccc;
+        }
+
+        /* 多空切換按鈕 */
+        .direction-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .direction-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            background: transparent;
+            color: #aaa;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .direction-btn.buy.active {
+            background-color: var(--buy-color);
+            border-color: var(--buy-color);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 77, 77, 0.4);
+        }
+
+        .direction-btn.sell.active {
+            background-color: var(--sell-color);
+            border-color: var(--sell-color);
+            color: white;
+            box-shadow: 0 0 10px rgba(0, 179, 89, 0.4);
+        }
+
+        /* 輸入框樣式 */
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            background-color: #1a1a1a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: white;
+            font-size: 1.1rem;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--gold-accent);
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        /* 結果顯示區 */
+        .result-container {
+            margin-top: 25px;
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .result-row:last-child {
+            margin-bottom: 0;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .result-value {
+            font-weight: bold;
+        }
+
+        .pnl-total {
+            font-size: 1.4rem;
+        }
+
+        .profit {
+            color: #ff4d4d; /* 華人習慣：紅賺綠賠。如習慣美股可自行與下行調換顏色 */
+        }
+
+        .loss {
+            color: #00b359;
+        }
+
+        .neutral {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator-card">
+    <h2>微型黃金 (MGC) 損益計算</h2>
+    
+    <label>交易方向</label>
+    <div class="direction-group">
+        <button type="button" class="direction-btn buy active" onclick="setDirection('BUY')">做多 (Buy)</button>
+        <button type="button" class="direction-btn sell" onclick="setDirection('SELL')">做空 (Sell)</button>
+    </div>
+
+    <div class="form-group">
+        <label for="entryPrice">進場成本價 (美元/盎司)</label>
+        <input type="number" id="entryPrice" step="0.1" placeholder="例如: 2050.5" oninput="calculatePnL()">
+    </div>
+
+    <div class="form-group">
+        <label for="currentPrice">目前價格 / 出場價 (美元/盎司)</label>
+        <input type="number" id="currentPrice" step="0.1" placeholder="例如: 2062.3" oninput="calculatePnL()">
+    </div>
+
+    <div class="form-group">
+        <label for="quantity">交易口數</label>
+        <input type="number" id="quantity" value="1" min="1" step="1" oninput="calculatePnL()">
+        <div class="hint">* 微型黃金每口為 10 盎司 (每 1 美元點值 = $10 USD)</div>
+    </div>
+
+    <div class="result-container">
+        <div class="result-row">
+            <span>價差點數：</span>
+            <span id="pointDifference" class="result-value">0.0</span>
+        </div>
+        <div class="result-row">
+            <span>總損益 (USD)：</span>
+            <span id="pnlUSD" class="result-value pnl-total neutral">$0.00</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentDirection = 'BUY';
+
+    function setDirection(direction) {
+        currentDirection = direction;
+        
+        // 切換按鈕激活狀態
+        const buyBtn = document.querySelector('.direction-btn.buy');
+        const sellBtn = document.querySelector('.direction-btn.sell');
+        
+        if (direction === 'BUY') {
+            buyBtn.classList.add('active');
+            sellBtn.classList.remove('active');
+        } else {
+            sellBtn.classList.add('active');
+            buyBtn.classList.remove('active');
+        }
+        
+        // 重新計算損益
+        calculatePnL();
+    }
+
+    function calculatePnL() {
+        // 取得輸入值
+        const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+        const currentPrice = parseFloat(document.getElementById('currentPrice').value);
+        const quantity = parseInt(document.getElementById('quantity').value);
+
+        // 元素引用
+        const pointDiffEl = document.getElementById('pointDifference');
+        const pnlUSDEl = document.getElementById('pnlUSD');
+
+        // 驗證輸入，若未輸入完整則清空結果
+        if (isNaN(entryPrice) || !entryPrice || isNaN(currentPrice) || !currentPrice || isNaN(quantity) || quantity <= 0) {
+            pointDiffEl.innerText = "0.0";
+            pnlUSDEl.innerText = "$0.00";
+            pnlUSDEl.className = "result-value pnl-total neutral";
+            return;
+        }
+
+        // 1. 計算價差點數
+        let pointDiff = 0;
+        if (currentDirection === 'BUY') {
+            pointDiff = currentPrice - entryPrice;
+        } else {
+            pointDiff = entryPrice - currentPrice;
+        }
+
+        // 2. 計算總損益 (微型黃金乘數為 10)
+        const contractSize = 10; 
+        const totalPnL = pointDiff * contractSize * quantity;
+
+        // 3. 渲染畫面 (保留小數點後兩位)
+        pointDiffEl.innerText = (currentDirection === 'BUY' ? '+' : '') + pointDiff.toFixed(1) + " 美元";
+        
+        if (totalPnL > 0) {
+            pnlUSDEl.innerText = `+$${totalPnL.toFixed(2)}`;
+            pnlUSDEl.className = "result-value pnl-total profit";
+        } else if (totalPnL < 0) {
+            pnlUSDEl.innerText = `-$${Math.abs(totalPnL).toFixed(2)}`;
+            pnlUSDEl.className = "result-value pnl-total loss";
+        } else {
+            pnlUSDEl.innerText = `$${totalPnL.toFixed(2)}`;
+            pnlUSDEl.className = "result-value pnl-total neutral";
+        }
+    }
+</script>
+
+</body>
+</html>
