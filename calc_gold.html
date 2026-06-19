@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>微型黃金損益計算機</title>
+    <title>微型黃金計算機</title>
     
     <meta name="theme-color" content="#1a1a1a" id="theme-meta-color">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -26,6 +26,7 @@
             --sell-color: #00b359;
             --border-color: #383838;
             --label-color: #aaaaaa;
+            --row-even-bg: #282828;
         }
 
         /* 變數定義：淺色模式 */
@@ -39,6 +40,7 @@
             --sell-color: #2a9d8f;
             --border-color: #dddddd;
             --label-color: #555555;
+            --row-even-bg: #f1f3f5;
         }
 
         * {
@@ -150,6 +152,55 @@
             color: white;
         }
 
+        /* 下拉選單樣式 */
+        select {
+            width: 100%;
+            padding: 9px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-color);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, background-color 0.3s;
+        }
+        select:focus {
+            border-color: var(--gold-accent);
+        }
+
+        /* 分批樣式 */
+        .batch-section { display: none; margin-bottom: 12px; }
+        .batch-header {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 4px;
+            padding: 0 4px;
+        }
+        .batch-header span {
+            flex: 1;
+            font-size: 0.8rem;
+            color: var(--label-color);
+            font-weight: bold;
+        }
+        .batch-header span.idx { flex: 0 0 20px; text-align: center; }
+
+        .batch-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 6px;
+            align-items: center;
+            padding: 4px;
+            border-radius: 6px;
+        }
+        .batch-row:nth-child(even) { background-color: var(--row-even-bg); }
+        .batch-idx {
+            flex: 0 0 20px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--gold-accent);
+            font-weight: bold;
+        }
+
         /* 輸入框樣式 */
         input[type="number"] {
             width: 100%;
@@ -190,27 +241,17 @@
             font-size: 0.9rem;
         }
 
-        .result-row.highlight-usd {
-            padding-top: 2px;
-        }
-
+        .result-row.optional { display: none; }
+        .result-row.highlight-usd { padding-top: 2px; }
         .result-row.highlight-twd {
             margin-bottom: 0;
             padding-top: 8px;
             border-top: 1px dashed var(--border-color);
         }
 
-        .result-value {
-            font-weight: bold;
-        }
-
-        .pnl-usd {
-            font-size: 1.1rem;
-        }
-
-        .pnl-twd {
-            font-size: 1.3rem;
-        }
+        .result-value { font-weight: bold; }
+        .pnl-usd { font-size: 1.1rem; }
+        .pnl-twd { font-size: 1.3rem; }
 
         /* 顏色標記 */
         .profit { color: var(--buy-color); }
@@ -231,21 +272,65 @@
         <button type="button" class="direction-btn sell" onclick="setDirection('SELL')">做空 (Sell)</button>
     </div>
 
-    <div class="form-row">
+    <div class="form-group">
+        <label for="batchSelect" style="font-weight: bold;">進場模式設定</label>
+        <select id="batchSelect" onchange="adjustBatchFields()">
+            <option value="1">單一進場 (1口)</option>
+            <option value="2">分批進場 (2口)</option>
+            <option value="3">分批進場 (3口)</option>
+            <option value="4">分批進場 (4口)</option>
+            <option value="5">分批進場 (5口)</option>
+        </select>
+    </div>
+
+    <div id="singleSection" class="form-row">
         <div class="form-group">
             <label for="entryPrice">進場成本 (美元)</label>
             <input type="number" id="entryPrice" step="0.1" placeholder="請輸入成本" oninput="calculatePnL()">
         </div>
         <div class="form-group">
-            <label for="currentPrice">目前 / 出場價</label>
-            <input type="number" id="currentPrice" step="0.1" placeholder="請輸入現價" oninput="calculatePnL()">
+            <label for="quantity">交易口數</label>
+            <input type="number" id="quantity" value="1" min="1" step="1" oninput="calculatePnL()">
+        </div>
+    </div>
+
+    <div id="batchSection" class="batch-section">
+        <div class="batch-header">
+            <span class="idx">批</span>
+            <span>進場成本 (美元)</span>
+            <span>口數</span>
+        </div>
+        <div class="batch-row b-row" id="br1">
+            <div class="batch-idx">1</div>
+            <div style="flex: 1;"><input type="number" class="entry-price" step="0.1" placeholder="請輸入成本" oninput="calculatePnL()"></div>
+            <div style="flex: 1;"><input type="number" class="entry-qty" value="1" min="1" step="1" oninput="calculatePnL()"></div>
+        </div>
+        <div class="batch-row b-row" id="br2">
+            <div class="batch-idx">2</div>
+            <div style="flex: 1;"><input type="number" class="entry-price" step="0.1" placeholder="請輸入成本" oninput="calculatePnL()"></div>
+            <div style="flex: 1;"><input type="number" class="entry-qty" value="1" min="1" step="1" oninput="calculatePnL()"></div>
+        </div>
+        <div class="batch-row b-row" id="br3">
+            <div class="batch-idx">3</div>
+            <div style="flex: 1;"><input type="number" class="entry-price" step="0.1" placeholder="請輸入成本" oninput="calculatePnL()"></div>
+            <div style="flex: 1;"><input type="number" class="entry-qty" value="1" min="1" step="1" oninput="calculatePnL()"></div>
+        </div>
+        <div class="batch-row b-row" id="br4">
+            <div class="batch-idx">4</div>
+            <div style="flex: 1;"><input type="number" class="entry-price" step="0.1" placeholder="請輸入成本" oninput="calculatePnL()"></div>
+            <div style="flex: 1;"><input type="number" class="entry-qty" value="1" min="1" step="1" oninput="calculatePnL()"></div>
+        </div>
+        <div class="batch-row b-row" id="br5">
+            <div class="batch-idx">5</div>
+            <div style="flex: 1;"><input type="number" class="entry-price" step="0.1" placeholder="請輸入成本" oninput="calculatePnL()"></div>
+            <div style="flex: 1;"><input type="number" class="entry-qty" value="1" min="1" step="1" oninput="calculatePnL()"></div>
         </div>
     </div>
 
     <div class="form-row">
         <div class="form-group">
-            <label for="quantity">交易口數</label>
-            <input type="number" id="quantity" value="1" min="1" step="1" oninput="calculatePnL()">
+            <label for="currentPrice">目前 / 出場價</label>
+            <input type="number" id="currentPrice" step="0.1" placeholder="請輸入現價" oninput="calculatePnL()">
         </div>
         <div class="form-group">
             <label for="exchangeRate">美金兌台幣</label>
@@ -255,6 +340,14 @@
     <div class="hint" style="margin-top: -6px; margin-bottom: 12px;">* 1口=10盎司 (1美元點值 = $10 USD)</div>
 
     <div class="result-container">
+        <div class="result-row">
+            <span>總計口數：</span>
+            <span id="totalQuantity" class="result-value">1 口</span>
+        </div>
+        <div class="result-row optional" id="avgPriceRow">
+            <span>平均成本：</span>
+            <span id="avgEntryPrice" class="result-value">0.0 美元</span>
+        </div>
         <div class="result-row">
             <span>價差點數：</span>
             <span id="pointDifference" class="result-value">0.0 美元</span>
@@ -313,17 +406,86 @@
         calculatePnL();
     }
 
-    function calculatePnL() {
-        const entryPrice = parseFloat(document.getElementById('entryPrice').value);
-        const currentPrice = parseFloat(document.getElementById('currentPrice').value);
-        const quantity = parseInt(document.getElementById('quantity').value);
-        const exchangeRate = parseFloat(document.getElementById('exchangeRate').value);
+    // 核心邏輯：根據下拉選單的值，動態顯示對應數量的分批欄位
+    function adjustBatchFields() {
+        const count = parseInt(document.getElementById('batchSelect').value);
+        const singleSection = document.getElementById('singleSection');
+        const batchSection = document.getElementById('batchSection');
+        const avgPriceRow = document.getElementById('avgPriceRow');
 
+        if (count === 1) {
+            // 單一模式
+            singleSection.style.display = 'flex';
+            batchSection.style.display = 'none';
+            avgPriceRow.style.display = 'none';
+        } else {
+            // 分批模式
+            singleSection.style.display = 'none';
+            batchSection.style.display = 'block';
+            avgPriceRow.style.display = 'flex';
+
+            // 根據選定口數調整顯示的欄位行數 (2 - 5)
+            for (let i = 1; i <= 5; i++) {
+                const row = document.getElementById(`br${i}`);
+                if (i <= count) {
+                    row.style.display = 'flex';
+                } else {
+                    row.style.display = 'none';
+                    // 隱藏時順便把裡面的數值清空，避免影響背後的計算
+                    row.querySelector('.entry-price').value = '';
+                }
+            }
+        }
+        calculatePnL();
+    }
+
+    function calculatePnL() {
+        const currentPrice = parseFloat(document.getElementById('currentPrice').value);
+        const exchangeRate = parseFloat(document.getElementById('exchangeRate').value);
+        const batchCount = parseInt(document.getElementById('batchSelect').value);
+
+        const totalQtyEl = document.getElementById('totalQuantity');
+        const avgPriceEl = document.getElementById('avgEntryPrice');
         const pointDiffEl = document.getElementById('pointDifference');
         const pnlUSDEl = document.getElementById('pnlUSD');
         const pnlTWDEl = document.getElementById('pnlTWD');
 
-        if (isNaN(entryPrice) || !entryPrice || isNaN(currentPrice) || !currentPrice || isNaN(quantity) || quantity <= 0 || isNaN(exchangeRate) || exchangeRate <= 0) {
+        let calcEntryPrice = 0;
+        let calcTotalQty = 0;
+
+        if (batchCount === 1) {
+            // 單一進場模式
+            const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+            const quantity = parseInt(document.getElementById('quantity').value);
+            
+            if (!isNaN(entryPrice) && entryPrice > 0 && !isNaN(quantity) && quantity > 0) {
+                calcEntryPrice = entryPrice;
+                calcTotalQty = quantity;
+            }
+        } else {
+            // 智能分批模式：只走訪目前顯示出來的列數
+            const pricesInp = document.querySelectorAll('.entry-price');
+            const qtysInp = document.querySelectorAll('.entry-qty');
+            let totalValue = 0;
+
+            for (let i = 0; i < batchCount; i++) {
+                const p = parseFloat(pricesInp[i].value);
+                const q = parseInt(qtysInp[i].value);
+
+                if (!isNaN(p) && p > 0 && !isNaN(q) && q > 0) {
+                    totalValue += p * q;
+                    calcTotalQty += q;
+                }
+            }
+            if (calcTotalQty > 0) {
+                calcEntryPrice = totalValue / calcTotalQty;
+            }
+        }
+
+        // 防呆重置機制
+        if (calcTotalQty === 0 || isNaN(currentPrice) || !currentPrice || isNaN(exchangeRate) || exchangeRate <= 0) {
+            totalQtyEl.innerText = `${calcTotalQty} 口`;
+            avgPriceEl.innerText = "0.0 美元";
             pointDiffEl.innerText = "0.0 美元";
             pnlUSDEl.innerText = "$0.00";
             pnlTWDEl.innerText = "NT$ 0";
@@ -332,12 +494,19 @@
             return;
         }
 
-        let pointDiff = currentDirection === 'BUY' ? (currentPrice - entryPrice) : (entryPrice - currentPrice);
+        // 損益點差核心計算
+        let pointDiff = currentDirection === 'BUY' ? (currentPrice - calcEntryPrice) : (calcEntryPrice - currentPrice);
         const contractSize = 10; 
-        const totalPnLUSD = pointDiff * contractSize * quantity;
+        const totalPnLUSD = pointDiff * contractSize * calcTotalQty;
         const totalPnLTWD = Math.round(totalPnLUSD * exchangeRate);
 
+        // UI 渲染渲染
+        totalQtyEl.innerText = `${calcTotalQty} 口`;
+        if (batchCount > 1) {
+            avgPriceEl.innerText = `${calcEntryPrice.toFixed(1)} 美元`;
+        }
         pointDiffEl.innerText = (pointDiff > 0 ? '+' : '') + pointDiff.toFixed(1) + " 美元";
+        
         const formatterTWD = new Intl.NumberFormat('zh-TW');
 
         if (totalPnLUSD > 0) {
@@ -363,7 +532,7 @@
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             const swCode = `
-                const CACHE_NAME = 'mgc-calc-v1';
+                const CACHE_NAME = 'mgc-calc-v4';
                 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.add(location.href))));
                 self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
             `;
