@@ -1,4 +1,789 @@
 <!DOCTYPE html>
+
+<html lang="zh-TW">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>微型黃金損益計算機</title>
+
+    
+
+    <!-- PWA 元標籤 -->
+
+    <meta name="theme-color" content="#1a1a1a" id="theme-meta-color">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <meta name="apple-mobile-web-app-title" content="微金計算機">
+
+    
+
+    <!-- PWA Web Manifest (透過 Data URI 內嵌，免去額外檔案) -->
+
+    <link rel="manifest" href='data:application/manifest+json,{"name":"微型黃金期貨損益計算機","short_name":"微金計算機","start_url":".","display":"standalone","background_color":"#1a1a1a","theme_color":"#1a1a1a","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%232d2d2d%22/><text y=%22.9em%22 font-size=%2280%22 fill=%22%23d4af37%22>MGC</text></svg>","sizes":"512x512","type":"image/svg+xml"}]}'>
+
+
+
+    <style>
+
+        /* 變數定義：深色模式 */
+
+        :root {
+
+            --bg-color: #121212;
+
+            --card-bg: #222222;
+
+            --text-color: #e0e0e0;
+
+            --input-bg: #1a1a1a;
+
+            --gold-accent: #d4af37;
+
+            --buy-color: #ff4d4d;
+
+            --sell-color: #00b359;
+
+            --border-color: #383838;
+
+            --label-color: #aaaaaa;
+
+        }
+
+
+
+        /* 變數定義：淺色模式 */
+
+        [data-theme="light"] {
+
+            --bg-color: #f4f6f9;
+
+            --card-bg: #ffffff;
+
+            --text-color: #2b303a;
+
+            --input-bg: #f8f9fa;
+
+            --gold-accent: #b89218;
+
+            --buy-color: #e63946;
+
+            --sell-color: #2a9d8f;
+
+            --border-color: #dddddd;
+
+            --label-color: #555555;
+
+        }
+
+
+
+        * {
+
+            box-sizing: border-box;
+
+            margin: 0;
+
+            padding: 0;
+
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+
+        }
+
+
+
+        body {
+
+            background-color: var(--bg-color);
+
+            color: var(--text-color);
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            min-height: 100vh;
+
+            padding: 12px;
+
+            transition: background-color 0.3s, color 0.3s;
+
+        }
+
+
+
+        .calculator-card {
+
+            background-color: var(--card-bg);
+
+            border: 1px solid var(--gold-accent);
+
+            border-radius: 10px;
+
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+
+            width: 100%;
+
+            max-width: 400px; /* 縮小卡片寬度 */
+
+            padding: 18px;     /* 縮小內邊距 */
+
+            position: relative;
+
+        }
+
+
+
+        /* 模式切換按鈕 */
+
+        .theme-toggle {
+
+            position: absolute;
+
+            top: 15px;
+
+            right: 15px;
+
+            background: transparent;
+
+            border: 1px solid var(--border-color);
+
+            color: var(--text-color);
+
+            padding: 4px 8px;
+
+            font-size: 0.75rem;
+
+            border-radius: 4px;
+
+            cursor: pointer;
+
+            transition: all 0.2s;
+
+        }
+
+
+
+        h2 {
+
+            text-align: center;
+
+            color: var(--gold-accent);
+
+            margin-bottom: 15px;
+
+            font-size: 1.25rem; /* 字體縮小 */
+
+            letter-spacing: 0.5px;
+
+            border-bottom: 2px solid var(--border-color);
+
+            padding-bottom: 8px;
+
+            padding-right: 40px; /* 留位置給按鈕 */
+
+        }
+
+
+
+        .form-group {
+
+            margin-bottom: 12px;
+
+        }
+
+
+
+        .form-row {
+
+            display: flex;
+
+            gap: 10px;
+
+            margin-bottom: 12px;
+
+        }
+
+
+
+        .form-row .form-group {
+
+            flex: 1;
+
+            margin-bottom: 0;
+
+        }
+
+
+
+        label {
+
+            display: block;
+
+            margin-bottom: 4px;
+
+            font-size: 0.85rem; /* 字體縮小 */
+
+            color: var(--label-color);
+
+        }
+
+
+
+        /* 多空切換按鈕 */
+
+        .direction-group {
+
+            display: flex;
+
+            gap: 8px;
+
+            margin-bottom: 14px;
+
+        }
+
+
+
+        .direction-btn {
+
+            flex: 1;
+
+            padding: 9px; /* 縮小按鈕 */
+
+            border: 1.5px solid var(--border-color);
+
+            background: transparent;
+
+            color: var(--label-color);
+
+            font-size: 0.9rem;
+
+            font-weight: bold;
+
+            border-radius: 5px;
+
+            cursor: pointer;
+
+            transition: all 0.2s ease;
+
+        }
+
+
+
+        .direction-btn.buy.active {
+
+            background-color: var(--buy-color);
+
+            border-color: var(--buy-color);
+
+            color: white;
+
+        }
+
+
+
+        .direction-btn.sell.active {
+
+            background-color: var(--sell-color);
+
+            border-color: var(--sell-color);
+
+            color: white;
+
+        }
+
+
+
+        /* 輸入框樣式 */
+
+        input[type="number"] {
+
+            width: 100%;
+
+            padding: 9px; /* 縮小輸入框 */
+
+            background-color: var(--input-bg);
+
+            border: 1px solid var(--border-color);
+
+            border-radius: 5px;
+
+            color: var(--text-color);
+
+            font-size: 0.95rem; /* 字體縮小 */
+
+            transition: border-color 0.2s, background-color 0.3s, color 0.3s;
+
+        }
+
+
+
+        input[type="number"]:focus {
+
+            outline: none;
+
+            border-color: var(--gold-accent);
+
+        }
+
+
+
+        .hint {
+
+            font-size: 0.75rem; /* 字體縮小 */
+
+            color: #888;
+
+            margin-top: 3px;
+
+        }
+
+
+
+        /* 結果顯示區 */
+
+        .result-container {
+
+            margin-top: 15px;
+
+            background-color: var(--input-bg);
+
+            border-radius: 6px;
+
+            padding: 12px;
+
+            border: 1px solid var(--border-color);
+
+            transition: background-color 0.3s, border-color 0.3s;
+
+        }
+
+
+
+        .result-row {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            margin-bottom: 8px;
+
+            font-size: 0.9rem; /* 字體縮小 */
+
+        }
+
+
+
+        .result-row.highlight-usd {
+
+            padding-top: 2px;
+
+        }
+
+
+
+        .result-row.highlight-twd {
+
+            margin-bottom: 0;
+
+            padding-top: 8px;
+
+            border-top: 1px dashed var(--border-color);
+
+        }
+
+
+
+        .result-value {
+
+            font-weight: bold;
+
+        }
+
+
+
+        .pnl-usd {
+
+            font-size: 1.1rem; /* 字體縮小 */
+
+        }
+
+
+
+        .pnl-twd {
+
+            font-size: 1.3rem; /* 字體縮小 */
+
+        }
+
+
+
+        /* 顏色標記 */
+
+        .profit { color: var(--buy-color); }
+
+        .loss { color: var(--sell-color); }
+
+        .neutral { color: var(--text-color); }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+<div class="calculator-card">
+
+    <!-- 燈號主題切換 -->
+
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">☀️ 淺色</button>
+
+
+
+    <h2>微型黃金 (MGC) 計算機</h2>
+
+    
+
+    <!-- 多空選擇 -->
+
+    <label>交易方向</label>
+
+    <div class="direction-group">
+
+        <button type="button" class="direction-btn buy active" onclick="setDirection('BUY')">做多 (Buy)</button>
+
+        <button type="button" class="direction-btn sell" onclick="setDirection('SELL')">做空 (Sell)</button>
+
+    </div>
+
+
+
+    <!-- 成本價與現價 -->
+
+    <div class="form-row">
+
+        <div class="form-group">
+
+            <label for="entryPrice">進場成本 (美元)</label>
+
+            <input type="number" id="entryPrice" step="0.1" placeholder="例: 2350.5" oninput="calculatePnL()">
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="currentPrice">目前 / 出場價</label>
+
+            <input type="number" id="currentPrice" step="0.1" placeholder="例: 2362.3" oninput="calculatePnL()">
+
+        </div>
+
+    </div>
+
+
+
+    <!-- 口數與匯率 -->
+
+    <div class="form-row">
+
+        <div class="form-group">
+
+            <label for="quantity">交易口數</label>
+
+            <input type="number" id="quantity" value="1" min="1" step="1" oninput="calculatePnL()">
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="exchangeRate">美金兌台幣</label>
+
+            <input type="number" id="exchangeRate" value="32.5" step="0.01" oninput="calculatePnL()">
+
+        </div>
+
+    </div>
+
+    <div class="hint" style="margin-top: -6px; margin-bottom: 12px;">* 1口=10盎司 (1美元點值 = $10 USD)</div>
+
+
+
+    <!-- 計算結果顯示 -->
+
+    <div class="result-container">
+
+        <div class="result-row">
+
+            <span>價差點數：</span>
+
+            <span id="pointDifference" class="result-value">0.0 美元</span>
+
+        </div>
+
+        <div class="result-row highlight-usd">
+
+            <span>總損益 (USD)：</span>
+
+            <span id="pnlUSD" class="result-value pnl-usd neutral">$0.00</span>
+
+        </div>
+
+        <div class="result-row highlight-twd">
+
+            <span>估算損益 (TWD)：</span>
+
+            <span id="pnlTWD" class="result-value pnl-twd neutral">NT$ 0</span>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+    let currentDirection = 'BUY';
+
+
+
+    // ---- 主題切換邏輯 ----
+
+    function initTheme() {
+
+        // 偵測系統是否為淺色模式
+
+        const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+
+        if (prefersLight) {
+
+            document.documentElement.setAttribute('data-theme', 'light');
+
+            document.getElementById('themeToggle').innerText = "🌙 深色";
+
+            document.getElementById('theme-meta-color').setAttribute('content', '#f4f6f9');
+
+        }
+
+    }
+
+
+
+    function toggleTheme() {
+
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+
+        const toggleBtn = document.getElementById('themeToggle');
+
+        const metaColor = document.getElementById('theme-meta-color');
+
+        
+
+        if (currentTheme === 'light') {
+
+            document.documentElement.removeAttribute('data-theme');
+
+            toggleBtn.innerText = "☀️ 淺色";
+
+            metaColor.setAttribute('content', '#1a1a1a');
+
+        } else {
+
+            document.documentElement.setAttribute('data-theme', 'light');
+
+            toggleBtn.innerText = "🌙 深色";
+
+            metaColor.setAttribute('content', '#f4f6f9');
+
+        }
+
+    }
+
+
+
+    // ---- 核心計算邏輯 ----
+
+    function setDirection(direction) {
+
+        currentDirection = direction;
+
+        const buyBtn = document.querySelector('.direction-btn.buy');
+
+        const sellBtn = document.querySelector('.direction-btn.sell');
+
+        
+
+        if (direction === 'BUY') {
+
+            buyBtn.classList.add('active');
+
+            sellBtn.classList.remove('active');
+
+        } else {
+
+            sellBtn.classList.add('active');
+
+            buyBtn.classList.remove('active');
+
+        }
+
+        calculatePnL();
+
+    }
+
+
+
+    function calculatePnL() {
+
+        const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+
+        const currentPrice = parseFloat(document.getElementById('currentPrice').value);
+
+        const quantity = parseInt(document.getElementById('quantity').value);
+
+        const exchangeRate = parseFloat(document.getElementById('exchangeRate').value);
+
+
+
+        const pointDiffEl = document.getElementById('pointDifference');
+
+        const pnlUSDEl = document.getElementById('pnlUSD');
+
+        const pnlTWDEl = document.getElementById('pnlTWD');
+
+
+
+        if (isNaN(entryPrice) || !entryPrice || isNaN(currentPrice) || !currentPrice || isNaN(quantity) || quantity <= 0 || isNaN(exchangeRate) || exchangeRate <= 0) {
+
+            pointDiffEl.innerText = "0.0 美元";
+
+            pnlUSDEl.innerText = "$0.00";
+
+            pnlTWDEl.innerText = "NT$ 0";
+
+            pnlUSDEl.className = "result-value pnl-usd neutral";
+
+            pnlTWDEl.className = "result-value pnl-twd neutral";
+
+            return;
+
+        }
+
+
+
+        let pointDiff = currentDirection === 'BUY' ? (currentPrice - entryPrice) : (entryPrice - currentPrice);
+
+        const contractSize = 10; 
+
+        const totalPnLUSD = pointDiff * contractSize * quantity;
+
+        const totalPnLTWD = Math.round(totalPnLUSD * exchangeRate);
+
+
+
+        pointDiffEl.innerText = (pointDiff > 0 ? '+' : '') + pointDiff.toFixed(1) + " 美元";
+
+        const formatterTWD = new Intl.NumberFormat('zh-TW');
+
+
+
+        if (totalPnLUSD > 0) {
+
+            pnlUSDEl.innerText = `+$${totalPnLUSD.toFixed(2)}`;
+
+            pnlTWDEl.innerText = `+NT$ ${formatterTWD.format(totalPnLTWD)}`;
+
+            pnlUSDEl.className = "result-value pnl-usd profit";
+
+            pnlTWDEl.className = "result-value pnl-twd profit";
+
+        } else if (totalPnLUSD < 0) {
+
+            pnlUSDEl.innerText = `-$${Math.abs(totalPnLUSD).toFixed(2)}`;
+
+            pnlTWDEl.innerText = `-NT$ ${formatterTWD.format(Math.abs(totalPnLTWD))}`;
+
+            pnlUSDEl.className = "result-value pnl-usd loss";
+
+            pnlTWDEl.className = "result-value pnl-twd loss";
+
+        } else {
+
+            pnlUSDEl.innerText = `$${totalPnLUSD.toFixed(2)}`;
+
+            pnlTWDEl.innerText = `NT$ 0`;
+
+            pnlUSDEl.className = "result-value pnl-usd neutral";
+
+            pnlTWDEl.className = "result-value pnl-twd neutral";
+
+        }
+
+    }
+
+
+
+    // 初始化執行
+
+    initTheme();
+
+
+
+    // ---- PWA Service Worker 註冊 (支援離線使用) ----
+
+    if ('serviceWorker' in navigator) {
+
+        window.addEventListener('load', () => {
+
+            // 利用 Data URI 產生一個虛擬的 Service Worker 腳本，免去外部檔案
+
+            const swCode = `
+
+                const CACHE_NAME = 'mgc-calc-v1';
+
+                self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.add(location.href))));
+
+                self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
+
+            `;
+
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+
+            const swUrl = URL.createObjectURL(blob);
+
+            
+
+            navigator.serviceWorker.register(swUrl)
+
+                .then(reg => console.log('PWA Service Worker 註冊成功'))
+
+                .catch(err => console.log('Service Worker 註冊失敗:', err));
+
+        });
+
+    }
+
+</script>
+
+
+
+</body>
+
+</html>
+<!-- （漸進式網頁應用） -->
+
+<!-- <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -1080,4 +1865,4 @@
 </script>
 
 </body>
-</html> -->
+</html> --> -->
