@@ -1,0 +1,516 @@
+<!-- 
+    1. 新增小型模組
+    2. 新增近月遠月降冪、升冪功能
+    3. 已移除現貨/幅與股期/幅欄位及相關請求邏輯
+-->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>股期監控-專業優化版</title>
+    <style>
+        :root {
+            --bg-black: #121212;
+            --text-main: #e0e0e0;
+            --text-dim: #f3e859; 
+            --up-red: #ff3b30;
+            --down-green: #34c759;
+            --accent: #64ffda;
+            --strong-blue: #00e5ff;
+            --ai-gold: #ffcc00;
+            --aistock-gold: #ff0098;
+            --surface: #1e1e1e;
+            --fav-star: #ffcc00;
+            --mini-orange: #ff9500; 
+        }
+
+        html, body {
+            background-color: var(--bg-black);
+            margin: 0; padding: 0;
+            min-height: 100%;
+            -webkit-overflow-scrolling: touch;
+            color: var(--text-main);
+            font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+            display: flex; justify-content: center;
+        }
+
+        .app-wrapper { 
+            width: 98%; max-width: 550px; background: var(--bg-black); 
+            min-height: 100vh; padding-bottom: calc(40px + env(safe-area-inset-bottom)); box-sizing: border-box;
+            position: relative;
+        }
+
+        .sticky-top {
+            position: sticky; top: 0; background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px); z-index: 100; padding: 4px 2px;
+            border-bottom: 1px solid #333;
+        }
+
+        .mode-header { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; }
+        .mode-btn {
+            flex: 1; min-width: 65px; padding: 10px 2px; text-align: center; font-size: 11px;
+            font-weight: bold; border-radius: 4px; border: 1px solid #333;
+            cursor: pointer; background: #111; color: var(--text-dim);
+            white-space: nowrap; margin-bottom: 2px;
+        }
+        
+        .mode-btn.active[data-mode="all"] { border-color: var(--accent); color: var(--accent); background: rgba(100, 255, 218, 0.1); }
+        .mode-btn.active[data-mode="up"] { border-color: var(--up-red); color: var(--up-red); background: rgba(255, 59, 48, 0.1); }
+        .mode-btn.active[data-mode="down"] { border-color: var(--down-green); color: var(--down-green); background: rgba(52, 199, 89, 0.1); }
+        .mode-btn.active[data-mode="strong_buy"] { border-color: var(--strong-blue); color: var(--strong-blue); background: rgba(0, 229, 255, 0.1); }
+        .mode-btn.active[data-mode="mini"] { border-color: var(--mini-orange); color: var(--mini-orange); background: rgba(255, 149, 0, 0.1); }
+        .mode-btn.active[data-mode="ai_long"] { border-color: var(--ai-gold); color: var(--ai-gold); background: rgba(255, 204, 0, 0.1); }
+        .mode-btn.active[data-mode="fav"] { border-color: var(--fav-star); color: var(--fav-star); background: rgba(255, 204, 0, 0.1); }
+
+        .search-row { padding: 4px 2px; position: relative; display: flex; align-items: center; }
+        #search-input {
+            width: 100%; background: #222; border: 1px solid #444; border-radius: 4px;
+            padding: 8px; padding-right: 32px; color: #fff; font-size: 16px; 
+            box-sizing: border-box; outline: none;
+        }
+        #clear-search {
+            position: absolute; right: 10px; color: #888; cursor: pointer; 
+            display: none; font-size: 20px; padding: 0 5px; line-height: 1;
+        }
+
+        .fav-chips-wrapper {
+            padding: 6px 2px; overflow-x: auto; white-space: nowrap;
+            display: none; -webkit-overflow-scrolling: touch; border-bottom: 1px solid #222;
+        }
+        .fav-chips-wrapper::-webkit-scrollbar { display: none; }
+        .chip {
+            display: inline-block; padding: 4px 12px; margin-right: 8px;
+            border-radius: 15px; background: #222; color: #888;
+            font-size: 11px; border: 1px solid #333; cursor: pointer;
+        }
+        .chip.active { background: rgba(255, 204, 0, 0.15); color: var(--ai-gold); border-color: var(--ai-gold); }
+
+        .controls-row { display: flex; align-items: center; gap: 4px; background: var(--surface); padding: 6px 8px; border-radius: 4px; position: relative; overflow: hidden; }
+        .filter-toggle { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--accent); white-space: nowrap; cursor: pointer; }
+        .slider-box { flex: 1; display: flex; align-items: center; gap: 4px; margin: 0 4px; }
+        input[type=range] { width: 100%; height: 3px; accent-color: var(--accent); }
+        #rank-val { color: #fff; min-width: 45px; font-size: 11px; font-weight: bold; }
+        #timer-display { font-family: monospace; color: var(--accent); font-size: 10px; margin-left: auto; }
+        #refresh-bar { position: absolute; bottom: 0; left: 0; height: 1.5px; background: var(--accent); width: 0%; }
+
+        .heatmap-container { margin: 10px 0; }
+        .heatmap-header {
+            font-size: 13px; color: var(--ai-gold); background: #252525;
+            padding: 10px 12px; border-radius: 6px; display: flex;
+            justify-content: space-between; align-items: center;
+            cursor: pointer; border: 1px solid #333;
+        }
+        .heatmap-grid {
+            display: none; grid-template-columns: repeat(5, 1fr);
+            gap: 4px; margin-top: 8px; padding: 4px;
+        }
+        .heatmap-container.open .heatmap-grid { display: grid; }
+        .hm-box {
+            height: 40px; border-radius: 4px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .hm-name { font-size: 10px; color: #fff; font-weight: bold; }
+        .hm-score { font-size: 9px; color: #fff; opacity: 0.9; }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 5px; }
+        th { color: var(--text-dim); font-size: 10px; padding: 8px 1px; border-bottom: 1px solid #333; cursor: pointer; user-select: none; text-decoration: none !important; }
+        th:nth-child(1) { text-align: left; width: 40%; } 
+        td { padding: 6px 1px; border-bottom: 1px solid #1a1a1a; text-align: right; vertical-align: middle; }
+        
+        .name-col { text-align: left; overflow: hidden; }
+        .name-stack { display: flex; flex-direction: column; line-height: 1.2; }
+        .name-top { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+        .name-bottom { display: flex; align-items: center; gap: 4px; }
+
+        .fav-star-btn { cursor: pointer; font-size: 16px; color: #444; user-select: none; margin-right: 4px; }
+        .fav-star-btn.active { color: var(--fav-star); }
+
+        .stock-num { font-size: 11px; color: var(--text-dim); font-family: monospace; font-weight: bold; }
+        .stock-name { font-weight: 500; font-size: 13px; cursor: pointer; white-space: nowrap; }
+        .stock-id-tag { font-size: 9px; color: var(--accent); font-weight: bold; background: #222; padding: 0 2px; border-radius: 2px; font-family: monospace; }
+        
+        .mkt-tag { font-size: 8px; padding: 1px 2px; border-radius: 3px; font-weight: bold; line-height: 1; }
+        .tag-tse { color: #fff; border: 1px solid #555; }
+        .tag-otc { color: #ff7fe5; border: 1px solid #ff7fe5; }
+
+        .score-val { font-weight: 700; font-family: monospace; font-size: 11px; }
+        .score-bar-bg { display: block; width: 100%; height: 2px; background: #222; margin-top: 2px; }
+        .score-bar-fill { height: 100%; }
+        .rank-strength-container { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; border: 1px solid #333; }
+        .rank-strength-fill { height: 100%; }
+
+        .section-divider { background: #333; color: #aaa; font-size: 10px; padding: 4px 8px; text-align: left; }
+
+        #ai-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;
+        }
+        .modal-content { background: var(--surface); width: 85%; max-width: 350px; padding: 20px; border-radius: 12px; border: 1px solid var(--ai-gold); }
+        .link-btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .link-btn { flex: 1; padding: 12px 5px; text-align: center; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; color: #fff; }
+        .link-news { background: #4285f4; }
+        .link-wantgoo { background: #d32f2f; }
+    </style>
+</head>
+<body>
+
+<div id="ai-modal" onclick="closeAI()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3 id="ai-title" style="color:var(--ai-gold); margin: 0 0 20px 0; text-align: center;">🤖 標題檢索</h3>
+        <div class="link-btn-group">
+            <a id="link-news" href="#" target="_blank" class="link-btn link-news">題材新聞</a>
+            <a id="link-wantgoo" href="#" target="_blank" class="link-btn link-wantgoo">主力籌碼</a>
+        </div>
+    </div>
+</div>
+
+<div class="app-wrapper">
+    <div class="sticky-top">
+        <div class="mode-header" id="mode-selector">
+            <div class="mode-btn" data-mode="all">全部</div>
+            <div class="mode-btn" data-mode="up">多方</div>
+            <div class="mode-btn" data-mode="down">空方</div>
+            <div class="mode-btn" data-mode="strong_buy">🔥強勢</div>
+            <div class="mode-btn" data-mode="mini">🎯小型</div>
+            <div class="mode-btn active" data-mode="ai_long">💎AI潛力</div>
+            <div class="mode-btn" data-mode="fav">★自選股</div>
+        </div>
+        
+        <div class="search-row">
+            <input type="text" id="search-input" placeholder="🔍 搜尋代碼、名稱、股期代碼......">
+            <span id="clear-search">&times;</span>
+        </div>
+
+        <div class="fav-chips-wrapper" id="fav-chips-bar">
+            <span class="chip" id="chip-all" onclick="setMode('all')">全部</span>
+            <span class="chip active" id="chip-fav" onclick="setMode('fav')">⭐ 自選 (<span id="fav-count-text">0</span>)</span>
+        </div>
+
+        <div class="controls-row">
+            <label class="filter-toggle"><input type="checkbox" id="show-tse" checked> 市</label>
+            <label class="filter-toggle"><input type="checkbox" id="show-otc" checked> 櫃</label>
+            <label class="filter-toggle" style="border-right: 1px solid #444; padding-right: 6px;">
+                <input type="checkbox" id="show-etf"> ETF</label>
+            <div class="slider-box">
+                <span id="rank-val">10 名</span>
+                <input type="range" id="rank-slider" min="10" max="240" step="10" value="10">
+            </div>
+            <span id="timer-display">5.0s</span>
+            <div id="refresh-bar"></div>
+        </div>
+    </div>
+
+    <div class="heatmap-container" id="hm-container">
+        <div class="heatmap-header" id="hm-header">
+            <span>🔥 市場強度熱力圖 <small id="hm-count" style="color: var(--text-dim); margin-left: 5px;"></small></span>
+            <span class="arrow-icon">▼</span>
+        </div>
+        <div id="heatmap-grid" class="heatmap-grid"></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th id="th-name">代號名稱</th>
+                <th id="th-near">近月</th> 
+                <th id="th-far">遠月</th> 
+                <th id="th-total">總分 ▼</th>
+                <th style="width: 20%">排行強弱</th>
+            </tr>
+        </thead>
+        <tbody id="main-table"></tbody>
+    </table>
+    <div style="height: 100px;"></div>
+</div>
+
+<script>
+    // 股票資料對照表
+    const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼期", "市"], "CCF": ["2303", "聯電期", "市"], "CDF": ["2330", "台積電期", "市"], "QFF": ["2330", "小型台積電期", "市"], "CEF": ["2881", "富邦金期", "市"], "CFF": ["1301", "台塑期", "市"], "CGF": ["2324", "仁寶期", "市"], "CHF": ["2409", "友達期", "市"], "CJF": ["2880", "華南金期", "市"], "CKF": ["2882", "國泰金期", "市"], "CLF": ["2886", "兆豐金期", "市"], "CMF": ["2887", "台新金期", "市"], "CNF": ["2891", "中信金期", "市"], "CQF": ["1216", "統一期", "市"], "CRF": ["1402", "遠東新期", "市"], "CSF": ["1605", "華新期", "市"], "CUF": ["2323", "中環期", "市"], "CWF": ["2352", "佳世達期", "市"], "CXF": ["2371", "大同期", "市"], "CYF": ["2408", "南亞科期", "市"], "CZF": ["2603", "長榮期", "市"], "DAF": ["2609", "陽明期", "市"], "DBF": ["2610", "華航期", "市"], "DCF": ["2801", "彰銀期", "市"], "DEF": ["2890", "永豐金期", "市"], "DFF": ["1101", "台泥期", "市"], "DGF": ["1326", "台化期", "市"], "DHF": ["2317", "鴻海期", "市"], "DIF": ["2337", "旺宏期", "市"], "DJF": ["2357", "華碩期", "市"], "QRF": ["2357", "小型華碩期", "市"], "DKF": ["2382", "廣達期", "市"], "DLF": ["2412", "中華電期", "市"], "DNF": ["2884", "玉山金期", "市"], "DOF": ["2885", "元大金期", "市"], "DPF": ["2892", "第一金期", "市"], "DQF": ["3481", "群創期", "市"], "DSF": ["2353", "宏碁期", "市"], "DVF": ["2454", "聯發科期", "市"], "PUF": ["2454", "小型聯發科期", "市"], "DWF": ["2915", "潤泰全期", "市"], "DXF": ["3231", "緯創期", "市"], "DYF": ["1102", "亞泥期", "市"], "DZF": ["1210", "大成期", "市"], "EEF": ["1312", "國喬期", "市"], "EGF": ["1314", "中石化期", "市"], "EHF": ["1319", "東陽期", "市"], "EKF": ["1440", "南紡期", "市"], "EMF": ["1504", "東元期", "市"], "EPF": ["1590", "亞德客-KY期", "市"], "EYF": ["1718", "中纖期", "市"], "EZF": ["1722", "台肥期", "市"], "FBF": ["2006", "東和鋼鐵期", "市"], "FCF": ["2014", "中鴻期", "市"], "FEF": ["2027", "大成鋼期", "市"], "FFF": ["2049", "上銀期", "市"], "QMF": ["2049", "小型上銀期", "市"], "FGF": ["2059","川湖期", "市"], "SVF": ["2059", "小型川湖期", "市"], "FKF": ["2105", "正新期", "市"], "FNF": ["2201", "裕隆期", "市"], "FQF": ["2301", "光寶科期", "市"], "FRF": ["2308", "台達電期", "市"], "RVF": ["2308", "小型台達電期", "市"], "FSF": ["2312", "金寶期", "市"], "FTF": ["2313", "華通期", "市"], "FVF": ["2331", "精英期", "市"], "FWF": ["2332", "友訊期", "市"], "FYF": ["2340", "台亞期", "市"], "FZF": ["2344", "華邦電期", "市"], "GAF": ["2347", "聯強期", "市"], "GCF": ["2354", "鴻準期", "市"], "GHF": ["2376", "技嘉期", "市"], "SLF": ["2376", "小型技嘉期", "市"], "GIF": ["2377", "微星期", "市"], "GJF": ["2379", "瑞昱期", "市"], "QGF": ["2379", "小型瑞昱期", "市"], "GKF": ["2385", "群光期", "市"], "GLF": ["2392", "正崴期", "市"], "GMF": ["2393", "億光期", "市"], "GNF": ["2401", "聯陽期", "市"], "GOF": ["2404", "漢唐期", "市"], "UZF": ["2404", "小型漢唐期", "市"], "GRF": ["2449", "京元電子期", "市"], "GUF": ["2455", "全新期", "市"], "GVF": ["2457", "飛宏期", "市"], "GWF": ["2458", "義隆期", "市"], "GXF": ["2474", "可成期", "市"], "GYF": ["2481", "強茂期", "市"], "GZF": ["2485", "兆赫期", "市"], "HAF": ["2489", "瑞軒期", "市"], "HBF": ["2492", "華新科期", "市"], "HCF": ["2498", "宏達電期", "市"], "HHF": ["2515", "中工期", "市"], "IHF": ["2913", "農林期", "市"], "IIF": ["3006", "晶豪科期", "市"], "IJF": ["3008", "大立光期", "市"], "OLF": ["3008", "小型大立光期", "市"], "IMF": ["3019", "亞光期", "市"], "IOF": ["3034", "聯詠期", "市"], "IPF": ["3035", "智原期", "市"], "IQF": ["3036", "文曄期", "市"], "IRF": ["3037", "欣興期", "市"], "ITF": ["3042", "晶技期", "市"], "IYF": ["3376", "新日興期", "市"], "IZF": ["3380", "明泰期", "市"], "JBF": ["3443", "創意期", "市"], "JFF": ["3533", "嘉澤期", "市"], "JMF": ["3653", "健策期", "市"], "JNF": ["3673", "TPK-KY期", "市"], "JSF": ["4938", "和碩期", "市"], "JXF": ["6005", "群益證期", "市"], "JZF": ["6153", "嘉聯益期", "市"], "KAF": ["6176", "瑞儀期", "市"], "KBF": ["6213", "聯茂期", "市"], "KCF": ["6239", "力成期", "市"], "KDF": ["6271", "同欣電期", "市"], "KEF": ["6278", "台表科期", "市"], "KFF": ["6282", "康舒期", "市"], "KGF": ["6285", "啟碁期", "市"], "KIF": ["8039", "台虹期", "市"], "KKF": ["8163", "達方期", "市"], "KLF": ["9904", "寶成期", "市"], "KOF": ["9939", "宏全期", "市"], "KPF": ["9945", "潤泰新期", "市"], "KSF": ["1477", "聚陽期", "市"], "SCF": ["1477", "小型聚陽期", "市"], "KUF": ["1802", "台玻期", "市"], "KWF": ["2328", "廣宇期", "市"], "LBF": ["3044", "健鼎期", "市"], "LCF": ["3045", "台灣大期", "市"], "LEF": ["3406", "玉晶光期", "市"], "LIF": ["6269", "台郡期", "市"], "LMF": ["9914", "美利達期", "市"], "LOF": ["5880", "合庫金期", "市"], "LQF": ["2356", "英業達期", "市"], "LRF": ["2883", "凱基金期", "市"], "LTF": ["4904", "遠傳期", "市"], "LUF": ["4958", "臻鼎-KY期", "市"], "LVF": ["5871", "中租-KY期", "市"], "LWF": ["1476", "儒鴻期", "市"], "LXF": ["2327", "國巨*期", "市"], "QEF": ["2327", "小型國巨*期", "市"], "LYF": ["8046", "南電期", "市"], "QSF": ["8046", "小型南電期", "市"], "MAF": ["1707", "葡萄王期", "市"], "MBF": ["2355", "順德期", "市"], "MJF": ["2360", "致茂期", "市"], "VDF": ["2360", "小型致茂期", "市"], "MKF": ["2439", "美律期", "市"], "MQF": ["6257", "矽格期", "市"], "MVF": ["9938", "百和期", "市"], "MYF": ["1565", "精華期","櫃"], "OMF": ["1565", "小型精華期", "櫃"], "NAF": ["3105", "穩懋期", "櫃"], "QIF": ["3105", "小型穩懋期", "櫃"], "NBF": ["3152", "璟德期", "櫃"], "NDF": ["3260", "威剛期", "櫃"], "NEF": ["3264", "欣銓期", "櫃"], "NGF": ["3691", "碩禾期", "櫃"], "NIF": ["4123", "晟德期", "櫃"], "NJF": ["5009", "榮剛期", "櫃"], "NLF": ["5347", "世界期", "櫃"], "NMF": ["5371", "中光電期", "櫃"], "NOF": ["5483", "中美晶期", "櫃"], "NSF": ["6147", "頎邦期", "櫃"], "NUF": ["8044", "網家期", "櫃"], "NVF": ["8069", "元太期", "櫃"], "NWF": ["8299", "群聯期", "櫃"], "QNF": ["8299", "小型群聯期", "櫃"], "NYF": ["0050", "元大台灣50ETF期", "市"], "OEF": ["6116", "彩晶期", "市"], "OHF": ["6279", "胡連期", "櫃"], "OPF": ["2345", "智邦期", "市"], "SEF": ["2345", "小型智邦期", "市"], "OQF": ["6414", "樺漢期", "市"], "ORF": ["1536", "和大期", "市"], "OSF": ["1909", "榮成期", "市"], "OTF": ["3081", "聯亞期", "櫃"], "OUF": ["3552", "同致期", "櫃"], "OVF": ["6274", "台燿期", "櫃"], "OWF": ["6488", "環球晶期", "櫃"], "PBF": ["6488", "小型環球晶期", "櫃"], "OXF": ["6510", "精測期", "櫃"], "OYF": ["6510", "小型精測期", "櫃"], "OZF": ["3711", "日月光投控期", "市"], "PAF": ["3227", "原相期", "櫃"], "PCF": ["4162", "智擎期", "櫃"], "PDF": ["4736", "泰博期", "市"], "PEF": ["5425", "台半期", "櫃"], "PFF": ["0056", "元大高股息ETF期", "市"], "PGF": ["2633", "台灣高鐵期", "市"], "PHF": ["5269", "祥碩期", "市"], "PNF": ["5269", "小型祥碩期", "市"], "PIF": ["3529", "力旺期", "櫃"], "RSF": ["3529", "小型力旺期", "櫃"], "PJF": ["2383", "台光電期", "市"], "SFF": ["2383", "小型台光電期", "市"], "PKF": ["6173", "信昌電期", "櫃"], "PLF": ["6182", "合晶期", "櫃"], "PMF": ["8436", "大江期", "櫃"], "PPF": ["5457", "宣德期", "櫃"], "PQF": ["8358", "金居期", "櫃"], "PRF": ["8086", "宏捷科期", "櫃"], "PSF": ["3706", "神達期", "市"], "PTF": ["3324", "雙鴻期", "櫃"], "ULF": ["3324", "小型雙鴻期", "櫃"], "PVF": ["6669", "緯穎期", "市"], "PWF": ["6669", "小型緯穎期", "市"], "PXF": ["3293", "鈊象期", "櫃"], "PYF": ["3293", "小型鈊象期", "櫃"], "PZF": ["5274", "信驊期", "櫃"], "QAF": ["5274", "小型信驊期", "市"], "QBF": ["3714", "富采期", "市"], "QCF": ["2606", "裕民期", "市"], "QDF": ["3532", "台勝科期", "市"], "QHF": ["3034", "小型聯詠期", "市"], "QJF": ["3406", "小型玉晶光期", "市"], "QKF": ["1907", "永豐餘期", "市"], "QLF": ["3374", "精材期", "櫃"], "QOF": ["1717", "長興期", "市"], "QPF": ["1904", "正隆期", "市"], "QQF": ["3078", "僑威期", "櫃"], "QTF": ["2441", "超豐期", "市"], "QUF": ["8150", "南茂期", "市"], "QVF": ["2338", "光罩期", "市"], "QWF": ["2388", "威盛期", "市"], "QXF": ["2615", "萬海期", "市"], "QYF": ["6547", "高端疫苗期", "櫃"], "QZF": ["6770", "力積電期", "市"], "RAF": ["3017", "奇鋐期", "市"], "UHF": ["3017", "小型奇鋐期", "市"], "RBF": ["5388", "中磊期", "市"], "RCF": ["2634", "漢翔期", "市"], "RDF": ["4128", "中天期", "櫃"], "REF": ["4919", "新唐期", "市"], "RFF": ["3533", "小型嘉澤期", "市"], "RGF": ["3653", "小型健策期", "市"], "RIF": ["00878", "國泰永續高股息ETF期", "市"], "RJF": ["1609", "大亞期", "市"], "RKF": ["2368", "金像電期", "市"], "VGF": ["2368", "小型金像電期", "市"], "RLF": ["6443", "元晶期", "市"], "RNF": ["4743", "合一期", "櫃"], "ROF": ["6245", "立端期", "櫃"], "RPF": ["5904", "寶雅期", "櫃"], "RRF": ["5904", "小型寶雅期", "櫃"], "RUF": ["9958", "世紀鋼期", "市"], "SWF": ["9958", "小型世紀鋼期", "市"], "RWF": ["3443", "小型創意期", "市"], "RXF": ["00885", "富邦越南ETF期", "市"], "RYF": ["00923", "群益台ESG低碳50ETF期", "市"], "RZF": ["00679B", "元大美債20年ETF期", "櫃"], "SAF": ["1795", "美時期", "市"], "SBF": ["1905", "華紙期", "市"], "SDF": ["1513", "中興電期", "市"], "SGF": ["00893", "國泰智能電動車ETF期", "市"], "SIF": ["00719B", "元大美債1-3ETF期", "櫃"], "SJF": ["3005", "神基期", "市"], "SKF": ["8112", "至上期", "市"], "SMF": ["00919", "群益台灣精選高息ETF期", "市"], "SNF": ["00929", "復華台灣科技優息ETF期", "市"], "SRF": ["0050", "小型元大台灣50ETF期", "市"], "SSF": ["0056", "元大高股息ETF期", "市"], "SUF": ["00940", "元大台灣價值高息ETF期", "市"], "SYF": ["3680", "家登期", "櫃"], "SZF": ["3680", "小型家登期", "市"], "UAF": ["1503", "士電期", "市"], "UBF": ["6139", "亞翔期", "市"], "VKF": ["6139", "小型亞翔期", "市"], "UCF": ["6188", "廣明期", "櫃"], "UEF": ["5876", "上海商銀期", "市"], "UFF": ["6505", "台塑化期", "市"], "UGF": ["6526", "達發期", "市"], "UIF": ["6526", "小型達發期", "市"], "UMF": ["3661", "世芯-KY期", "市"], "UOF": ["3661", "小型世芯-KY期", "市"], "UPF": ["6472", "保瑞期", "市"], "UQF": ["6472", "小型保瑞期", "市"], "UTF": ["2486", "一詮期", "市"], "UUF": ["6757", "台灣虎航期", "市"], "UVF": ["6223", "旺矽期", "櫃"], "UWF": ["6223", "小型旺矽期", "櫃"], "UXF": ["2329", "華泰期", "市"], "UYF": ["6290", "良維期", "櫃"], "VAF": ["1608", "華榮期", "市"], "VBF": ["2367", "燿華期", "市"], "VCF": ["2421", "建準期", "市"], "EOF": ["1560", "中砂期", "市"], "NCF": ["3211", "順達期", "櫃"], "VJF": ["3211", "小型順達期", "櫃"], "VEF": ["3665", "貿聯-KY期", "市"], "VFF": ["3665", "小型貿聯-KY期", "市"], "VHF": ["0052", "富邦科技ETF期", "市"] };
+
+    let cachedData = [];
+    let favList = JSON.parse(localStorage.getItem('my_stkfut_favs') || '[]');
+    let currentRankLimit = 10; 
+    let currentMode = 'ai_long'; 
+    let sortOrder = 'desc'; 
+    let sortKey = 'total';
+    let isFetching = false;
+    let refreshTimer = 0;
+    const REFRESH_INTERVAL = 5000;
+
+    const dom = {
+        table: document.getElementById('main-table'),
+        hmGrid: document.getElementById('heatmap-grid'),
+        hmCount: document.getElementById('hm-count'),
+        hmContainer: document.getElementById('hm-container'),
+        rankVal: document.getElementById('rank-val'),
+        timer: document.getElementById('timer-display'),
+        refreshBar: document.getElementById('refresh-bar'),
+        searchInput: document.getElementById('search-input'),
+        clearSearch: document.getElementById('clear-search'),
+        favBar: document.getElementById('fav-chips-bar'),
+        favCountText: document.getElementById('fav-count-text'),
+        thName: document.getElementById('th-name'),
+        thTotal: document.getElementById('th-total'),
+        thNear: document.getElementById('th-near'),
+        thFar: document.getElementById('th-far')
+    };
+
+    async function fetchData() {
+        if (isFetching) return;
+        isFetching = true;
+        try {
+            const response = await fetch('https://market-data-api.futures-ai.com/stkfut_tradeinfo/');
+            const scoreData = await response.json();
+            
+            if (scoreData) {
+                let baseList = Object.keys(scoreData).filter(k => stockMap[k]).map(k => {
+                    const [stockNum, name, market] = stockMap[k];
+                    const near = scoreData[k].near_month;
+                    const far = scoreData[k].next_month;
+                    const total = near + far;
+                    return { 
+                        id: k, stockNum, name, market, near, far, total,
+                        isLong: total >= 15 && near >= 5 && far >= 0
+                    };
+                });
+
+                cachedData = baseList;
+                render(); 
+                refreshTimer = 0;
+            }
+        } catch (e) { 
+            console.error(e); 
+        } finally { 
+            isFetching = false; 
+        }
+    }
+
+    function getFilteredList(searchQuery, isShowEtf, isShowTse, isShowOtc) {
+        return cachedData.filter(i => {
+            const isFaved = favList.includes(i.id);
+            const isSearchMatched = searchQuery && (
+                i.stockNum.includes(searchQuery) || 
+                i.name.includes(searchQuery) || 
+                i.id.toLowerCase().includes(searchQuery)
+            );
+
+            const isMini = i.name.includes('小型');
+            if (isMini && currentMode !== 'mini' && currentMode !== 'fav' && !isSearchMatched && currentMode !== 'all') {
+                return false;
+            }
+
+            if (!isFaved && !isSearchMatched) {
+                if (i.market === '市' && !isShowTse) return false;
+                if (i.market === '櫃' && !isShowOtc) return false;
+                if (!isShowEtf && i.stockNum.startsWith('00')) return false;
+            }
+
+            if (searchQuery) return isSearchMatched;
+            return true;
+        });
+    }
+
+    function render() {
+        const searchQuery = dom.searchInput.value.toLowerCase().trim();
+        const isShowEtf = document.getElementById('show-etf').checked;
+        const isShowTse = document.getElementById('show-tse').checked;
+        const isShowOtc = document.getElementById('show-otc').checked;
+
+        dom.clearSearch.style.display = searchQuery ? 'block' : 'none';
+        dom.favBar.style.display = favList.length > 0 ? 'block' : 'none';
+        dom.favCountText.innerText = favList.length;
+
+        const baseList = getFilteredList(searchQuery, isShowEtf, isShowTse, isShowOtc);
+        let finalDisplayList = [];
+
+        const effectiveSortOrder = (currentMode === 'down' && sortKey === 'total') ? 'asc' : sortOrder;
+
+        const sortFn = (a, b) => {
+            if (sortKey === 'stockNum') {
+                return sortOrder === 'desc' ? b.stockNum.localeCompare(a.stockNum) : a.stockNum.localeCompare(b.stockNum);
+            } else if (sortKey === 'near') {
+                return sortOrder === 'desc' ? b.near - a.near : a.near - b.near;
+            } else if (sortKey === 'far') {
+                return sortOrder === 'desc' ? b.far - a.far : a.far - b.far;
+            } else {
+                return effectiveSortOrder === 'desc' ? b.total - a.total : a.total - b.total;
+            }
+        };
+
+        if (currentMode === 'fav' && searchQuery) {
+            let favPart = baseList.filter(i => favList.includes(i.id)).sort(sortFn);
+            let otherPart = baseList.filter(i => !favList.includes(i.id)).sort(sortFn);
+            finalDisplayList = [...favPart, { isDivider: true, text: "搜尋結果 (未收藏)" }, ...otherPart];
+        } else {
+            let list = [...baseList];
+            if (!searchQuery) {
+                if (currentMode === 'ai_long') list = list.filter(i => i.isLong);
+                else if (currentMode === 'strong_buy') list = list.filter(i => i.total >= 10 && i.near > 0);
+                else if (currentMode === 'mini') list = list.filter(i => i.name.includes('小型')); 
+                else if (currentMode === 'up') list = list.filter(i => i.total > 0);
+                else if (currentMode === 'down') list = list.filter(i => i.total < 0);
+                else if (currentMode === 'fav') list = list.filter(i => favList.includes(i.id));
+            }
+            list.sort(sortFn);
+            finalDisplayList = searchQuery ? list : list.slice(0, currentRankLimit);
+        }
+
+        renderHeatmap(baseList);
+        renderTable(finalDisplayList);
+        
+        const arrow = sortOrder === 'desc' ? '▼' : '▲';
+        // 重置 Header 文字
+        dom.thTotal.innerText = `總分`;
+        dom.thName.innerText = `代號名稱`;
+        dom.thNear.innerText = `近月`;
+        dom.thFar.innerText = `遠月`;
+
+        // 根據目前的 sortKey 增加箭頭
+        if (sortKey === 'total') dom.thTotal.innerText = `總分 ${arrow}`;
+        else if (sortKey === 'stockNum') dom.thName.innerText = `代號名稱 ${arrow}`;
+        else if (sortKey === 'near') dom.thNear.innerText = `近月 ${arrow}`;
+        else if (sortKey === 'far') dom.thFar.innerText = `遠月 ${arrow}`;
+    }
+
+    function renderHeatmap(baseList) {
+        let hmShowList = [];
+        if (currentMode === 'all') {
+            const longs = baseList.filter(i => i.total > 0).sort((a,b)=>b.total-a.total).slice(0, 10);
+            const shorts = baseList.filter(i => i.total < 0).sort((a,b)=>a.total-b.total).slice(0, 10);
+            hmShowList = [...longs, ...shorts];
+        } else if (currentMode === 'down') {
+            hmShowList = baseList.filter(i => i.total < 0).sort((a,b)=>a.total-b.total).slice(0, 20);
+        } else if (currentMode === 'mini') {
+            hmShowList = baseList.filter(i => i.name.includes('小型')).sort((a,b)=>b.total-a.total).slice(0, 20);
+        } else {
+            hmShowList = baseList.sort((a,b)=>b.total-a.total).slice(0, 20);
+        }
+        
+        dom.hmCount.innerText = `(${hmShowList.length} 標的)`;
+        dom.hmGrid.innerHTML = hmShowList.map(item => {
+            const intensity = Math.min(Math.abs(item.total) / 35, 1);
+            const color = item.total >= 0 ? `255, 59, 48` : `52, 199, 89`;
+            return `<div class="hm-box" style="background: rgba(${color}, ${0.2 + intensity * 0.8}); ${item.isLong ? 'border: 2px solid var(--ai-gold);' : ''} ${currentMode==='mini' ? 'border: 1.5px solid var(--mini-orange);' : ''}" onclick="showAI('${item.stockNum}', '${item.name}')">
+                <div class="hm-name">${item.name.replace('期','').replace('小型','小')}</div>
+                <div class="hm-score">${Math.round(item.total)}</div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderTable(list) {
+        const currentMax = cachedData.length > 0 ? Math.max(...cachedData.map(i => Math.abs(i.total))) : 1;
+        dom.table.innerHTML = list.map(item => {
+            if (item.isDivider) return `<tr><td colspan="5" class="section-divider">${item.text}</td></tr>`;
+            
+            const isFaved = favList.includes(item.id);
+            const themeColor = item.total >= 0 ? 'var(--up-red)' : 'var(--down-green)';
+
+            return `<tr data-id="${item.id}">
+                <td class="name-col">
+                    <div style="display:flex; align-items:center;">
+                        <span class="fav-star-btn ${isFaved?'active':''}" onclick="toggleFav('${item.id}', event)">${isFaved?'★':'☆'}</span>
+                        <div class="name-stack">
+                            <div class="name-top">
+                                <span class="stock-num">${item.stockNum}</span>
+                                <span class="stock-id-tag">${item.id}</span>
+                            </div>
+                            <div class="name-bottom">
+                                <span class="mkt-tag ${item.market==='櫃'?'tag-otc':'tag-tse'}">${item.market}</span>
+                                <span class="stock-name" style="color:${item.isLong ? 'var(--aistock-gold)' : '#fff'}; font-weight:${item.isLong ? 'bold' : '500'};" onclick="showAI('${item.stockNum}', '${item.name}')">
+                                    ${item.name}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="score-val" style="color:${item.near>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(item.near)}</span></td> 
+                <td><span class="score-val" style="color:${item.far>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(item.far)}</span></td> 
+                <td>
+                    <span class="score-val" style="color:${themeColor}">${Math.round(item.total)}</span>
+                    <div class="score-bar-bg"><div class="score-bar-fill" style="width:${Math.min((Math.abs(item.total)/30)*100, 100)}%; background:${themeColor}"></div></div>
+                </td>
+                <td><div class="rank-strength-container"><div class="rank-strength-fill" style="width:${(Math.abs(item.total)/currentMax)*100}%; background:${themeColor};"></div></div></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function setMode(mode) { 
+        currentMode = mode; 
+        sortKey = 'total';
+        sortOrder = (mode === 'down') ? 'asc' : 'desc';
+        
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        if (document.getElementById('chip-fav')) {
+            document.getElementById('chip-fav').classList.toggle('active', mode === 'fav');
+            document.getElementById('chip-all').classList.toggle('active', mode === 'all');
+        }
+        render(); 
+    }
+
+    function toggleFav(id, e) {
+        e.stopPropagation();
+        const idx = favList.indexOf(id);
+        idx > -1 ? favList.splice(idx, 1) : favList.push(id);
+        localStorage.setItem('my_stkfut_favs', JSON.stringify(favList));
+        render();
+    }
+
+    function showAI(num, name) {
+        const pure = name.replace('期','').replace('小型','').trim();
+        document.getElementById('ai-title').innerText = `🤖 ${pure} (${num})`;
+        document.getElementById('link-news').href = `https://www.google.com/search?q=${num}+${pure}+題材+新聞`;
+        document.getElementById('link-wantgoo').href = `https://www.wantgoo.com/stock/${num}`;
+        document.getElementById('ai-modal').style.display = 'flex';
+    }
+
+    function closeAI() { document.getElementById('ai-modal').style.display = 'none'; }
+
+    document.getElementById('mode-selector').onclick = e => { if (e.target.dataset.mode) setMode(e.target.dataset.mode); };
+    dom.searchInput.oninput = render;
+    dom.clearSearch.onclick = () => { dom.searchInput.value = ''; render(); };
+    document.getElementById('hm-header').onclick = () => dom.hmContainer.classList.toggle('open');
+    document.getElementById('rank-slider').oninput = function() {
+        currentRankLimit = parseInt(this.value);
+        dom.rankVal.innerText = this.value + ' 名';
+        render();
+    };
+
+    dom.thName.onclick = () => {
+        sortKey = 'stockNum';
+        sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
+        render();
+    };
+
+    dom.thTotal.onclick = () => {
+        sortKey = 'total';
+        sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
+        render();
+    };
+
+    dom.thNear.onclick = () => {
+        sortKey = 'near';
+        sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
+        render();
+    };
+
+    dom.thFar.onclick = () => {
+        sortKey = 'far';
+        sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
+        render();
+    };
+
+    document.querySelectorAll('input[type=checkbox]').forEach(el => el.onchange = render);
+
+    setInterval(() => { 
+        refreshTimer += 100; 
+        dom.timer.innerText = ((REFRESH_INTERVAL - refreshTimer)/1000).toFixed(1) + 's'; 
+        dom.refreshBar.style.width = (refreshTimer/REFRESH_INTERVAL)*100 + '%'; 
+        if (refreshTimer >= REFRESH_INTERVAL) fetchData(); 
+    }, 100);
+
+    fetchData();
+</script>
+</body>
+</html>
