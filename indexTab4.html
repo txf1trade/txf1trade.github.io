@@ -389,10 +389,19 @@
                 const data = await response.json();
 
                 if (data.stat === 'OK' && data.data && data.data.length > 0) {
-                    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-                    const day = String(targetDate.getDate()).padStart(2, '0');
+                    // 修正 1：直接取用 TWSE JSON 回傳的實質日期，格式為 "115年09月09日" 或 "20260909"
+                    let displayDate = `${String(targetDate.getMonth() + 1).padStart(2, '0')}/${String(targetDate.getDate()).padStart(2, '0')}`;
+                    if (data.date) {
+                        const cleanDate = data.date.replace(/[^\d]/g, '');
+                        if (cleanDate.length === 8) { // YYYYMMDD
+                            displayDate = `${cleanDate.substring(4, 6)}/${cleanDate.substring(6, 8)}`;
+                        } else if (cleanDate.length === 7) { // 民國年 YYYMMDD
+                            displayDate = `${cleanDate.substring(3, 5)}/${cleanDate.substring(5, 7)}`;
+                        }
+                    }
+
                     const titleDateEl = document.getElementById('titleDate');
-                    if (titleDateEl) titleDateEl.innerText = `${month}/${day}`;
+                    if (titleDateEl) titleDateEl.innerText = displayDate;
 
                     renderSpotGridData(data.data);
                     
@@ -757,7 +766,7 @@
         else if (fSpot < -50 && fTX < -1000) badges.push({text: '外資現期同步撤退', cls: 'bear'});
         else if (fSpot > 30 && fTX < -1000) badges.push({text: '外資現多期空（避險）', cls: 'warn'});
         else if (fSpot < 0 && fTX > 1000) badges.push({text: '外資期貨超買（異常）', cls: 'warn'});
-        else if (fSpot > 10) badges.push({text: '外資溫和布多', cls: 'bull'});
+        else if (fSpot > 10) badges.push({text: '外資溫態布多', cls: 'bull'});
         else if (fSpot < -10) badges.push({text: '外資緩步調節', cls: 'bear'});
 
         if (tSpot > 20) badges.push({text: '投信積極承接', cls: 'bull'});
@@ -778,15 +787,26 @@
         el.innerHTML = badges.map(b => `<span class="behavior-badge ${b.cls}">${b.text}</span>`).join('');
     }
     
+    // 修正 2：精準判斷台指期結算日（每個月第三個星期三與週選結算）
     function updateSettlementUI() {
         const now = new Date();
-        const date = now.getDate(); const day = now.getDay();
+        const day = now.getDay();
+        const date = now.getDate();
+        
         let firstWed = new Date(now.getFullYear(), now.getMonth(), 1);
-        while (firstWed.getDay() !== 3) { firstWed.setDate(firstWed.getDate() + 1); }
+        while (firstWed.getDay() !== 3) { 
+            firstWed.setDate(firstWed.getDate() + 1); 
+        }
         const monthlyWed = firstWed.getDate() + 14;
         const ui = document.getElementById('settlement-ui');
+        
         if (ui && day >= 1 && day <= 3) {
-            let label = (day === 3) ? (date === monthlyWed ? "🔥 月結算" : "⚡ 週結算") : `⏳ 結算 D-${3-day}`;
+            let label = "";
+            if (day === 3) {
+                label = (date === monthlyWed) ? "🔥 月結算" : "⚡ 週結算";
+            } else {
+                label = `⏳ 結算 D-${3 - day}`;
+            }
             ui.innerHTML = `<span class="settlement-warning">${label}</span>`;
         }
     }
