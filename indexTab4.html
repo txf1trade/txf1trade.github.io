@@ -3,26 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>主力戰情室-即時監控版</title>
+    <title>主力戰情室-籌碼</title>
     <style>
         :root {
             --bg: #0d1117;
-            --card: #161b22; --blue: #58a6ff;
-            --red: #ff7b72; --green: #7ee787; --border: #30363d;
-            --header: #21262d; --gold: #f1e05a;
+            --card: #161b22;
+            --blue: #58a6ff;
+            --red: #ff7b72;
+            --green: #7ee787;
+            --border: #30363d;
+            --header: #21262d;
+            --gold: #f1e05a;
+            --gray: #8b949e;
             --ai-glow: rgba(88, 166, 255, 0.3);
             --vh: 1vh;
         }
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { 
             background: var(--bg);
-            margin: 0; padding: 0; 
             min-height: 100vh;
             min-height: calc(var(--vh, 1vh) * 100);
             -webkit-overflow-scrolling: touch;
         }
-        body { font-family: -apple-system, "Segoe UI", sans-serif; color: #c9d1d9; padding: 6px;
-            line-height: 1.2; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #c9d1d9; padding: 6px; line-height: 1.2; }
         
         .container { 
             max-width: 550px;
@@ -30,171 +33,146 @@
             padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
         }
 
-        .index-grid { display: grid;
-            grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; margin-top: 5px; }
-        .index-card { background: var(--card);
-            padding: 8px 2px; border-radius: 6px; border: 1px solid var(--border); text-align: center; transition: all 0.3s ease;
-        }
-        .index-name { font-size: 10px; color: #8b949e; margin-bottom: 4px;
-        }
-        .index-price { font-family: "Consolas", monospace; font-size: 15px; font-weight: 900; color: #fff;
-        }
-        .index-change { font-family: "Consolas", monospace; font-size: 11px; font-weight: bold; display: block;
-            margin-top: 2px; }
+        /* 大盤指數卡片 */
+        .index-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; margin-top: 5px; }
+        .index-card { background: var(--card); padding: 8px 2px; border-radius: 6px; border: 1px solid var(--border); text-align: center; transition: all 0.3s ease; }
+        .index-name { font-size: 10px; color: var(--gray); margin-bottom: 4px; }
+        .index-price { font-family: "Consolas", monospace; font-size: 15px; font-weight: 900; color: #fff; }
+        .index-change { font-family: "Consolas", monospace; font-size: 11px; font-weight: bold; display: block; margin-top: 2px; }
 
-        .basis-box { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px;
-            margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); font-size: 12px;
-        }
-        .basis-tag { padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px;
-        }
+        /* 價差監控區塊 */
+        .basis-box { background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); font-size: 12px; }
+        .basis-tag { padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
 
-        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; background: var(--card);
-            border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
-        th { background: var(--header);
-            color: #8b949e; padding: 6px 2px; border: 1px solid var(--border); font-size: 10px; text-align: center;
-        }
-        td { padding: 8px 4px; border: 1px solid var(--border); text-align: center;
-        }
-        
+        /* 通用折疊區塊與標題 */
+        .collapsible-section { margin-bottom: 8px; }
         .section-title { 
-            font-size: 14px;
-            font-weight: bold; margin: 12px 0 6px 2px; color: var(--blue); 
+            font-size: 14px; font-weight: bold; margin: 12px 0 6px 2px; color: var(--blue); 
             border-left: 4px solid var(--blue); padding-left: 8px; 
-            display: flex; align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
             cursor: pointer; user-select: none;
         }
-        .section-title:hover { opacity: 0.9;
-        }
-        .toggle-arrow { font-size: 10px; margin-left: 6px; color: #8b949e; transition: transform 0.2s;
-        }
-        .unit-text { font-size: 10px; color: #8b949e; font-weight: normal; margin-left: auto; margin-right: 8px;
-        }
+        .section-title:hover { opacity: 0.9; }
+        .toggle-arrow { font-size: 10px; margin-left: 6px; color: var(--gray); transition: transform 0.2s; }
+        .unit-text { font-size: 10px; color: var(--gray); font-weight: normal; margin-left: auto; margin-right: 8px; }
         
         .collapse-content {
-            max-height: 2000px;
-            overflow: hidden;
+            max-height: 2000px; overflow: hidden;
             transition: max-height 0.3s ease-out, opacity 0.2s ease-out, margin-bottom 0.3s;
-            margin-bottom: 8px;
         }
         .collapsed .collapse-content {
-            max-height: 0 !important;
-            opacity: 0;
-            margin-bottom: 0 !important;
-            pointer-events: none;
+            max-height: 0 !important; opacity: 0; margin-bottom: 0 !important; pointer-events: none;
         }
-        .collapsed .toggle-arrow { transform: rotate(-90deg);
+        .collapsed .toggle-arrow { transform: rotate(-90deg); }
+
+        /* 法人現貨買賣超卡片模組樣式 */
+        .spot-card {
+            width: 100%;
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
         }
+        .spot-grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+        }
+        .spot-grid-header {
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--gray);
+            background-color: var(--header);
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+        .spot-grid-header:last-child { border-right: none; }
+        .spot-grid-value {
+            padding: 10px 4px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: "Consolas", monospace;
+            background-color: var(--card);
+            border-right: 1px solid var(--border);
+        }
+        .spot-grid-value:last-child { border-right: none; }
         
-        .num-cell { font-family: "Consolas", "Monaco", monospace;
-            font-weight: bold; }
-        .pos { color: var(--red); } .neg { color: var(--green);
+        /* 漲跌色彩標籤 */
+        .positive { color: var(--red); }
+        .negative { color: var(--green); }
+        .zero { color: var(--gray); }
+
+        .loading-text {
+            text-align: center;
+            padding: 14px;
+            color: var(--gray);
+            font-size: 12px;
         }
 
-        .retail-row { background: rgba(241, 224, 90, 0.03) !important;
-        }
-        .retail-text { color: var(--gold); font-weight: bold;
-        }
-        .retail-highlight { border: 1.5px solid var(--gold) !important; background: rgba(241, 224, 90, 0.15);
-            font-size: 11px; color: var(--gold) !important; }
-        
-        .ai-tag { display: inline-block;
-            padding: 2px 5px; border-radius: 3px; font-size: 9px; margin: 1px; font-weight: bold; color: #fff;
-        }
-        .tag-sell-exposure { background: var(--gold) !important; color: #000 !important; border: 1px solid #fff;
-        }
-        .exposure-text { color: var(--gold); font-weight: bold; font-size: 9px; margin-left: 2px;
-        }
-        .tag-bull { background: #da3633;
-        } 
-        .tag-bear { background: #238636;
-        } 
+        /* 其它表格與控制通用 */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; background: var(--card); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+        th { background: var(--header); color: var(--gray); padding: 6px 2px; border: 1px solid var(--border); font-size: 10px; text-align: center; }
+        td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
+        .num-cell { font-family: "Consolas", "Monaco", monospace; font-weight: bold; }
+        .pos { color: var(--red); } .neg { color: var(--green); }
 
-        /* ===== AI 評級 UI ===== */
-        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22);
-            border: 2px solid var(--blue); border-radius: 10px; padding: 12px; box-shadow: 0 4px 15px var(--ai-glow);
-        }
-        .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
-            border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-        .trend-val { font-size: 20px; font-weight: 900;
-            letter-spacing: 1px; }
+        .retail-row { background: rgba(241, 224, 90, 0.03) !important; }
+        .retail-text { color: var(--gold); font-weight: bold; }
+        .retail-highlight { border: 1.5px solid var(--gold) !important; background: rgba(241, 224, 90, 0.15); font-size: 11px; color: var(--gold) !important; }
         
-        /* 籌碼訊號列表 */
-        .signal-grid { display: grid;
-            grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
-        .signal-card { background: #0d1117;
-            padding: 8px 10px; border-radius: 6px; border-left: 3px solid var(--border); }
-        .signal-card.bull { border-left-color: var(--red);
-        }
-        .signal-card.bear { border-left-color: var(--green);
-        }
-        .signal-card.neutral { border-left-color: #8b949e;
-        }
-        .signal-card.warn { border-left-color: var(--gold);
-        }
-        .signal-label { font-size: 9px; color: #8b949e; margin-bottom: 3px; letter-spacing: 0.5px;
-        }
-        .signal-val { font-size: 11px; font-weight: bold; color: #fff; line-height: 1.4;
-        }
-        .signal-tag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px;
-            font-weight: bold; margin-top: 2px; }
-        .signal-tag.bull { background: rgba(218,54,51,0.2); color: var(--red);
-        }
-        .signal-tag.bear { background: rgba(35,134,54,0.2); color: var(--green);
-        }
-        .signal-tag.warn { background: rgba(241,224,90,0.2); color: var(--gold);
-        }
-        .signal-tag.neutral { background: rgba(88,166,255,0.15); color: var(--blue);
-        }
+        .ai-tag { display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 9px; margin: 1px; font-weight: bold; color: #fff; }
+        .tag-sell-exposure { background: var(--gold) !important; color: #000 !important; border: 1px solid #fff; }
+        .exposure-text { color: var(--gold); font-weight: bold; font-size: 9px; margin-left: 2px; }
+        .tag-bull { background: #da3633; } 
+        .tag-bear { background: #238636; } 
+
+        /* AI 評級區塊 */
+        .ai-box { background: linear-gradient(145deg, #1c2128, #161b22); border: 2px solid var(--blue); border-radius: 10px; padding: 12px; box-shadow: 0 4px 15px var(--ai-glow); }
+        .trend-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .trend-val { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
         
-        /* 主力行為判斷 */
-        .behavior-row { display: flex;
-            gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
-        .behavior-badge { padding: 3px 8px;
-            border-radius: 4px; font-size: 10px; font-weight: bold; }
-        .behavior-badge.bull { background: rgba(218,54,51,0.25); color: var(--red);
-            border: 1px solid rgba(218,54,51,0.4); }
-        .behavior-badge.bear { background: rgba(35,134,54,0.25); color: var(--green);
-            border: 1px solid rgba(35,134,54,0.4); }
-        .behavior-badge.warn { background: rgba(241,224,90,0.2); color: var(--gold);
-            border: 1px solid rgba(241,224,90,0.4); }
-        .behavior-badge.neutral { background: rgba(88,166,255,0.1); color: var(--blue);
-            border: 1px solid rgba(88,166,255,0.3); }
+        .signal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+        .signal-card { background: #0d1117; padding: 8px 10px; border-radius: 6px; border-left: 3px solid var(--border); }
+        .signal-card.bull { border-left-color: var(--red); }
+        .signal-card.bear { border-left-color: var(--green); }
+        .signal-card.neutral { border-left-color: var(--gray); }
+        .signal-card.warn { border-left-color: var(--gold); }
+        .signal-label { font-size: 9px; color: var(--gray); margin-bottom: 3px; letter-spacing: 0.5px; }
+        .signal-val { font-size: 11px; font-weight: bold; color: #fff; line-height: 1.4; }
+        .signal-tag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: bold; margin-top: 2px; }
+        .signal-tag.bull { background: rgba(218,54,51,0.2); color: var(--red); }
+        .signal-tag.bear { background: rgba(35,134,54,0.2); color: var(--green); }
+        .signal-tag.warn { background: rgba(241,224,90,0.2); color: var(--gold); }
+        .signal-tag.neutral { background: rgba(88,166,255,0.15); color: var(--blue); }
         
-        /* 分數量表 */
-        .score-bar-wrap { margin: 8px 0;
-        }
-        .score-bar-label { display: flex; justify-content: space-between; font-size: 10px; color: #8b949e; margin-bottom: 4px;
-        }
-        .score-bar-bg { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden;
-        }
-        .score-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease;
-        }
+        .behavior-row { display: flex; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
+        .behavior-badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .behavior-badge.bull { background: rgba(218,54,51,0.25); color: var(--red); border: 1px solid rgba(218,54,51,0.4); }
+        .behavior-badge.bear { background: rgba(35,134,54,0.25); color: var(--green); border: 1px solid rgba(35,134,54,0.4); }
+        .behavior-badge.warn { background: rgba(241,224,90,0.2); color: var(--gold); border: 1px solid rgba(241,224,90,0.4); }
+        .behavior-badge.neutral { background: rgba(88,166,255,0.1); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
         
-        .exposure-info { font-size: 10px;
-            background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between;
-        }
-        .sub-header { background: #1c2128 !important; color: var(--blue) !important; font-weight: bold;
-            text-align: left !important; padding-left: 10px !important; }
+        .score-bar-wrap { margin: 8px 0; }
+        .score-bar-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--gray); margin-bottom: 4px; }
+        .score-bar-bg { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; }
+        .score-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
         
-        .settlement-warning { color: var(--gold);
-            border: 1px solid var(--gold); padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px; animation: breathe 2s ease-in-out infinite;
-        }
-        @keyframes breathe { 0%, 100% { opacity: 1;
-            } 50% { opacity: 0.4; } }
+        .exposure-info { font-size: 10px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+        .sub-header { background: #1c2128 !important; color: var(--blue) !important; font-weight: bold; text-align: left !important; padding-left: 10px !important; }
         
-        .refresh-dot { width: 6px;
-            height: 6px; background: var(--blue); border-radius: 50%; display: inline-block; margin-right: 5px; opacity: 0;
-        }
-        .refreshing .refresh-dot { animation: pulse 1s infinite;
-        }
-        @keyframes pulse { 0% { opacity: 1; transform: scale(1);
-            } 100% { opacity: 0; transform: scale(2); } }
+        .settlement-warning { color: var(--gold); border: 1px solid var(--gold); padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px; animation: breathe 2s ease-in-out infinite; }
+        @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        
+        .refresh-dot { width: 6px; height: 6px; background: var(--blue); border-radius: 50%; display: inline-block; margin-right: 5px; opacity: 0; }
+        .refreshing .refresh-dot { animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(2); } }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- 指數區塊 -->
     <div class="index-grid">
         <div class="index-card" id="card-tsec" style="border-top: 3px solid var(--red);">
             <div class="index-name">加權指數</div>
@@ -213,25 +191,41 @@
         </div>
     </div>
 
+    <!-- 價差區塊 -->
     <div class="basis-box" id="basis-container">
         <span><span class="refresh-dot"></span>價差監控：<b id="basis-value" class="num-cell">--</b></span>
         <span id="basis-status" class="basis-tag" style="background: #30363d;">計算中</span>
     </div>
 
+    <!-- 模組：法人現貨買賣超卡片 -->
     <div class="collapsible-section">
         <div class="section-title" onclick="toggleSection(this)">
-            <span>🏛️ 法人現貨買賣超 (<span id="spot-date">--/--</span>)</span>
+            <span>🏛️ 法人現貨買賣超 (<span id="titleDate">--/--</span>)</span>
             <span class="unit-text">單位: 億元</span>
             <span class="toggle-arrow">▼</span>
         </div>
         <div class="collapse-content">
-            <table id="spot-table">
-                <thead><tr><th>外資</th><th>投信</th><th>自營商</th><th>合計</th></tr></thead>
-                <tbody id="spot-table-body"><tr><td colspan="4">正在對接交易所官方數據...</td></tr></tbody>
-            </table>
+            <div class="spot-card">
+                <div id="loadingMsg" class="loading-text">載入中...</div>
+                <div id="dataGrid" style="display: none;">
+                    <div class="spot-grid-container">
+                        <div class="spot-grid-header">外資</div>
+                        <div class="spot-grid-header">投信</div>
+                        <div class="spot-grid-header">自營商</div>
+                        <div class="spot-grid-header">合計</div>
+                    </div>
+                    <div class="spot-grid-container">
+                        <div id="val-foreign" class="spot-grid-value">--</div>
+                        <div id="val-trust" class="spot-grid-value">--</div>
+                        <div id="val-dealer" class="spot-grid-value">--</div>
+                        <div id="val-total" class="spot-grid-value">--</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- 期貨動能區塊 -->
     <div class="collapsible-section">
        <div class="section-title" onclick="toggleSection(this)">
             <span>📊 台指期沖銷動能</span>
@@ -242,6 +236,7 @@
         </div>
     </div>
 
+    <!-- 選擇權曝險區塊 -->
     <div class="collapsible-section">
         <div class="section-title" onclick="toggleSection(this)">
              <span>📜 選擇權曝險診斷 <span id="settlement-ui"></span></span>
@@ -253,6 +248,7 @@
         </div>
     </div>
 
+    <!-- AI 籌碼評級區塊 -->
     <div class="collapsible-section">
         <div class="section-title" onclick="toggleSection(this)">
             <span>🤖 AI 主力籌碼戰略評級</span>
@@ -302,7 +298,7 @@
                 </div>
 
                 <div>
-                    <div style="font-size:10px;color:#8b949e;margin-bottom:4px;">主力行為識別</div>
+                    <div style="font-size:10px;color:var(--gray);margin-bottom:4px;">主力行為識別</div>
                     <div class="behavior-row" id="behavior-badges">
                         <span class="behavior-badge neutral">分析中...</span>
                     </div>
@@ -326,7 +322,7 @@
     updateHeight();
     
     const apiUrl = 'https://script.google.com/macros/s/AKfycbzUeaUC8Jbr9wwYzp9UgV9b2eeVOZgiOmjov9sRbmzKezUmNl4lx0GhH0zmNYdbWiB5/exec';
-    const twseUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://www.twse.com.tw/rwd/zh/fund/BFI82U');
+    
     let globalSpot = { foreign: 0, trust: 0, dealer: 0, total: 0 };
     let globalTX = { fTX: 0, retailMTX: 0, retailMicro: 0 };
     let globalOpt = { dc: 0, dp: 0, fc: 0, fp: 0, dAmtC: 0, dAmtP: 0, fAmtC: 0, fAmtP: 0 };
@@ -378,17 +374,127 @@
 
     setInterval(fetchPrices, 6000);
 
+    /* ================= 法人現貨買賣超卡片模組化邏輯 ================= */
+    async function autoFetchSpotData() {
+        let targetDate = new Date();
+        let attempts = 0;
+        let success = false;
+
+        while (attempts < 7 && !success) {
+            const dateStr = formatDateStr(targetDate);
+            const url = `https://www.twse.com.tw/rwd/zh/fund/BFI82U?date=${dateStr}&response=json`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.stat === 'OK' && data.data && data.data.length > 0) {
+                    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(targetDate.getDate()).padStart(2, '0');
+                    const titleDateEl = document.getElementById('titleDate');
+                    if (titleDateEl) titleDateEl.innerText = `${month}/${day}`;
+
+                    renderSpotGridData(data.data);
+                    
+                    document.getElementById('loadingMsg').style.display = 'none';
+                    document.getElementById('dataGrid').style.display = 'block';
+                    success = true;
+                    break;
+                }
+            } catch (err) {
+                console.error(`Fetch error on ${dateStr}:`, err);
+            }
+
+            targetDate.setDate(targetDate.getDate() - 1);
+            attempts++;
+        }
+
+        if (!success) {
+            document.getElementById('loadingMsg').innerText = '資料讀取失敗';
+        }
+    }
+
+    function renderSpotGridData(rawData) {
+        let dealerNet = 0;
+        let foreignNet = 0;
+        let trustNet = 0;
+        let totalNet = 0;
+
+        rawData.forEach(item => {
+            const name = item[0];
+            const net = parseRawAmount(item[3]);
+
+            if (name.includes('自營商(自行買賣)') || name.includes('自營商(避險)')) {
+                dealerNet += net;
+            } else if (name.includes('外資及陸資')) {
+                foreignNet = net;
+            } else if (name.includes('投信')) {
+                trustNet = net;
+            } else if (name === '合計') {
+                totalNet = net;
+            }
+        });
+
+        // 轉為億元單位並同步更新全域狀態 (供 AI 戰略分析使用)
+        globalSpot = {
+            foreign: foreignNet / 100000000,
+            trust: trustNet / 100000000,
+            dealer: dealerNet / 100000000,
+            total: totalNet / 100000000
+        };
+
+        // 填入 UI 儲存格
+        fillCell('val-foreign', foreignNet);
+        fillCell('val-trust', trustNet);
+        fillCell('val-dealer', dealerNet);
+        fillCell('val-total', totalNet);
+    }
+
+    function fillCell(elementId, amount) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const amount100M = (amount / 100000000).toFixed(2);
+        const num = parseFloat(amount100M);
+
+        if (num > 0) {
+            el.innerText = `+${amount100M}`;
+            el.className = 'spot-grid-value positive';
+        } else if (num < 0) {
+            el.innerText = `${amount100M}`;
+            el.className = 'spot-grid-value negative';
+        } else {
+            el.innerText = '0.00';
+            el.className = 'spot-grid-value zero';
+        }
+    }
+
+    function formatDateStr(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}${m}${d}`;
+    }
+
+    function parseRawAmount(amountStr) {
+        if (!amountStr) return 0;
+        const rawNum = parseFloat(amountStr.replace(/,/g, ''));
+        return isNaN(rawNum) ? 0 : rawNum;
+    }
+    /* ============================================================= */
+
     async function fetchAllData() {
         fetchPrices();
+        autoFetchSpotData();
+
         try {
-            const [twseRes, txRes, optRes] = await Promise.all([
-                fetch(twseUrl), fetch(`${apiUrl}?type=tx`), fetch(apiUrl)
+            const [txRes, optRes] = await Promise.all([
+                fetch(`${apiUrl}?type=tx`), 
+                fetch(apiUrl)
             ]);
-            const spotData = await twseRes.json();
+            
             const txData = await txRes.json();
             const optData = await optRes.json();
 
-            renderSpot(spotData);
             let fTX = 0, retailMTX = 0, retailMicro = 0;
             txData.forEach(r => {
                 if(r[0] === '外資') fTX = parseFloat(String(r[1]).replace(/,/g,'')) || 0;
@@ -415,39 +521,6 @@
         elS.innerText = diff >= 0 ? "正價差" : "逆價差";
         elS.style.background = diff >= 0 ? "var(--red)" : "var(--green)";
         elS.style.color = "#000";
-    }
-
-    function renderSpot(jsonData) {
-        if (jsonData.stat !== "OK") return;
-        const d = jsonData.date;
-        const dateEl = document.getElementById('spot-date');
-        if (dateEl) dateEl.innerText = d.substring(4,6) + "/" + d.substring(6,8);
-        const toBillion = (valStr) => {
-            if (!valStr) return 0;
-            let n = parseFloat(String(valStr).replace(/,/g, '')) || 0;
-            return n / 100000000;
-        };
-
-        const d_self = toBillion(jsonData.data[0][3]); 
-        const d_hedge = toBillion(jsonData.data[1][3]);
-        globalSpot = { 
-            dealer: d_self + d_hedge, 
-            trust: toBillion(jsonData.data[2][3]),
-            foreign: toBillion(jsonData.data[3][3]),
-            total: toBillion(jsonData.data[5][3])
-        };
-        const getColor = (val) => val >= 0 ? 'pos' : 'neg';
-        const format = (val) => (val >= 0 ? '+' : '') + val.toFixed(2);
-
-        const bodyEl = document.getElementById('spot-table-body');
-        if (bodyEl) {
-            bodyEl.innerHTML = `<tr>
-                <td class="num-cell ${getColor(globalSpot.foreign)}">${format(globalSpot.foreign)}</td>
-                <td class="num-cell ${getColor(globalSpot.trust)}">${format(globalSpot.trust)}</td>
-                <td class="num-cell ${getColor(globalSpot.dealer)}">${format(globalSpot.dealer)}</td>
-                <td class="num-cell ${getColor(globalSpot.total)}">${format(globalSpot.total)}</td>
-            </tr>`;
-        }
     }
 
     function renderTX(data) {
@@ -718,7 +791,8 @@
         }
     }
     
-    updateSettlementUI(); fetchAllData();
+    updateSettlementUI(); 
+    fetchAllData();
 </script>
 </body>
 </html>
