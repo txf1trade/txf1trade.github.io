@@ -225,14 +225,25 @@
         </div>
     </div>
 
-    <!-- 期貨動能區塊 -->
+    <!-- 期貨日沖銷動能區塊 -->
     <div class="collapsible-section">
        <div class="section-title" onclick="toggleSection(this)">
-            <span>📊 台指期沖銷動能</span>
+            <span>📊 台指期日沖銷</span>
             <span class="toggle-arrow">▼</span>
         </div>
         <div class="collapse-content">
             <div id="tx-table-container">載入中...</div>
+        </div>
+    </div>
+
+    <!-- 期貨夜沖銷動能區塊 -->
+    <div class="collapsible-section">
+       <div class="section-title" onclick="toggleSection(this)">
+            <span>🌙 台指期夜沖銷</span>
+            <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="collapse-content">
+            <div id="tx-night-table-container">載入中...</div>
         </div>
     </div>
 
@@ -321,7 +332,7 @@
     window.addEventListener('resize', updateHeight);
     updateHeight();
     
-    const apiUrl = 'https://script.google.com/macros/s/AKfycbzUeaUC8Jbr9wwYzp9UgV9b2eeVOZgiOmjov9sRbmzKezUmNl4lx0GhH0zmNYdbWiB5/exec';
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbxIeAXP4C0VilvWhVqo1owFO0akDEqvZq_OIzL9Tp8w0XBQUNMXs_GmHrw_mvhXzJQ/exec';
     
     let globalSpot = { foreign: 0, trust: 0, dealer: 0, total: 0 };
     let globalTX = { fTX: 0, retailMTX: 0, retailMicro: 0 };
@@ -389,13 +400,12 @@
                 const data = await response.json();
 
                 if (data.stat === 'OK' && data.data && data.data.length > 0) {
-                    // 修正 1：直接取用 TWSE JSON 回傳的實質日期，格式為 "115年09月09日" 或 "20260909"
                     let displayDate = `${String(targetDate.getMonth() + 1).padStart(2, '0')}/${String(targetDate.getDate()).padStart(2, '0')}`;
                     if (data.date) {
                         const cleanDate = data.date.replace(/[^\d]/g, '');
-                        if (cleanDate.length === 8) { // YYYYMMDD
+                        if (cleanDate.length === 8) {
                             displayDate = `${cleanDate.substring(4, 6)}/${cleanDate.substring(6, 8)}`;
-                        } else if (cleanDate.length === 7) { // 民國年 YYYMMDD
+                        } else if (cleanDate.length === 7) {
                             displayDate = `${cleanDate.substring(3, 5)}/${cleanDate.substring(5, 7)}`;
                         }
                     }
@@ -444,7 +454,6 @@
             }
         });
 
-        // 轉為億元單位並同步更新全域狀態 (供 AI 戰略分析使用)
         globalSpot = {
             foreign: foreignNet / 100000000,
             trust: trustNet / 100000000,
@@ -452,7 +461,6 @@
             total: totalNet / 100000000
         };
 
-        // 填入 UI 儲存格
         fillCell('val-foreign', foreignNet);
         fillCell('val-trust', trustNet);
         fillCell('val-dealer', dealerNet);
@@ -496,12 +504,14 @@
         autoFetchSpotData();
 
         try {
-            const [txRes, optRes] = await Promise.all([
+            const [txRes, nightRes, optRes] = await Promise.all([
                 fetch(`${apiUrl}?type=tx`), 
+                fetch(`${apiUrl}?type=tx_night`), 
                 fetch(apiUrl)
             ]);
             
             const txData = await txRes.json();
+            const nightData = await nightRes.json();
             const optData = await optRes.json();
 
             let fTX = 0, retailMTX = 0, retailMicro = 0;
@@ -515,6 +525,7 @@
             globalTX = { fTX, retailMTX, retailMicro };
 
             renderTX(txData);
+            renderNightTX(nightData);
             renderOption(optData, fTX, retailMTX, retailMicro);
         } catch (e) { console.error("Data fetch error:", e); }
     }
@@ -541,16 +552,57 @@
             const mtxV = parseFloat(String(mtx).replace(/,/g,'')) || 0;
             const microV = parseFloat(String(micro).replace(/,/g,'')) || 0;
             const isRetail = name.includes('散戶');
+            
+            let formattedCost = '--';
+            if (!isRetail && cost) {
+                const costNum = parseFloat(String(cost).replace(/,/g,''));
+                formattedCost = isNaN(costNum) ? cost : Math.round(costNum).toLocaleString();
+            }
+
             html += `<tr class="${isRetail ? 'retail-row' : ''}">
                 <td class="${isRetail ? 'retail-text' : ''}">${name}</td>
                 <td class="num-cell ${txV >= 0 ? 'pos' : 'neg'}">${isRetail ? '--' : txV.toLocaleString()}</td>
                 <td class="num-cell ${isRetail ? 'retail-highlight' : (mtxV >= 0 ? 'pos' : 'neg')}">${mtxV.toLocaleString()}</td>
                 <td class="num-cell ${isRetail ? 'retail-highlight' : (microV >= 0 ? 'pos' : 'neg')}">${microV.toLocaleString()}</td>
-                <td class="num-cell">${isRetail ? '--' : cost}</td>
+                <td class="num-cell">${formattedCost}</td>
             </tr>`;
         });
         const containerEl = document.getElementById('tx-table-container');
         if (containerEl) containerEl.innerHTML = html + "</tbody></table>";
+    }
+
+    function renderNightTX(data) {
+        // 夜盤對應表頭：身份、大台、小台、成本 (資料結構順序: [name, tx, cost, mtx] 確保正確對應小台與成本)
+        let html = `<table><thead><tr><th>身份</th><th>大台</th><th>小台</th><th>成本</th></tr></thead><tbody>`;
+        
+        if (!data || data.length <= 1) {
+            html += `<tr><td colspan="4" style="color:var(--gray); padding: 12px;">目前無夜盤資料</td></tr>`;
+        } else {
+            data.slice(1).forEach(r => {
+                const [name, tx, cost, mtx] = r;
+                if(!name) return;
+                
+                const txV = parseFloat(String(tx).replace(/,/g,'')) || 0;
+                const mtxV = parseFloat(String(mtx).replace(/,/g,'')) || 0;
+                const isRetail = name.includes('散戶');
+                
+                let formattedCost = '--';
+                if (cost !== undefined && cost !== '' && cost !== null) {
+                    const costNum = parseFloat(String(cost).replace(/,/g,''));
+                    formattedCost = isNaN(costNum) ? cost : (costNum % 1 === 0 ? costNum.toLocaleString() : costNum.toFixed(2));
+                }
+
+                html += `<tr class="${isRetail ? 'retail-row' : ''}">
+                    <td class="${isRetail ? 'retail-text' : ''}">${name}</td>
+                    <td class="num-cell ${txV >= 0 ? 'pos' : 'neg'}">${isRetail ? '--' : txV.toLocaleString()}</td>
+                    <td class="num-cell ${isRetail ? 'retail-highlight' : (mtxV >= 0 ? 'pos' : 'neg')}">${mtxV.toLocaleString()}</td>
+                    <td class="num-cell">${formattedCost}</td>
+                </tr>`;
+            });
+        }
+        
+        const nightContainerEl = document.getElementById('tx-night-table-container');
+        if (nightContainerEl) nightContainerEl.innerHTML = html + "</tbody></table>";
     }
 
     function renderOption(opt, fTX, rMTX, rMicro) {
@@ -787,7 +839,6 @@
         el.innerHTML = badges.map(b => `<span class="behavior-badge ${b.cls}">${b.text}</span>`).join('');
     }
     
-    // 修正 2：精準判斷台指期結算日（每個月第三個星期三與週選結算）
     function updateSettlementUI() {
         const now = new Date();
         const day = now.getDay();
