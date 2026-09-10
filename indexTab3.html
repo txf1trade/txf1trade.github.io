@@ -589,7 +589,7 @@
                 let formattedCost = '--';
                 if (cost !== undefined && cost !== '' && cost !== null) {
                     const costNum = parseFloat(String(cost).replace(/,/g,''));
-                    formattedCost = isNaN(costNum) ? cost : (costNum % 1 === 0 ? costNum.toLocaleString() : costNum.toFixed(2));
+                    formattedCost = isNaN(costNum) ? cost : Math.round(costNum).toLocaleString();
                 }
 
                 html += `<tr class="${isRetail ? 'retail-row' : ''}">
