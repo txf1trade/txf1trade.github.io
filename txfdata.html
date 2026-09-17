@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>台指期外資籌碼 AI 分析小工具</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; }
+        .card { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        label { font-weight: bold; display: block; margin-top: 8px; }
+        input { width: 90%; padding: 8px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 15px; width: 100%; }
+        button:hover { background: #0056b3; }
+        .result-box { background: #eef7ff; border-left: 5px solid #007bff; padding: 15px; margin-top: 15px; }
+        .alert { color: #d9534f; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>📊 台指期外資籌碼與盤勢計算器</h2>
+
+    <div class="card">
+        <h3>1. 輸入每日數據</h3>
+        <div class="grid">
+            <div>
+                <label>新建倉口數 (多正空負)</label>
+                <input type="number" id="openQty" value="2598">
+
+                <label>新建倉成本</label>
+                <input type="number" id="openCost" value="45968">
+
+                <label>夜盤高點 / 低點</label>
+                <input type="text" id="nightRange" value="46626 / 46056">
+            </div>
+            <div>
+                <label>日夜沖銷口數 (平倉為負)</label>
+                <input type="number" id="offsetQty" value="-2274">
+
+                <label>沖銷平均價格</label>
+                <input type="number" id="offsetCost" value="46546">
+
+                <label>日盤高點 / 低點</label>
+                <input type="text" id="dayRange" value="47037 / 46376">
+            </div>
+        </div>
+        <button onclick="calculateAndAnalyze()">進行數據計算與 AI 分析</button>
+    </div>
+
+    <div id="output" class="card" style="display:none;">
+        <h3>2. 自動運算結果</h3>
+        <div class="result-box" id="calcResults"></div>
+
+        <h3>3. AI 盤勢觀點與解析</h3>
+        <div id="aiAnalysis"></div>
+    </div>
+
+    <script>
+        function calculateAndAnalyze() {
+            // 讀取輸入值
+            const openQty = parseFloat(document.getElementById('openQty').value) || 0;
+            const openCost = parseFloat(document.getElementById('openCost').value) || 0;
+            const offsetQty = parseFloat(document.getElementById('offsetQty').value) || 0;
+            const offsetCost = parseFloat(document.getElementById('offsetCost').value) || 0;
+
+            // 運算邏輯
+            const pointsGained = offsetCost - openCost;
+            const totalPoints = pointsGained * Math.abs(offsetQty);
+            const netPos = openQty + offsetQty;
+            const offsetRatio = openQty !== 0 ? (Math.abs(offsetQty) / Math.abs(openQty) * 100).toFixed(1) : 0;
+
+            // 顯示運算結果
+            document.getElementById('output').style.display = 'block';
+            document.getElementById('calcResults').innerHTML = `
+                <ul>
+                    <li><b>沖銷每口平倉價差：</b> <span style="color:${pointsGained >= 0 ? 'red' : 'green'}">${pointsGained > 0 ? '+' : ''}${pointsGained} 點</span></li>
+                    <li><b>沖銷實現總利得：</b> ${totalPoints.toLocaleString()} 點（點數和）</li>
+                    <li><b>最新剩餘淨部位：</b> <b>${netPos}</b> 口 (成本仍視為 ${openCost})</li>
+                    <li><b>當日沖銷釋放比例：</b> <b>${offsetRatio}%</b></li>
+                </ul>
+            `;
+
+            // 邏輯規則分析 (模擬 AI 判定)
+            let analysisHtml = "";
+            
+            if (offsetRatio >= 70) {
+                analysisHtml += `<p class="alert">⚠️ 高度沖銷（沖銷率 ${offsetRatio}%）：外資呈現典型的「隔夜鎖價落袋為安」模式，對波段續漲態度保守，短線偏向極短線價差操作。</p>`;
+            } else if (offsetRatio <= 30) {
+                analysisHtml += `<p>✅ 低沖銷率（沖銷率 ${offsetRatio}%）：外資多數部位留倉，顯示對後續趨勢方向有較強信心。</p>`;
+            } else {
+                analysisHtml += `<p>ℹ️ 中度沖銷（沖銷率 ${offsetRatio}%）：外資進行部分獲利調節，調整倉位結構。</p>`;
+            }
+
+            if (netPos < 1000 && netPos > -1000) {
+                analysisHtml += `<p>🔹 <b>部位狀態：</b> 淨部位接近中性（僅 ${netPos} 口），避險與方向性押注皆低，大盤易受現貨動向影響。</p>`;
+            }
+
+            analysisHtml += `<p>🛡️ <b>關鍵防守位：</b> <b>${openCost}</b>（建倉成本）。指數若能維持在此價位之上，多方結構未破；若跌破則需防範反彈結束。</p>`;
+
+            document.getElementById('aiAnalysis').innerHTML = analysisHtml;
+        }
+    </script>
+</body>
+</html>
