@@ -1,13 +1,12 @@
 <!-- 
     股期監控-專業優化整合版 (含價格級距篩選與色彩標示)
-    新增功能：價格級距快捷篩選按鈕 (千金 / 準千金 / 百元股 / 平價股)
-    修復項目：修正 iPhone 輸入股票代號時畫面自動放大 (Zoom in) 導致右側被切掉的問題
+    修復項目：徹底解決 iOS Safari 點擊 Sticky 區塊內的搜尋框時畫面自動放大 (Zoom in) 及右側切掉問題
 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <!-- 修正 Viewport 參數，加入 shrink-to-fit=no 防止 iOS 縮放 -->
+    <!-- 修正 Viewport 參數 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
     <title>股期監控-專業優化版</title>
     <style>
@@ -40,18 +39,29 @@
             color: var(--text-main);
             font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
             display: flex; justify-content: center;
+            /* 防止 iOS 橫向溢出 */
+            overflow-x: hidden;
+            width: 100%;
         }
 
         .app-wrapper { 
-            width: 98%; max-width: 550px; background: var(--bg-black); 
+            width: 100%; max-width: 550px; background: var(--bg-black); 
             min-height: 100vh; padding-bottom: calc(40px + env(safe-area-inset-bottom)); box-sizing: border-box;
             position: relative;
+            overflow-x: hidden;
         }
 
         .sticky-top {
             position: sticky; top: 0; background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px); z-index: 100; padding: 4px 2px;
+            backdrop-filter: blur(10px); z-index: 100; padding: 4px 6px;
             border-bottom: 1px solid #333;
+            box-sizing: border-box;
+            transition: position 0.1s;
+        }
+
+        /* 當搜尋框聚焦時，暫時取消 sticky 避開 iOS Safari 的 Bug */
+        .sticky-top.no-sticky {
+            position: relative !important;
         }
 
         .index-bar {
@@ -104,12 +114,15 @@
 
         .search-row { padding: 4px 2px; position: relative; display: flex; align-items: center; }
         
-        /* 核心修正：強制設定 font-size 為 16px 以上，防止 iOS Safari 點擊時自動 Zoom in 畫面 */
+        /* 核心修正：字級、iOS 預設外框關閉、觸發層處理 */
         #search-input {
             width: 100%; background: #222; border: 1px solid #444; border-radius: 4px;
             padding: 8px; padding-right: 32px; color: #fff; 
             font-size: 16px !important; 
+            line-height: 1.2;
+            -webkit-appearance: none;
             -webkit-text-size-adjust: 100%;
+            border-radius: 6px;
             box-sizing: border-box; outline: none;
         }
         #clear-search {
@@ -211,7 +224,7 @@
 </div>
 
 <div class="app-wrapper">
-    <div class="sticky-top">
+    <div class="sticky-top" id="sticky-header">
         <!-- 加權、櫃買與台指期顯示區塊 -->
         <div class="index-bar">
             <div class="index-box">
@@ -261,7 +274,7 @@
         </div>
         
         <div class="search-row">
-            <input type="text" id="search-input" placeholder="🔍 搜尋代碼、名稱、股期代碼......">
+            <input type="text" id="search-input" placeholder="🔍 搜尋代碼、名稱、股期代碼......" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             <span id="clear-search">&times;</span>
         </div>
 
@@ -327,6 +340,7 @@
     let txMode = 'full'; // 全盤模式 (full) / 日盤模式 (day)
 
     const dom = {
+        stickyHeader: document.getElementById('sticky-header'),
         table: document.getElementById('main-table'),
         hmGrid: document.getElementById('heatmap-grid'),
         hmCount: document.getElementById('hm-count'),
@@ -775,9 +789,24 @@
     dom.searchInput.oninput = render;
     dom.clearSearch.onclick = () => { dom.searchInput.value = ''; render(); };
 
-    // 解決 iOS 鍵盤收起後頁面版型未自動回彈問題
+    // 【關鍵修復核心】解決 iOS Sticky 輸入框焦點放大與版型偏移 BUG
+    dom.searchInput.addEventListener('focus', () => {
+        // 1. 暫時將吸頂選單設為 relative，防止 iOS fixed/sticky 軟鍵盤擠壓造成的 Viewport 偏移放大
+        dom.stickyHeader.classList.add('no-sticky');
+    });
+
     dom.searchInput.addEventListener('blur', () => {
+        // 2. 恢復 sticky 屬性
+        dom.stickyHeader.classList.remove('no-sticky');
+        
+        // 3. 強制將頁面與 Viewport 縮放重設回到 (0,0) 原點
         window.scrollTo(0, 0);
+        
+        // 4. 重置 Viewport 比例
+        let meta = document.querySelector('meta[name="viewport"]');
+        if (meta) {
+            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover';
+        }
     });
 
     document.getElementById('hm-header').onclick = () => dom.hmContainer.classList.toggle('open');
