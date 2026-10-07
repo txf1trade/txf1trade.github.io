@@ -291,8 +291,8 @@
             <label class="filter-toggle" style="border-right: 1px solid #444; padding-right: 6px;">
                 <input type="checkbox" id="show-etf"> ETF</label>
             <div class="slider-box">
-                <span id="rank-val">10 名</span>
-                <input type="range" id="rank-slider" min="10" max="240" step="10" value="10">
+                <span id="rank-val">50 名</span>
+                <input type="range" id="rank-slider" min="10" max="240" step="10" value="50">
             </div>
             <span id="timer-display">5.0s</span>
             <div id="refresh-bar"></div>
@@ -331,7 +331,7 @@
     let cachedData = [];
     let favList = JSON.parse(localStorage.getItem('my_stkfut_favs') || '[]');
     let dailyRankData = {}; 
-    let currentRankLimit = 10; 
+    let currentRankLimit = 50; 
     let currentMode = 'ai_long'; 
     let currentPriceRange = 'all'; 
     let sortOrder = 'desc'; 
