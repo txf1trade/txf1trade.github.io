@@ -1,6 +1,5 @@
 <!-- 
-    股期監控-專業優化整合版 (含價格級距篩選與色彩標示)
-    新增功能：價格級距快捷篩選按鈕 (千金 / 準千金 / 百元股 / 平價股)
+    股期監控-專業優化整合版 (含精確 Tick Size 無條件捨去漲停判定與漲幅顯示)
 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -74,13 +73,15 @@
 
         .mode-header { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; }
         .mode-btn {
-            flex: 1; min-width: 65px; padding: 8px 2px; text-align: center; font-size: 11px;
+            flex: 1; min-width: 58px; padding: 7px 2px; text-align: center; font-size: 10px;
             font-weight: bold; border-radius: 4px; border: 1px solid #333;
             cursor: pointer; background: #111; color: var(--text-dim);
             white-space: nowrap; margin-bottom: 2px;
         }
         
         .mode-btn.active[data-mode="all"] { border-color: var(--accent); color: var(--accent); background: rgba(100, 255, 218, 0.1); }
+        .mode-btn.active[data-mode="limit_up"] { border-color: #ff0055; color: #ff0055; background: rgba(255, 0, 85, 0.15); }
+        .mode-btn.active[data-mode="range_3_5"] { border-color: #ff9500; color: #ff9500; background: rgba(255, 149, 0, 0.15); }
         .mode-btn.active[data-mode="up"] { border-color: var(--up-red); color: var(--up-red); background: rgba(255, 59, 48, 0.1); }
         .mode-btn.active[data-mode="down"] { border-color: var(--down-green); color: var(--down-green); background: rgba(52, 199, 89, 0.1); }
         .mode-btn.active[data-mode="strong_buy"] { border-color: var(--strong-blue); color: var(--strong-blue); background: rgba(0, 229, 255, 0.1); }
@@ -88,7 +89,6 @@
         .mode-btn.active[data-mode="ai_long"] { border-color: var(--ai-gold); color: var(--ai-gold); background: rgba(255, 204, 0, 0.1); }
         .mode-btn.active[data-mode="fav"] { border-color: var(--fav-star); color: var(--fav-star); background: rgba(255, 204, 0, 0.1); }
 
-        /* 新增：價格區級按鈕樣式 */
         .price-filter-row { display: flex; gap: 4px; margin-bottom: 6px; }
         .price-btn {
             flex: 1; padding: 6px 2px; text-align: center; font-size: 10px; font-weight: bold;
@@ -172,12 +172,35 @@
         .tag-tse { color: #fff; border: 1px solid #555; }
         .tag-otc { color: #ff7fe5; border: 1px solid #ff7fe5; }
 
-        .price-val, .fut-price-val { font-weight: bold; font-family: monospace; font-size: 11px; }
+        /* 價格區塊容器與漲幅樣式 */
+        .price-cell-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .price-val, .fut-price-val { font-weight: bold; font-family: monospace; font-size: 11px; display: inline-block; padding: 1px 3px; border-radius: 2px; }
+        .change-percent { font-size: 9px; font-family: monospace; font-weight: bold; margin-top: 1px; }
+
         .score-val { font-weight: 700; font-family: monospace; font-size: 11px; }
         .score-bar-bg { display: block; width: 100%; height: 2px; background: #222; margin-top: 2px; }
         .score-bar-fill { height: 100%; }
         .rank-strength-container { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; border: 1px solid #333; }
         .rank-strength-fill { height: 100%; }
+
+        /* 漲跌停高亮樣式 (紅底白字/綠底白字) */
+        .limit-up {
+            background-color: #ff0000 !important;
+            color: #ffffff !important;
+            font-weight: bold;
+        }
+
+        .limit-down {
+            background-color: #008800 !important;
+            color: #ffffff !important;
+            font-weight: bold;
+        }
 
         .section-divider { background: #333; color: #aaa; font-size: 10px; padding: 4px 8px; text-align: left; }
 
@@ -237,6 +260,8 @@
         <!-- 策略選擇器 -->
         <div class="mode-header" id="mode-selector">
             <div class="mode-btn" data-mode="all">全部</div>
+            <div class="mode-btn" data-mode="limit_up">🔴漲停榜</div>
+            <div class="mode-btn" data-mode="range_3_5">⚡強勢3-5%</div>
             <div class="mode-btn" data-mode="up">多方</div>
             <div class="mode-btn" data-mode="down">空方</div>
             <div class="mode-btn" data-mode="strong_buy">🔥強勢</div>
@@ -245,7 +270,7 @@
             <div class="mode-btn" data-mode="fav">★自選股</div>
         </div>
 
-        <!-- 新增：價格級距篩選區塊 -->
+        <!-- 價格級距篩選區塊 -->
         <div class="price-filter-row" id="price-selector">
             <div class="price-btn active" data-price-range="all">全部價格</div>
             <div class="price-btn" data-price-range="1000">👑千金股 (1000+)</div>
@@ -270,8 +295,8 @@
             <label class="filter-toggle" style="border-right: 1px solid #444; padding-right: 6px;">
                 <input type="checkbox" id="show-etf"> ETF</label>
             <div class="slider-box">
-                <span id="rank-val">10 名</span>
-                <input type="range" id="rank-slider" min="10" max="240" step="10" value="10">
+                <span id="rank-val">50 名</span>
+                <input type="range" id="rank-slider" min="10" max="240" step="10" value="50">
             </div>
             <span id="timer-display">5.0s</span>
             <div id="refresh-bar"></div>
@@ -309,16 +334,17 @@
 
     let cachedData = [];
     let favList = JSON.parse(localStorage.getItem('my_stkfut_favs') || '[]');
+    let dailyRankData = {}; 
     let currentRankLimit = 10; 
     let currentMode = 'ai_long'; 
-    let currentPriceRange = 'all'; // 新增：價格級距狀態 ('all', '1000', '500', '100', '0')
+    let currentPriceRange = 'all'; 
     let sortOrder = 'desc'; 
     let sortKey = 'total';
     let isFetching = false;
     let refreshTimer = 0;
     const REFRESH_INTERVAL = 5000;
 
-    let txMode = 'full'; // 全盤模式 (full) / 日盤模式 (day)
+    let txMode = 'full';
 
     const dom = {
         table: document.getElementById('main-table'),
@@ -340,17 +366,123 @@
         thFar: document.getElementById('th-far')
     };
 
-    // 根據價格設定區間顏色
+    /* ------------------- 漲跌停判斷與精確 Tick Size 級距邏輯 ------------------- */
+    function getTickSize(price) {
+        if (price >= 1000) return 5.0;
+        if (price >= 500) return 1.0;
+        if (price >= 300) return 0.5;
+        if (price >= 100) return 0.5;
+        if (price >= 50) return 0.1;
+        if (price >= 10) return 0.05;
+        return 0.01;
+    }
+
+    function fitTickSize(price, mode) {
+        const tick = getTickSize(price);
+        if (mode === 'down') {
+            // 無條件捨去至最小 Tick 單位
+            return Math.floor((price + 1e-8) / tick) * tick;
+        } else {
+            // 無條件進位至最小 Tick 單位
+            return Math.ceil((price - 1e-8) / tick) * tick;
+        }
+    }
+
+    function getUpLimitPrice(prevRef) {
+        if (!prevRef || isNaN(prevRef) || prevRef <= 0) return null;
+        let maxPrice = prevRef * 1.10;
+        // 漲停價公式：無條件捨去至最小單位
+        return fitTickSize(maxPrice, 'down');
+    }
+
+    function getDownLimitPrice(prevRef) {
+        if (!prevRef || isNaN(prevRef) || prevRef <= 0) return null;
+        let minPrice = prevRef * 0.90;
+        // 跌停價公式：無條件進位至最小單位
+        return fitTickSize(minPrice, 'up');
+    }
+
+    function getLimitStatus(price, prevRef, changePercent) {
+        const currentPrice = parseFloat(price);
+        const refPrice = parseFloat(prevRef);
+        
+        if (isNaN(currentPrice) || currentPrice <= 0) return 'normal';
+
+        if (!isNaN(refPrice) && refPrice > 0) {
+            const upLimit = getUpLimitPrice(refPrice);
+            const downLimit = getDownLimitPrice(refPrice);
+
+            // 考慮浮點數誤差，允許微小容差
+            if (upLimit !== null && (currentPrice >= upLimit - 1e-4)) return 'limit-up';
+            if (downLimit !== null && (currentPrice <= downLimit + 1e-4)) return 'limit-down';
+        }
+
+        // 備用判斷：涵蓋無條件捨去後實際顯示漲幅約 +9.3% ~ +9.99% 的情況
+        if (changePercent !== undefined && !isNaN(changePercent)) {
+            if (changePercent >= 9.30) return 'limit-up';
+            if (changePercent <= -9.30) return 'limit-down';
+        }
+
+        return 'normal';
+    }
+
+    /* 計算與取得當前漲跌幅 (%) 輔助函式 */
+    function calculateChangePercent(price, prevRef, apiChangePct) {
+        if (apiChangePct !== undefined && !isNaN(apiChangePct)) {
+            return parseFloat(apiChangePct);
+        }
+        const p = parseFloat(price);
+        const ref = parseFloat(prevRef);
+        if (!isNaN(p) && !isNaN(ref) && ref > 0) {
+            return ((p - ref) / ref) * 100;
+        }
+        return null;
+    }
+
     function getPriceColor(val) {
         const num = parseFloat(val);
         if (isNaN(num)) return 'var(--price-normal)';
-        if (num >= 1000) return 'var(--price-thousand)'; // 1000元~9999元 高價權值股 / 千金股
-        if (num >= 500)  return 'var(--price-500)';      // 500元~999元 中高價股 / 準千金股
-        if (num >= 100)  return 'var(--price-100)';      // 100元~499元 百元俱樂部
-        return 'var(--price-normal)';                    // 100元以下 預設白色
+        if (num >= 1000) return 'var(--price-thousand)';
+        if (num >= 500)  return 'var(--price-500)';
+        if (num >= 100)  return 'var(--price-100)';
+        return 'var(--price-normal)';
     }
 
-    // 抓取證交所與櫃買指數 (MIS 官方 API)
+    /* ------------------- 抓取 daily_rank 漲跌停與行情參考資訊 ------------------- */
+    async function fetchDailyRankData() {
+        try {
+            const [stockRes, futRes] = await Promise.all([
+                fetch('https://api.market-insight.futures-ai.com/api/monitor/daily_rank?symbol_root=stock').then(r=>r.json()).catch(()=>[]),
+                fetch('https://api.market-insight.futures-ai.com/api/monitor/daily_rank?symbol_root=stock_futures').then(r=>r.json()).catch(()=>[])
+            ]);
+
+            const mapData = {};
+            if (Array.isArray(stockRes)) {
+                stockRes.forEach(item => {
+                    mapData[item.symbol] = {
+                        prev_ref: item.prev_ref,
+                        change_percent: item.change_percent,
+                        close: item.close
+                    };
+                });
+            }
+            if (Array.isArray(futRes)) {
+                futRes.forEach(item => {
+                    // 自動切割去除月份後綴 (例如將 PRF-1 切割為 PRF)
+                    const cleanSymbol = item.symbol.split('-')[0];
+                    mapData[cleanSymbol] = {
+                        prev_ref: item.prev_ref,
+                        change_percent: item.change_percent,
+                        close: item.close
+                    };
+                });
+            }
+            dailyRankData = mapData;
+        } catch(e) {
+            console.warn('[daily_rank API 載入失敗]:', e);
+        }
+    }
+
     async function fetchMisIndex() {
         try {
             const timestamp = Date.now();
@@ -379,7 +511,6 @@
         }
     }
 
-    // 抓取台指期數據
     async function fetchTxIndex(symbol) {
         try {
             const timestamp = Date.now();
@@ -403,7 +534,6 @@
         return null;
     }
 
-    // 統一抓取大盤與指數
     async function fetchMarketIndices() {
         const txSymbol = (txMode === 'full') ? 'FITX01' : 'FITX01D';
         
@@ -417,7 +547,6 @@
         if (tx) updateIndexUI('tx', tx.price, tx.diff, tx.pct, true);
     }
 
-    // 切換台指期全/日盤模式
     function toggleTXMode() {
         txMode = txMode === 'full' ? 'day' : 'full';
         document.getElementById('tx-mode-tag').innerText = txMode === 'full' ? '全' : '日';
@@ -427,7 +556,6 @@
         fetchMarketIndices();
     }
 
-    // 更新頂部大盤 UI 介面
     function updateIndexUI(type, price, diff, pct, isInteger) {
         const priceEl = document.getElementById(`${type}-price`);
         const chgEl = document.getElementById(`${type}-chg`);
@@ -449,7 +577,6 @@
         }
     }
 
-    // 自動抓取單一標的最新收盤價
     async function fetchSinglePrice(symbol, isFuture = false) {
         let targetSymbol = symbol;
         if (isFuture && !targetSymbol.includes('-')) {
@@ -482,6 +609,7 @@
         isFetching = true;
         try {
             fetchMarketIndices();
+            await fetchDailyRankData(); 
 
             const timestamp = Date.now();
             const response = await fetch(`https://market-data-api.futures-ai.com/stkfut_tradeinfo/?_t=${timestamp}`, { cache: 'no-store' });
@@ -506,7 +634,6 @@
                 render(); 
                 refreshTimer = 0;
 
-                // 批次抓取前 300 名的現貨與股期價格
                 let priceTargets = baseList.sort((a,b) => b.total - a.total).slice(0, 300);
                 await Promise.all(priceTargets.map(async (item) => {
                     const [spotPrice, futPrice] = await Promise.all([
@@ -519,7 +646,6 @@
                     updateRowPrice(item);
                 }));
                 
-                // 價格更新後重新計算篩選邏輯
                 render();
             }
         } catch (e) { 
@@ -532,16 +658,56 @@
     function updateRowPrice(item) {
         const row = dom.table.querySelector(`tr[data-id="${item.id}"]`);
         if (row) {
-            const priceEl = row.querySelector('.price-val');
-            const fPriceEl = row.querySelector('.fut-price-val');
+            const spotCell = row.cells[1];
+            const futCell = row.cells[2];
 
-            if (priceEl) {
-                priceEl.innerText = item.price;
-                priceEl.style.color = getPriceColor(item.price);
+            const spotInfo = dailyRankData[item.stockNum] || {};
+            const futInfo = dailyRankData[item.id] || {};
+
+            if (spotCell) {
+                const limitStatus = getLimitStatus(item.price, spotInfo.prev_ref, spotInfo.change_percent);
+                const chgPct = calculateChangePercent(item.price, spotInfo.prev_ref, spotInfo.change_percent);
+                let pctStr = '--';
+                let pctColor = '#888';
+
+                if (chgPct !== null) {
+                    const sign = chgPct > 0 ? '+' : '';
+                    pctStr = `${sign}${chgPct.toFixed(2)}%`;
+                    pctColor = chgPct > 0 ? 'var(--up-red)' : (chgPct < 0 ? 'var(--down-green)' : '#888');
+                }
+
+                spotCell.querySelector('.price-val').innerText = item.price;
+                spotCell.querySelector('.price-val').className = `price-val ${limitStatus}`;
+                spotCell.querySelector('.price-val').style.color = (limitStatus === 'normal') ? getPriceColor(item.price) : '#ffffff';
+
+                const pctEl = spotCell.querySelector('.change-percent');
+                if (pctEl) {
+                    pctEl.innerText = pctStr;
+                    pctEl.style.color = limitStatus !== 'normal' ? '#ffffff' : pctColor;
+                }
             }
-            if (fPriceEl) {
-                fPriceEl.innerText = item.futPrice;
-                fPriceEl.style.color = getPriceColor(item.futPrice);
+
+            if (futCell) {
+                const limitStatus = getLimitStatus(item.futPrice, futInfo.prev_ref, futInfo.change_percent);
+                const chgPct = calculateChangePercent(item.futPrice, futInfo.prev_ref, futInfo.change_percent);
+                let pctStr = '--';
+                let pctColor = '#888';
+
+                if (chgPct !== null) {
+                    const sign = chgPct > 0 ? '+' : '';
+                    pctStr = `${sign}${chgPct.toFixed(2)}%`;
+                    pctColor = chgPct > 0 ? 'var(--up-red)' : (chgPct < 0 ? 'var(--down-green)' : '#888');
+                }
+
+                futCell.querySelector('.fut-price-val').innerText = item.futPrice;
+                futCell.querySelector('.fut-price-val').className = `fut-price-val ${limitStatus}`;
+                futCell.querySelector('.fut-price-val').style.color = (limitStatus === 'normal') ? getPriceColor(item.futPrice) : '#ffffff';
+
+                const pctEl = futCell.querySelector('.change-percent');
+                if (pctEl) {
+                    pctEl.innerText = pctStr;
+                    pctEl.style.color = limitStatus !== 'normal' ? '#ffffff' : pctColor;
+                }
             }
         }
     }
@@ -566,10 +732,9 @@
                 if (!isShowEtf && i.stockNum.startsWith('00')) return false;
             }
 
-            // 新增：價格級距過濾邏輯
             if (currentPriceRange !== 'all' && !isSearchMatched) {
                 const p = parseFloat(i.price);
-                if (isNaN(p)) return false; // 尚未抓到價格者先隱藏
+                if (isNaN(p)) return false;
 
                 if (currentPriceRange === '1000' && p < 1000) return false;
                 if (currentPriceRange === '500' && (p < 500 || p >= 1000)) return false;
@@ -626,6 +791,29 @@
             let list = [...baseList];
             if (!searchQuery) {
                 if (currentMode === 'ai_long') list = list.filter(i => i.isLong);
+                else if (currentMode === 'limit_up') {
+                    // 1. 漲停榜條件：現貨或股期達漲停狀態
+                    list = list.filter(i => {
+                        const spotInfo = dailyRankData[i.stockNum] || {};
+                        const futInfo = dailyRankData[i.id] || {};
+                        const spotStatus = getLimitStatus(i.price, spotInfo.prev_ref, spotInfo.change_percent);
+                        const futStatus = getLimitStatus(i.futPrice, futInfo.prev_ref, futInfo.change_percent);
+                        return spotStatus === 'limit-up' || futStatus === 'limit-up';
+                    });
+                }
+                else if (currentMode === 'range_3_5') {
+                    // 2. 漲幅 3-5% 條件：現貨或股期漲幅落在 +3.0% 到 +5.0% 之間
+                    list = list.filter(i => {
+                        const spotInfo = dailyRankData[i.stockNum] || {};
+                        const futInfo = dailyRankData[i.id] || {};
+                        const spotPct = calculateChangePercent(i.price, spotInfo.prev_ref, spotInfo.change_percent);
+                        const futPct = calculateChangePercent(i.futPrice, futInfo.prev_ref, futInfo.change_percent);
+                        
+                        const isSpotInRange = spotPct !== null && spotPct >= 3.0 && spotPct <= 5.0;
+                        const isFutInRange = futPct !== null && futPct >= 3.0 && futPct <= 5.0;
+                        return isSpotInRange || isFutInRange;
+                    });
+                }
                 else if (currentMode === 'strong_buy') list = list.filter(i => i.total >= 10 && i.near > 0);
                 else if (currentMode === 'mini') list = list.filter(i => i.name.includes('小型')); 
                 else if (currentMode === 'up') list = list.filter(i => i.total > 0);
@@ -688,6 +876,27 @@
             const isFaved = favList.includes(item.id);
             const themeColor = item.total >= 0 ? 'var(--up-red)' : 'var(--down-green)';
 
+            const spotInfo = dailyRankData[item.stockNum] || {};
+            const futInfo = dailyRankData[item.id] || {};
+
+            const spotLimitClass = getLimitStatus(item.price, spotInfo.prev_ref, spotInfo.change_percent);
+            const futLimitClass = getLimitStatus(item.futPrice, futInfo.prev_ref, futInfo.change_percent);
+
+            // 計算現貨與股期漲跌幅
+            const spotPct = calculateChangePercent(item.price, spotInfo.prev_ref, spotInfo.change_percent);
+            const futPct = calculateChangePercent(item.futPrice, futInfo.prev_ref, futInfo.change_percent);
+
+            const formatPct = (pct, limitClass) => {
+                if (pct === null) return { text: '--', color: '#888' };
+                const sign = pct > 0 ? '+' : '';
+                const text = `${sign}${pct.toFixed(2)}%`;
+                const color = limitClass !== 'normal' ? '#ffffff' : (pct > 0 ? 'var(--up-red)' : (pct < 0 ? 'var(--down-green)' : '#888'));
+                return { text, color };
+            };
+
+            const spotPctObj = formatPct(spotPct, spotLimitClass);
+            const futPctObj = formatPct(futPct, futLimitClass);
+
             return `<tr data-id="${item.id}">
                 <td class="name-col">
                     <div style="display:flex; align-items:center;">
@@ -707,10 +916,24 @@
                     </div>
                 </td>
                 <td>
-                    <div class="price-val" style="color:${getPriceColor(item.price)}">${item.price}</div>
+                    <div class="price-cell-container">
+                        <div class="price-val ${spotLimitClass}" style="${spotLimitClass === 'normal' ? 'color:' + getPriceColor(item.price) : ''}">
+                            ${item.price}
+                        </div>
+                        <div class="change-percent" style="color:${spotPctObj.color}">
+                            ${spotPctObj.text}
+                        </div>
+                    </div>
                 </td>
                 <td>
-                    <div class="fut-price-val" style="color:${getPriceColor(item.futPrice)}">${item.futPrice}</div>
+                    <div class="price-cell-container">
+                        <div class="fut-price-val ${futLimitClass}" style="${futLimitClass === 'normal' ? 'color:' + getPriceColor(item.futPrice) : ''}">
+                            ${item.futPrice}
+                        </div>
+                        <div class="change-percent" style="color:${futPctObj.color}">
+                            ${futPctObj.text}
+                        </div>
+                    </div>
                 </td>
                 <td><span class="score-val" style="color:${item.near>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(item.near)}</span></td> 
                 <td><span class="score-val" style="color:${item.far>=0?'var(--up-red)':'var(--down-green)'}">${Math.round(item.far)}</span></td> 
@@ -736,7 +959,6 @@
         render(); 
     }
 
-    // 新增：切換價格級距
     function setPriceRange(range) {
         currentPriceRange = range;
         document.querySelectorAll('.price-btn').forEach(b => b.classList.toggle('active', b.dataset.priceRange === range));
@@ -762,8 +984,6 @@
     function closeAI() { document.getElementById('ai-modal').style.display = 'none'; }
 
     document.getElementById('mode-selector').onclick = e => { if (e.target.dataset.mode) setMode(e.target.dataset.mode); };
-    
-    // 綁定價格篩選按鈕事件
     document.getElementById('price-selector').onclick = e => { if (e.target.dataset.priceRange) setPriceRange(e.target.dataset.priceRange); };
 
     dom.searchInput.oninput = render;
