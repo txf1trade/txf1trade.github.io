@@ -1,5 +1,5 @@
 <!-- 
-    股期監控-專業優化整合版 (含價格級距篩選、色彩標示、漲跌停紅綠底高亮與價格下方漲幅顯示)
+    股期監控-專業優化整合版 (修復股期代碼代號帶 -1 後綴匹配問題，精準判定漲跌停與顯示漲幅)
 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -455,7 +455,9 @@
             }
             if (Array.isArray(futRes)) {
                 futRes.forEach(item => {
-                    mapData[item.symbol] = {
+                    // 將 "PRF-1" 切割取出純代碼 "PRF"
+                    const cleanSymbol = item.symbol.split('-')[0];
+                    mapData[cleanSymbol] = {
                         prev_ref: item.prev_ref,
                         change_percent: item.change_percent,
                         close: item.close
@@ -594,7 +596,7 @@
         isFetching = true;
         try {
             fetchMarketIndices();
-            fetchDailyRankData(); 
+            await fetchDailyRankData(); 
 
             const timestamp = Date.now();
             const response = await fetch(`https://market-data-api.futures-ai.com/stkfut_tradeinfo/?_t=${timestamp}`, { cache: 'no-store' });
