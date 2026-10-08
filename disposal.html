@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>處置股資料查詢（動態顯示公告日期）</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-hover: #1e40af;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+      --badge-disposal-bg: #fee2e2;
+      --badge-disposal-text: #991b1b;
+      --badge-attention-bg: #fef3c7;
+      --badge-attention-text: #92400e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--primary);
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      margin-bottom: 8px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    input, select, button {
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+      outline: none;
+      height: 28px;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      max-height: calc(100vh - 130px);
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.82rem;
+    }
+
+    th, td {
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    th {
+      background-color: #e2e8f0;
+      color: #1e293b;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    th.sortable, th.clickable {
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s;
+    }
+
+    th.sortable:hover, th.clickable:hover {
+      background-color: #cbd5e1;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    tr:hover {
+      background-color: #e0f2fe;
+    }
+
+    /* 預設隱藏公告日期欄位 */
+    .notice-date-col {
+      display: none;
+    }
+
+    .stock-code {
+      font-weight: 700;
+      color: var(--primary);
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+
+    .stock-name {
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .stock-price {
+      font-weight: 700;
+      color: #047857;
+      text-align: right;
+      font-family: monospace;
+    }
+
+    .kline-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 28px;
+    }
+
+    canvas.sparkline {
+      display: block;
+      background: transparent;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-disposal {
+      background-color: var(--badge-disposal-bg);
+      color: var(--badge-disposal-text);
+    }
+
+    .badge-attention {
+      background-color: var(--badge-attention-bg);
+      color: var(--badge-attention-text);
+    }
+
+    .reason-text {
+      white-space: normal;
+      word-break: break-all;
+      max-width: 500px;
+      font-size: 0.8rem;
+      color: #334155;
+      line-height: 1.25;
+    }
+
+    .loading, .error-msg, .no-data {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+    }
+
+    .error-msg {
+      color: #dc2626;
+    }
+
+    .price-loading {
+      color: #94a3b8;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>處置 / 注意股速查（含單根日 K 棒排序）</h1>
+      <div id="countDisplay" style="font-weight: 600; color: var(--primary);">共 0 筆</div>
+    </header>
+
+    <div class="card">
+      <div class="controls">
+        <div class="input-group">
+          <label for="startDate">起始</label>
+          <input type="date" id="startDate">
+        </div>
+        <div class="input-group">
+          <label for="endDate">結束</label>
+          <input type="date" id="endDate">
+        </div>
+        <div class="input-group">
+          <label for="typeSelect">類型</label>
+          <select id="typeSelect">
+            <option value="disposal">處置股</option>
+            <option value="attention">注意股</option>
+          </select>
+        </div>
+        <button id="fetchBtn">查詢</button>
+        <div class="input-group" style="margin-left: auto;">
+          <label for="searchInput">搜尋</label>
+          <input type="text" id="searchInput" placeholder="代號 / 名稱..." style="width: 130px;">
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding: 0;">
+      <div class="table-wrapper">
+        <table id="stockTable">
+          <thead>
+            <tr>
+              <th style="width: 70px;">代號</th>
+              <th style="width: 100px;">名稱</th>
+              <th style="width: 80px; text-align: right;">成交價</th>
+              <th id="klineHeader" class="sortable" style="width: 70px; text-align: center;">K棒 <span id="sortIcon">↕</span></th>
+              <th id="periodHeader" class="clickable" style="width: 130px;" title="點擊顯示/隱藏公告日期">處置期間 👁️</th>
+              <th class="notice-date-col" style="width: 90px;">公告日期</th>
+              <th style="width: 60px;">類型</th>
+              <th>處置措施 / 原因</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td colspan="8" class="loading">載入中...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let rawData = [];
+    let nameMapping = {};
+    let candleDataMap = {};
+    let klineSortOrder = null;
+
+    const MAPPING_URL = 'https://storage.googleapis.com/symbol-config/stock_code_to_chinese.json';
+
+    function initDefaultDates() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+
+      const firstDayOfMonth = `${year}-${month}-01`;
+      const today = `${year}-${month}-${day}`;
+
+      document.getElementById('startDate').value = firstDayOfMonth;
+      document.getElementById('endDate').value = today;
+    }
+
+    async function loadStockNames() {
+      try {
+        const response = await fetch(MAPPING_URL);
+        if (response.ok) {
+          nameMapping = await response.json();
+        }
+      } catch (e) {
+        console.warn('無法讀取對照檔:', e);
+      }
+    }
+
+    function formatDisposalPeriod(startDateStr, endDateStr, fallbackPeriod) {
+      if (!startDateStr || !endDateStr) return fallbackPeriod || '--';
+
+      const startMatch = startDateStr.match(/^(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})/);
+      const endMatch = endDateStr.match(/^(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})/);
+
+      if (startMatch && endMatch) {
+        const [_, startYear, startMonth, startDay] = startMatch;
+        const [__, endYear, endMonth, endDay] = endMatch;
+
+        if (startYear === endYear) {
+          return `${startMonth}-${startDay}~${endMonth}-${endDay}`;
+        } else {
+          return `${startYear}-${startMonth}-${startDay}~${endYear}-${endMonth}-${endDay}`;
+        }
+      }
+
+      return `${startDateStr}~${endDateStr}`;
+    }
+
+    function drawSingleCandle(canvas, candle) {
+      if (!canvas || !candle) return;
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;
+      const height = canvas.height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const { open, high, low, close } = candle;
+      let minPrice = low;
+      let maxPrice = high;
+
+      if (minPrice === maxPrice) {
+        minPrice *= 0.99;
+        maxPrice *= 1.01;
+      }
+
+      const padding = 2;
+      const drawableHeight = height - padding * 2;
+      const x = width / 2;
+      const barWidth = 8;
+
+      const highY = height - padding - ((high - minPrice) / (maxPrice - minPrice)) * drawableHeight;
+      const lowY = height - padding - ((low - minPrice) / (maxPrice - minPrice)) * drawableHeight;
+      const openY = height - padding - ((open - minPrice) / (maxPrice - minPrice)) * drawableHeight;
+      const closeY = height - padding - ((close - minPrice) / (maxPrice - minPrice)) * drawableHeight;
+
+      const isUp = close >= open;
+      const color = isUp ? '#ef4444' : '#22c55e';
+
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.moveTo(x, highY);
+      ctx.lineTo(x, lowY);
+      ctx.stroke();
+
+      ctx.fillStyle = color;
+      const bodyY = Math.min(openY, closeY);
+      const bodyHeight = Math.max(Math.abs(openY - closeY), 1.5);
+      ctx.fillRect(x - barWidth / 2, bodyY, barWidth, bodyHeight);
+    }
+
+    async function fetchPriceAndSingleCandle(symbol, priceCellId, canvasId) {
+      const priceTd = document.getElementById(priceCellId);
+      const canvas = document.getElementById(canvasId);
+
+      const url = `https://tvapi.futures-op.com/history?agent=futuresai&product=web&ws=true&symbol=${symbol}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+
+        let candles = [];
+
+        if (Array.isArray(json)) {
+          candles = json.map(item => ({
+            time: item.time || item.t || item[0],
+            open: item.open || item.o || item[1],
+            high: item.high || item.h || item[2],
+            low: item.low || item.l || item[3],
+            close: item.close || item.c || item[4]
+          }));
+        } else if (json.t && Array.isArray(json.t)) {
+          for (let i = 0; i < json.t.length; i++) {
+            candles.push({
+              time: json.t[i],
+              open: json.o[i],
+              high: json.h[i],
+              low: json.l[i],
+              close: json.c[i]
+            });
+          }
+        }
+
+        if (candles.length > 0) {
+          const tradingCandles = candles.filter(c => {
+            if (!c.time) return true;
+            const date = new Date(typeof c.time === 'number' && c.time < 10000000000 ? c.time * 1000 : c.time);
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const timeNum = hours * 100 + minutes;
+            return timeNum >= 900 && timeNum <= 1330;
+          });
+
+          const dataset = tradingCandles.length > 0 ? tradingCandles : candles;
+
+          const singleCandle = {
+            open: dataset[0].open,
+            high: Math.max(...dataset.map(d => d.high)),
+            low: Math.min(...dataset.map(d => d.low)),
+            close: dataset[dataset.length - 1].close
+          };
+
+          const changePct = (singleCandle.open > 0) ? ((singleCandle.close - singleCandle.open) / singleCandle.open) : -999;
+          candleDataMap[symbol] = {
+            candle: singleCandle,
+            changePct: changePct
+          };
+
+          if (priceTd) {
+            priceTd.textContent = Number(singleCandle.close).toFixed(2);
+            priceTd.classList.remove('price-loading');
+          }
+
+          if (canvas) {
+            drawSingleCandle(canvas, singleCandle);
+          }
+        } else {
+          if (priceTd) priceTd.textContent = '--';
+          candleDataMap[symbol] = { changePct: -999 };
+        }
+      } catch (e) {
+        if (priceTd) {
+          priceTd.textContent = '--';
+          priceTd.classList.remove('price-loading');
+        }
+        candleDataMap[symbol] = { changePct: -999 };
+      }
+    }
+
+    async function fetchData() {
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const type = document.getElementById('typeSelect').value;
+      const tbody = document.getElementById('tableBody');
+      const countDisplay = document.getElementById('countDisplay');
+
+      tbody.innerHTML = '<tr><td colspan="8" class="loading">資料讀取中...</td></tr>';
+      candleDataMap = {};
+
+      const dataUrl = `https://api.market-insight.futures-ai.com/api/fundamental/attention_disposal?type=${type}&datetime_gte=${startDate}&datetime_lte=${endDate}&sort_order=desc`;
+
+      try {
+        if (Object.keys(nameMapping).length === 0) {
+          await loadStockNames();
+        }
+
+        const response = await fetch(dataUrl);
+        
+        if (!response.ok) {
+          if (response.status === 422 && type === 'attention') {
+            rawData = [];
+            tbody.innerHTML = '<tr><td colspan="8" class="no-data">暫無注意股</td></tr>';
+            countDisplay.textContent = '共 0 筆';
+            return;
+          }
+          if (response.status === 422 && type === 'disposal') {
+            rawData = [];
+            tbody.innerHTML = '<tr><td colspan="8" class="no-data">暫無處置股</td></tr>';
+            countDisplay.textContent = '共 0 筆';
+            return;
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const json = await response.json();
+        
+        rawData = Array.isArray(json) ? json : (json.data || json.items || []);
+        renderTable(rawData, type);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="error-msg">讀取失敗：${err.message} (請確認 CORS 限制)</td></tr>`;
+        countDisplay.textContent = '共 0 筆';
+      }
+    }
+
+    function renderTable(data, currentType) {
+      const tbody = document.getElementById('tableBody');
+      const countDisplay = document.getElementById('countDisplay');
+      
+      if (!data || data.length === 0) {
+        const typeLabel = (currentType || document.getElementById('typeSelect').value) === 'attention' ? '注意股' : '處置股';
+        tbody.innerHTML = `<tr><td colspan="8" class="no-data">暫無${typeLabel}</td></tr>`;
+        countDisplay.textContent = '共 0 筆';
+        return;
+      }
+
+      countDisplay.textContent = `共 ${data.length} 筆`;
+
+      tbody.innerHTML = data.map((item, index) => {
+        const rawSymbol = item.symbol || item.code || item.stock_id || '--';
+        const cleanSymbol = rawSymbol.split('.')[0];
+        const stockName = nameMapping[cleanSymbol] || nameMapping[rawSymbol] || item.name || item.stock_name || '未知';
+
+        const date = item.datetime || item.date || item.notice_date || '--';
+        const startDate = item.start_date || item.disposal_start_date || '';
+        const endDate = item.end_date || item.disposal_end_date || '';
+        
+        const period = formatDisposalPeriod(startDate, endDate, item.period);
+
+        const category = item.type || item.category || '處置';
+        const isDisposal = category.includes('disposal') || category.includes('處置');
+        const badgeClass = isDisposal ? 'badge-disposal' : 'badge-attention';
+        const categoryLabel = isDisposal ? '處置' : '注意';
+
+        const details = item.disposal_measures || item.reason || item.description || '--';
+        const priceCellId = `price-${cleanSymbol}-${index}`;
+        const canvasId = `canvas-${cleanSymbol}-${index}`;
+
+        if (cleanSymbol !== '--') {
+          setTimeout(() => fetchPriceAndSingleCandle(cleanSymbol, priceCellId, canvasId), 15 * index);
+        }
+
+        return `
+          <tr>
+            <td class="stock-code">${cleanSymbol}</td>
+            <td class="stock-name">${stockName}</td>
+            <td id="${priceCellId}" class="stock-price price-loading">載入中...</td>
+            <td>
+              <div class="kline-container">
+                <canvas id="${canvasId}" class="sparkline" width="30" height="24"></canvas>
+              </div>
+            </td>
+            <td>${period}</td>
+            <td class="notice-date-col">${date}</td>
+            <td><span class="badge ${badgeClass}">${categoryLabel}</span></td>
+            <td><div class="reason-text">${details}</div></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 點擊「處置期間」欄位切換顯示/隱藏「公告日期」
+    document.getElementById('periodHeader').addEventListener('click', () => {
+      const noticeCols = document.querySelectorAll('.notice-date-col');
+      noticeCols.forEach(col => {
+        if (col.style.display === 'table-cell') {
+          col.style.display = 'none';
+        } else {
+          col.style.display = 'table-cell';
+        }
+      });
+    });
+
+    // 點擊 K 棒進行強弱排序
+    document.getElementById('klineHeader').addEventListener('click', () => {
+      if (!rawData || rawData.length === 0) return;
+
+      const sortIcon = document.getElementById('sortIcon');
+
+      if (klineSortOrder === 'desc') {
+        klineSortOrder = 'asc';
+        sortIcon.textContent = '▲';
+      } else {
+        klineSortOrder = 'desc';
+        sortIcon.textContent = '▼';
+      }
+
+      rawData.sort((a, b) => {
+        const symbolA = (a.symbol || a.code || '').split('.')[0];
+        const symbolB = (b.symbol || b.code || '').split('.')[0];
+
+        const pctA = candleDataMap[symbolA] ? candleDataMap[symbolA].changePct : -999;
+        const pctB = candleDataMap[symbolB] ? candleDataMap[symbolB].changePct : -999;
+
+        return klineSortOrder === 'desc' ? (pctB - pctA) : (pctA - pctB);
+      });
+
+      renderTable(rawData);
+    });
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const keyword = e.target.value.toLowerCase().trim();
+      if (!keyword) {
+        renderTable(rawData);
+        return;
+      }
+      const filtered = rawData.filter(item => {
+        const rawSymbol = item.symbol || item.code || '';
+        const cleanSymbol = rawSymbol.split('.')[0];
+        const stockName = nameMapping[cleanSymbol] || nameMapping[rawSymbol] || item.name || '';
+        
+        return cleanSymbol.toLowerCase().includes(keyword) || stockName.toLowerCase().includes(keyword);
+      });
+      renderTable(filtered);
+    });
+
+    document.getElementById('fetchBtn').addEventListener('click', fetchData);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initDefaultDates();
+      fetchData();
+    });
+  </script>
+</body>
+</html>
