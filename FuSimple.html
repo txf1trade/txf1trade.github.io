@@ -17,6 +17,8 @@
             --green-color: #26a69a;
             --flat-color: #b2b5be;
             --star-color: #f0b90b;
+
+            --table-font-size: 13px;
         }
 
         * {
@@ -134,7 +136,7 @@
         .drawer-panel {
             position: absolute;
             top: 36px; right: 0;
-            width: 270px;
+            width: 280px;
             background: #1e222d;
             border: 1px solid var(--border-color);
             border-radius: 6px;
@@ -174,6 +176,27 @@
             text-align: center;
         }
         .preset-btn:hover { border-color: #2962ff; color: #fff; }
+
+        .font-slider-group {
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .font-slider-header {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-sub);
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .font-slider-group input[type="range"] {
+            width: 100%;
+            accent-color: #2962ff;
+            cursor: pointer;
+        }
 
         .checkbox-grid {
             display: grid;
@@ -227,7 +250,7 @@
             letter-spacing: 0.5px;
         }
 
-        /* 右下角 AI 彈出對話面板 (預設隱藏，點擊按鈕才開啟) */
+        /* 右下角 AI 彈出對話面板 (預設隱藏) */
         .ai-dialog-panel {
             position: fixed;
             bottom: 85px;
@@ -294,13 +317,13 @@
             padding: 7px 10px;
             border-bottom: 1px solid var(--border-color);
             font-variant-numeric: tabular-nums;
-            font-size: 13px;
+            font-size: var(--table-font-size);
         }
 
         th {
             color: var(--text-muted);
             font-weight: 600;
-            font-size: 12px;
+            font-size: calc(var(--table-font-size) - 1px);
             background: #181c27;
             position: sticky;
             top: 0;
@@ -315,7 +338,7 @@
 
         .star-btn {
             cursor: pointer;
-            font-size: 14px;
+            font-size: var(--table-font-size);
             color: var(--text-muted);
             user-select: none;
             transition: color 0.15s ease;
@@ -332,6 +355,7 @@
             font-weight: 600;
             min-width: 68px;
             text-align: right;
+            font-size: var(--table-font-size);
         }
 
         .bs-b { color: var(--red-color); font-weight: bold; }
@@ -392,9 +416,9 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="filterCategory('ALL')">全部 (39)</button>
             <button class="tab-btn" onclick="filterCategory('WATCHLIST')" id="tab-watchlist">自選 (0)</button>
-            <button class="tab-btn" onclick="filterCategory('INDEX')">指數期</button>
+            <button class="tab-btn" onclick="filterCategory('INDEX')">指數期貨</button>
             <button class="tab-btn" onclick="filterCategory('COMMODITY')">能源/金屬</button>
-            <button class="tab-btn" onclick="filterCategory('FX')">外匯期</button>
+            <button class="tab-btn" onclick="filterCategory('FX')">外匯期貨</button>
             <button class="tab-btn" onclick="filterCategory('US_STOCK')">美股/ADR</button>
         </div>
 
@@ -424,7 +448,19 @@
                 <label><input type="checkbox" id="chk-volume" checked onchange="updateColumnVisibility()"> 總成交量</label>
                 <label><input type="checkbox" id="chk-prevRef" checked onchange="updateColumnVisibility()"> 昨收</label>
                 <label><input type="checkbox" id="chk-datetime" checked onchange="updateColumnVisibility()"> 時間</label>
-                <label style="grid-column: span 2; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px; color: var(--text-sub); font-weight: bold;">
+            </div>
+
+            <!-- 字體大小調整滑桿 -->
+            <div class="font-slider-group">
+                <div class="font-slider-header">
+                    <span>字體大小</span>
+                    <span id="font-size-val">13px</span>
+                </div>
+                <input type="range" id="font-size-range" min="10" max="18" value="13" oninput="changeFontSize(this.value)">
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                <label style="color: var(--text-sub); font-weight: bold; font-size: 12px; cursor: pointer;">
                     <input type="checkbox" id="chk-ai" checked onchange="updateColumnVisibility()"> 🤖 AI 助理按鈕
                 </label>
             </div>
@@ -466,22 +502,23 @@
         <span class="ai-floating-badge">BETA</span>
     </div>
 
-    <!-- 右下角 AI 分析對話彈窗 (預設不帶 show，點擊按鈕才開) -->
+    <!-- 右下角 AI 分析對話彈窗 (預設隱藏) -->
     <div id="ai-dialog" class="ai-dialog-panel">
         <div class="ai-dialog-header">
-            <span id="ai-dialog-title">🤖 AI 總經助理 (日/夜盤自動判斷)</span>
+            <span id="ai-dialog-title">🤖 AI 總經智算 (Gemini)</span>
             <span style="cursor:pointer;" onclick="toggleAIDialog(false)">✕</span>
         </div>
-        <div id="ai-dialog-body" class="ai-dialog-body">讀取跨市場與昨收價格分析中...</div>
+        <div id="ai-dialog-body" class="ai-dialog-body">正在傳送即時行情至 AI 分析中...</div>
     </div>
 
     <script>
-        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,MTX-1,TMX-1,TWN-1,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
+        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TWN-1,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
+
+        // ⚠️ 請填入您的 Gemini API Key
+        const GEMINI_API_KEY = "";
 
         const SYMBOL_META = {
             "TX-1": { name: "台指期", category: "INDEX" },
-            "MTX-1": { name: "小台指期", category: "INDEX" },
-            "TMX-1": { name: "微台指期", category: "INDEX" },
             "TWN-1": { name: "富台指", category: "INDEX" },
             "NK-1": { name: "日經225", category: "INDEX" },
             "CN-1": { name: "中國A50", category: "INDEX" },
@@ -568,6 +605,20 @@
             };
         }
 
+        // 動態調整表格字體大小
+        function changeFontSize(val) {
+            document.documentElement.style.setProperty('--table-font-size', `${val}px`);
+            document.getElementById('font-size-val').innerText = `${val}px`;
+            localStorage.setItem("user_table_font_size", val);
+        }
+
+        // 初始化載入已儲存字體大小
+        function initFontSize() {
+            const savedSize = localStorage.getItem("user_table_font_size") || 13;
+            document.getElementById('font-size-range').value = savedSize;
+            changeFontSize(savedSize);
+        }
+
         // 切換右下角 AI 助理對話視窗
         function toggleAIDialog(forceState) {
             const dialog = document.getElementById("ai-dialog");
@@ -579,51 +630,68 @@
             }
         }
 
-        // AI 總經助理 (支援夜盤 + 美股/ADR 加入判斷，反映昨收價)
-        function runAIAnalysis() {
+        // 🤖 發送數據給真正的 LLM 生成分析內容
+        async function runAIAnalysis() {
             const bodyEl = document.getElementById("ai-dialog-body");
-            const titleEl = document.getElementById("ai-dialog-title");
+
+            if (!GEMINI_API_KEY) {
+                bodyEl.innerText = "⚠️ 請在程式碼中的 GEMINI_API_KEY 變數填入您的 API Key，即可啟用 LLM 真實 AI 生成分析。";
+                return;
+            }
+
+            bodyEl.innerText = "🧠 AI 思考中，正在分析跨市場數據...";
 
             const now = new Date();
             const hour = now.getHours();
             const isNightSession = (hour >= 15 || hour < 5);
+            const sessionType = isNightSession ? "夜盤" : "日盤";
 
-            titleEl.innerText = isNightSession ? "🌙 AI 夜盤總經助理 (美股/ADR)" : "☀️ AI 日盤總經助理";
-
-            const getPrevRef = (sym) => {
+            // 整理關鍵商品數據傳給 AI
+            const getMarketSummary = (sym) => {
                 const q = quotesData[sym];
-                return (q && q.prevRef) ? fmt(q.prevRef) : "-";
+                if (!q) return `${sym}: 尚無資料`;
+                return `${SYMBOL_META[sym]?.name || sym}(${sym}): 成交價=${q.close}, 昨收=${q.prevRef}`;
             };
 
-            const oilPrev = getPrevRef("CL-1");   // 紐約原油昨收
-            const goldPrev = getPrevRef("GC-1");  // 黃金昨收
-            const nqPrev = getPrevRef("NQ-1");    // 納指期昨收
-            const txPrev = getPrevRef("TX-1");    // 台指期昨收
-            const tsmPrev = getPrevRef("TSM");    // 台積電 ADR 昨收
-            const nvdaPrev = getPrevRef("NVDA");  // 輝達昨收
+            const marketDataText = [
+                getMarketSummary("CL-1"),
+                getMarketSummary("GC-1"),
+                getMarketSummary("NQ-1"),
+                getMarketSummary("TX-1"),
+                getMarketSummary("TSM"),
+                getMarketSummary("NVDA")
+            ].join("\n");
 
-            setTimeout(() => {
-                let analysisText = "";
+            const prompt = `你是一位專業的全球金融與總體經濟分析師。
+請根據以下即時行情數據（目前為【${sessionType}】時段），為交易者提供簡短精準的總經與市場觀點點評：
 
-                if (isNightSession) {
-                    analysisText = `🌙 【夜盤 AI 總經與跨市場觀察】\n\n` +
-                        `📌 關鍵昨收價格基準：\n` +
-                        `• 紐約原油 (CL-1)：${oilPrev} | 黃金 (GC-1)：${goldPrev}\n` +
-                        `• 台積電 ADR (TSM)：${tsmPrev} | 輝達 (NVDA)：${nvdaPrev}\n` +
-                        `• 納指期 (NQ-1)：${nqPrev} | 台指期 (TX-1)：${txPrev}\n\n` +
-                        `💡 夜盤連動與恐慌轉折情境：\n` +
-                        `夜盤時段市場高度連動美股與原油。若戰爭地緣情緒推升原油，但 TSM (台積電 ADR) 與 NQ-1 守穩昨收基準線，代表海外市場對利空抵抗力強；一旦油價/黃金衝高拉回，恐慌情緒釋放後，往往能直接帶動台指期夜盤開啟「美股連動型強烈反彈」！`;
+【即時市場數據】
+${marketDataText}
+
+【分析指示】
+1. 分析僅供參考，不需要計算漲跌幅百分比，請著重反映「昨收價格」作為風險/進退基準。
+2. 評估原油與黃金價格表現，研判當前地緣政治恐慌情緒與避險需求。
+3. 結合美股/ADR（如 TSM 台積電 ADR、NQ 納指期）與台指期的昨收基準，分析恐慌邊際效應邊際遞減後，是否具備「利空出盡 / 跌深反彈」的情境。
+4. 字數控制在 200 字以內，使用繁體中文，格式條理分明。`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+                    bodyEl.innerText = data.candidates[0].content.parts[0].text;
                 } else {
-                    analysisText = `☀️ 【日盤 AI 總經觀察】\n\n` +
-                        `📌 關鍵昨收價格基準：\n` +
-                        `• 紐約原油 (CL-1)：${oilPrev} | 黃金 (GC-1)：${goldPrev}\n` +
-                        `• 納指期 (NQ-1)：${nqPrev} | 台指期 (TX-1)：${txPrev}\n\n` +
-                        `💡 地緣恐慌與利空出盡邏輯：\n` +
-                        `日盤持續追蹤原油與黃金昨收防線。地緣衝突初期易激發短線避險賣壓，但只要油價未持續突破昨收防線，利空邊際效應遞減將有利台指期重組買盤，迎接跌深反彈。`;
+                    bodyEl.innerText = "❌ AI 回應異常，請稍後再試。";
                 }
-
-                bodyEl.innerText = analysisText;
-            }, 300);
+            } catch (err) {
+                bodyEl.innerText = "❌ 連線至 AI 服務失敗，請檢查網路或 API Key 展期。";
+            }
         }
 
         function toggleDrawer(e) {
@@ -780,6 +848,7 @@
         }
 
         // 初始化
+        initFontSize();
         updateWatchlistTabLabel();
         updateColumnVisibility();
         fetchQuotes();
