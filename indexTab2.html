@@ -1,5 +1,5 @@
 <!-- 
-    股期監控-專業優化整合版 (含精確 Tick Size 無條件捨去漲停判定與漲幅顯示)
+    股期監控-專業優化整合版 (含頂部指數微型 K 棒與精確 Tick Size 漲跌停判定)
 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -67,6 +67,13 @@
         .index-title { font-weight: bold; color: var(--text-dim); font-size: 10px; }
         .index-tag { font-size: 9px; background: #333; color: var(--accent); padding: 0 3px; border-radius: 2px; font-weight: bold; }
 
+        .index-content-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+
         .index-details { text-align: right; font-family: monospace; line-height: 1.1; }
         .index-price { font-weight: bold; font-size: 11px; color: #fff; }
         .index-chg { font-size: 9px; font-weight: bold; }
@@ -89,7 +96,7 @@
         .mode-btn.active[data-mode="ai_long"] { border-color: var(--ai-gold); color: var(--ai-gold); background: rgba(255, 204, 0, 0.1); }
         .mode-btn.active[data-mode="fav"] { border-color: var(--fav-star); color: var(--fav-star); background: rgba(255, 204, 0, 0.1); }
 
-        .price-filter-row { display: flex; gap: 4px; margin-bottom: 6px; }
+        .price-filter-row { display: flex; gap: 4px; margin-bottom: 4px; }
         .price-btn {
             flex: 1; padding: 6px 2px; text-align: center; font-size: 10px; font-weight: bold;
             border-radius: 4px; border: 1px solid #333; cursor: pointer; background: #181818; color: #888;
@@ -100,7 +107,17 @@
         .price-btn.active[data-price-range="100"] { border-color: var(--price-100); color: var(--price-100); background: rgba(24, 255, 255, 0.15); }
         .price-btn.active[data-price-range="0"] { border-color: #888; color: #fff; background: rgba(255, 255, 255, 0.15); }
 
-        .search-row { padding: 4px 2px; position: relative; display: flex; align-items: center; }
+        /* 1. 控制拉桿區（黃框） */
+        .controls-row { display: flex; align-items: center; gap: 4px; background: var(--surface); padding: 6px 8px; border-radius: 4px; position: relative; overflow: hidden; margin-top: 4px; margin-bottom: 4px; }
+        .filter-toggle { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--accent); white-space: nowrap; cursor: pointer; }
+        .slider-box { flex: 1; display: flex; align-items: center; gap: 4px; margin: 0 4px; }
+        input[type=range] { width: 100%; height: 3px; accent-color: var(--accent); }
+        #rank-val { color: #fff; min-width: 45px; font-size: 11px; font-weight: bold; }
+        #timer-display { font-family: monospace; color: var(--accent); font-size: 10px; margin-left: auto; }
+        #refresh-bar { position: absolute; bottom: 0; left: 0; height: 1.5px; background: var(--accent); width: 0%; }
+
+        /* 2. 搜尋框（紅框） */
+        .search-row { padding: 2px 2px; margin-bottom: 4px; position: relative; display: flex; align-items: center; }
         #search-input {
             width: 100%; background: #222; border: 1px solid #444; border-radius: 4px;
             padding: 8px; padding-right: 32px; color: #fff; font-size: 16px; 
@@ -111,8 +128,9 @@
             display: none; font-size: 20px; padding: 0 5px; line-height: 1;
         }
 
+        /* 3. 自選標籤列 */
         .fav-chips-wrapper {
-            padding: 6px 2px; overflow-x: auto; white-space: nowrap;
+            padding: 4px 2px; overflow-x: auto; white-space: nowrap;
             display: none; -webkit-overflow-scrolling: touch; border-bottom: 1px solid #222;
         }
         .fav-chips-wrapper::-webkit-scrollbar { display: none; }
@@ -122,14 +140,6 @@
             font-size: 11px; border: 1px solid #333; cursor: pointer;
         }
         .chip.active { background: rgba(255, 204, 0, 0.15); color: var(--ai-gold); border-color: var(--ai-gold); }
-
-        .controls-row { display: flex; align-items: center; gap: 4px; background: var(--surface); padding: 6px 8px; border-radius: 4px; position: relative; overflow: hidden; }
-        .filter-toggle { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--accent); white-space: nowrap; cursor: pointer; }
-        .slider-box { flex: 1; display: flex; align-items: center; gap: 4px; margin: 0 4px; }
-        input[type=range] { width: 100%; height: 3px; accent-color: var(--accent); }
-        #rank-val { color: #fff; min-width: 45px; font-size: 11px; font-weight: bold; }
-        #timer-display { font-family: monospace; color: var(--accent); font-size: 10px; margin-left: auto; }
-        #refresh-bar { position: absolute; bottom: 0; left: 0; height: 1.5px; background: var(--accent); width: 0%; }
 
         .heatmap-container { margin: 10px 0; }
         .heatmap-header {
@@ -172,7 +182,6 @@
         .tag-tse { color: #fff; border: 1px solid #555; }
         .tag-otc { color: #ff7fe5; border: 1px solid #ff7fe5; }
 
-        /* 價格區塊容器與漲幅樣式 */
         .price-cell-container {
             display: flex;
             flex-direction: column;
@@ -189,7 +198,6 @@
         .rank-strength-container { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; border: 1px solid #333; }
         .rank-strength-fill { height: 100%; }
 
-        /* 漲跌停高亮樣式 (紅底白字/綠底白字) */
         .limit-up {
             background-color: #ff0000 !important;
             color: #ffffff !important;
@@ -229,30 +237,53 @@
 
 <div class="app-wrapper">
     <div class="sticky-top">
-        <!-- 加權、櫃買與台指期顯示區塊 -->
+        <!-- 加權、櫃買與台指期顯示區塊 (含微型 K 棒) -->
         <div class="index-bar">
+            <!-- 加權指數 -->
             <div class="index-box">
                 <div class="index-header"><span class="index-title">加權指數</span></div>
-                <div class="index-details">
-                    <div id="tse-price" class="index-price">--</div>
-                    <div id="tse-chg" class="index-chg" style="color: #888;">--</div>
+                <div class="index-content-row">
+                    <svg id="tse-k-candle" width="12" height="24" viewBox="0 0 12 24" style="display: none;">
+                        <line class="wick" x1="6" y1="1" x2="6" y2="23" stroke-width="1.5" />
+                        <rect class="body" x="2" width="8" rx="1" ry="1" />
+                    </svg>
+                    <div class="index-details">
+                        <div id="tse-price" class="index-price">--</div>
+                        <div id="tse-chg" class="index-chg" style="color: #888;">--</div>
+                    </div>
                 </div>
             </div>
+
+            <!-- 櫃買指數 -->
             <div class="index-box">
                 <div class="index-header"><span class="index-title">櫃買指數</span></div>
-                <div class="index-details">
-                    <div id="otc-price" class="index-price">--</div>
-                    <div id="otc-chg" class="index-chg" style="color: #888;">--</div>
+                <div class="index-content-row">
+                    <svg id="otc-k-candle" width="12" height="24" viewBox="0 0 12 24" style="display: none;">
+                        <line class="wick" x1="6" y1="1" x2="6" y2="23" stroke-width="1.5" />
+                        <rect class="body" x="2" width="8" rx="1" ry="1" />
+                    </svg>
+                    <div class="index-details">
+                        <div id="otc-price" class="index-price">--</div>
+                        <div id="otc-chg" class="index-chg" style="color: #888;">--</div>
+                    </div>
                 </div>
             </div>
+
+            <!-- 台指期 -->
             <div class="index-box interactive" id="tx-box" onclick="toggleTXMode()">
                 <div class="index-header">
                     <span class="index-title">台指期</span>
                     <span class="index-tag" id="tx-mode-tag">全</span>
                 </div>
-                <div class="index-details">
-                    <div id="tx-price" class="index-price">--</div>
-                    <div id="tx-chg" class="index-chg" style="color: #888;">--</div>
+                <div class="index-content-row">
+                    <svg id="tx-k-candle" width="12" height="24" viewBox="0 0 12 24" style="display: none;">
+                        <line class="wick" x1="6" y1="1" x2="6" y2="23" stroke-width="1.5" />
+                        <rect class="body" x="2" width="8" rx="1" ry="1" />
+                    </svg>
+                    <div class="index-details">
+                        <div id="tx-price" class="index-price">--</div>
+                        <div id="tx-chg" class="index-chg" style="color: #888;">--</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -278,17 +309,8 @@
             <div class="price-btn" data-price-range="100">🚀百元股 (100-499)</div>
             <div class="price-btn" data-price-range="0">⚪平價股 (&lt;100)</div>
         </div>
-        
-        <div class="search-row">
-            <input type="text" id="search-input" placeholder="🔍 搜尋代碼、名稱、股期代碼......">
-            <span id="clear-search">&times;</span>
-        </div>
 
-        <div class="fav-chips-wrapper" id="fav-chips-bar">
-            <span class="chip" id="chip-all" onclick="setMode('all')">全部</span>
-            <span class="chip active" id="chip-fav" onclick="setMode('fav')">⭐ 自選 (<span id="fav-count-text">0</span>)</span>
-        </div>
-
+        <!-- 1. 【原黃框】控制拉桿區 -->
         <div class="controls-row">
             <label class="filter-toggle"><input type="checkbox" id="show-tse" checked> 市</label>
             <label class="filter-toggle"><input type="checkbox" id="show-otc" checked> 櫃</label>
@@ -300,6 +322,18 @@
             </div>
             <span id="timer-display">5.0s</span>
             <div id="refresh-bar"></div>
+        </div>
+
+        <!-- 2. 【原紅框】搜尋列 -->
+        <div class="search-row">
+            <input type="text" id="search-input" placeholder="🔍 搜尋代碼、名稱、股期代碼......">
+            <span id="clear-search">&times;</span>
+        </div>
+
+        <!-- 3. 自選標籤區塊 -->
+        <div class="fav-chips-wrapper" id="fav-chips-bar">
+            <span class="chip" id="chip-all" onclick="setMode('all')">全部</span>
+            <span class="chip active" id="chip-fav" onclick="setMode('fav')">⭐ 自選 (<span id="fav-count-text">0</span>)</span>
         </div>
     </div>
 
@@ -366,6 +400,45 @@
         thFar: document.getElementById('th-far')
     };
 
+    /* ------------------- 微型 K 棒繪製邏輯 ------------------- */
+    function renderMicroCandle(svgId, open, high, low, close) {
+        const svg = document.getElementById(svgId);
+        if (!svg) return;
+
+        const wick = svg.querySelector('.wick');
+        const body = svg.querySelector('.body');
+
+        const maxP = Math.max(open, high, low, close);
+        const minP = Math.min(open, high, low, close);
+        const range = (maxP - minP) || 1;
+
+        const svgHeight = 22; 
+        const paddingTop = 1;
+
+        const getY = (price) => paddingTop + (maxP - price) / range * svgHeight;
+
+        const highY = getY(high);
+        const lowY = getY(low);
+        const openY = getY(open);
+        const closeY = getY(close);
+
+        const isUp = close >= open;
+        const colorHex = isUp ? 'var(--up-red)' : 'var(--down-green)';
+
+        wick.setAttribute('y1', highY);
+        wick.setAttribute('y2', lowY);
+        wick.setAttribute('stroke', colorHex);
+
+        const bodyTop = Math.min(openY, closeY);
+        const bodyHeight = Math.max(Math.abs(closeY - openY), 2);
+
+        body.setAttribute('y', bodyTop);
+        body.setAttribute('height', bodyHeight);
+        body.setAttribute('fill', colorHex);
+
+        svg.style.display = 'block';
+    }
+
     /* ------------------- 漲跌停判斷與精確 Tick Size 級距邏輯 ------------------- */
     function getTickSize(price) {
         if (price >= 1000) return 5.0;
@@ -380,10 +453,8 @@
     function fitTickSize(price, mode) {
         const tick = getTickSize(price);
         if (mode === 'down') {
-            // 無條件捨去至最小 Tick 單位
             return Math.floor((price + 1e-8) / tick) * tick;
         } else {
-            // 無條件進位至最小 Tick 單位
             return Math.ceil((price - 1e-8) / tick) * tick;
         }
     }
@@ -391,14 +462,12 @@
     function getUpLimitPrice(prevRef) {
         if (!prevRef || isNaN(prevRef) || prevRef <= 0) return null;
         let maxPrice = prevRef * 1.10;
-        // 漲停價公式：無條件捨去至最小單位
         return fitTickSize(maxPrice, 'down');
     }
 
     function getDownLimitPrice(prevRef) {
         if (!prevRef || isNaN(prevRef) || prevRef <= 0) return null;
         let minPrice = prevRef * 0.90;
-        // 跌停價公式：無條件進位至最小單位
         return fitTickSize(minPrice, 'up');
     }
 
@@ -412,12 +481,10 @@
             const upLimit = getUpLimitPrice(refPrice);
             const downLimit = getDownLimitPrice(refPrice);
 
-            // 考慮浮點數誤差，允許微小容差
             if (upLimit !== null && (currentPrice >= upLimit - 1e-4)) return 'limit-up';
             if (downLimit !== null && (currentPrice <= downLimit + 1e-4)) return 'limit-down';
         }
 
-        // 備用判斷：涵蓋無條件捨去後實際顯示漲幅約 +9.3% ~ +9.99% 的情況
         if (changePercent !== undefined && !isNaN(changePercent)) {
             if (changePercent >= 9.30) return 'limit-up';
             if (changePercent <= -9.30) return 'limit-down';
@@ -426,7 +493,6 @@
         return 'normal';
     }
 
-    /* 計算與取得當前漲跌幅 (%) 輔助函式 */
     function calculateChangePercent(price, prevRef, apiChangePct) {
         if (apiChangePct !== undefined && !isNaN(apiChangePct)) {
             return parseFloat(apiChangePct);
@@ -448,7 +514,6 @@
         return 'var(--price-normal)';
     }
 
-    /* ------------------- 抓取 daily_rank 漲跌停與行情參考資訊 ------------------- */
     async function fetchDailyRankData() {
         try {
             const [stockRes, futRes] = await Promise.all([
@@ -468,7 +533,6 @@
             }
             if (Array.isArray(futRes)) {
                 futRes.forEach(item => {
-                    // 自動切割去除月份後綴 (例如將 PRF-1 切割為 PRF)
                     const cleanSymbol = item.symbol.split('-')[0];
                     mapData[cleanSymbol] = {
                         prev_ref: item.prev_ref,
@@ -483,68 +547,62 @@
         }
     }
 
-    async function fetchMisIndex() {
+    /* ------------------- 頂部三大指數 API 與 K 棒抓取邏輯 ------------------- */
+    async function fetchTvApiQuote(symbol) {
         try {
-            const timestamp = Date.now();
-            const targetUrl = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw|otc_o00.tw&_=${timestamp}`;
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-            
-            const res = await fetch(proxyUrl);
+            const url = `https://tvapi.futures-op.com/history?symbol=${symbol}&resolution=1&ws=true&intraday=true`;
+            const res = await fetch(url, { cache: "no-cache" });
+            if (!res.ok) return null;
             const data = await res.json();
-            
-            let result = {};
-            if (data && data.msgArray) {
-                data.msgArray.forEach(item => {
-                    const price = parseFloat(item.z && item.z !== '-' ? item.z : item.y);
-                    const yest = parseFloat(item.y);
-                    const diff = price - yest;
-                    const pct = (diff / yest) * 100;
-                    
-                    if (item.c === 't00') result.tse = { price, diff, pct };
-                    if (item.c === 'o00') result.otc = { price, diff, pct };
+            if (Array.isArray(data) && data.length > 0) {
+                const openPrice = data[0].open;
+                const latestPrice = data[data.length - 1].close;
+                
+                let highPrice = -Infinity;
+                let lowPrice = Infinity;
+                data.forEach(item => {
+                    if (item.high > highPrice) highPrice = item.high;
+                    if (item.low < lowPrice) lowPrice = item.low;
                 });
-            }
-            return result;
-        } catch (e) {
-            console.warn("[證交所 MIS API 抓取失敗]:", e);
-            return null;
-        }
-    }
 
-    async function fetchTxIndex(symbol) {
-        try {
-            const timestamp = Date.now();
-            const targetUrl = `https://tvapi.futures-op.com/v2/history?agent=futuresai&product=web&symbol=${symbol}&resolution=1&_t=${timestamp}`;
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-            
-            const res = await fetch(proxyUrl);
-            const data = await res.json();
-            if (data && data.s === 'ok' && data.c && data.c.length > 0) {
-                const len = data.c.length;
-                const last = data.c[len - 1];
-                let prev = data.o[0]; 
-                if (len >= 2) prev = data.c[0];
-                const diff = last - prev;
-                const pct = (diff / prev) * 100;
-                return { price: last, diff: diff, pct: pct };
+                const diff = latestPrice - openPrice;
+                const pct = (diff / openPrice) * 100;
+                return { 
+                    open: openPrice, 
+                    high: highPrice, 
+                    low: lowPrice, 
+                    price: latestPrice, 
+                    diff: diff, 
+                    pct: pct 
+                };
             }
-        } catch(e) {
-            console.warn(`[台指期抓取失敗] (${symbol}):`, e);
+        } catch (e) {
+            console.warn(`[API 抓取失敗] (${symbol}):`, e);
         }
         return null;
     }
 
     async function fetchMarketIndices() {
-        const txSymbol = (txMode === 'full') ? 'FITX01' : 'FITX01D';
+        const txSymbol = (txMode === 'full') ? 'TX-1' : 'TXAM-1';
         
-        const [misData, tx] = await Promise.all([
-            fetchMisIndex(),
-            fetchTxIndex(txSymbol)
+        const [tse, otc, tx] = await Promise.all([
+            fetchTvApiQuote('TSEA'),
+            fetchTvApiQuote('OTCA'),
+            fetchTvApiQuote(txSymbol)
         ]);
 
-        if (misData && misData.tse) updateIndexUI('tse', misData.tse.price, misData.tse.diff, misData.tse.pct, false);
-        if (misData && misData.otc) updateIndexUI('otc', misData.otc.price, misData.otc.diff, misData.otc.pct, false);
-        if (tx) updateIndexUI('tx', tx.price, tx.diff, tx.pct, true);
+        if (tse) {
+            updateIndexUI('tse', tse.price, tse.diff, tse.pct, false);
+            renderMicroCandle('tse-k-candle', tse.open, tse.high, tse.low, tse.price);
+        }
+        if (otc) {
+            updateIndexUI('otc', otc.price, otc.diff, otc.pct, false);
+            renderMicroCandle('otc-k-candle', otc.open, otc.high, otc.low, otc.price);
+        }
+        if (tx) {
+            updateIndexUI('tx', tx.price, tx.diff, tx.pct, true);
+            renderMicroCandle('tx-k-candle', tx.open, tx.high, tx.low, tx.price);
+        }
     }
 
     function toggleTXMode() {
@@ -553,6 +611,7 @@
         document.getElementById('tx-price').innerText = '...';
         document.getElementById('tx-chg').innerText = '--';
         document.getElementById('tx-chg').style.color = '#888';
+        document.getElementById('tx-k-candle').style.display = 'none';
         fetchMarketIndices();
     }
 
@@ -792,7 +851,6 @@
             if (!searchQuery) {
                 if (currentMode === 'ai_long') list = list.filter(i => i.isLong);
                 else if (currentMode === 'limit_up') {
-                    // 1. 漲停榜條件：現貨或股期達漲停狀態
                     list = list.filter(i => {
                         const spotInfo = dailyRankData[i.stockNum] || {};
                         const futInfo = dailyRankData[i.id] || {};
@@ -802,7 +860,6 @@
                     });
                 }
                 else if (currentMode === 'range_3_5') {
-                    // 2. 漲幅 3-5% 條件：現貨或股期漲幅落在 +3.0% 到 +5.0% 之間
                     list = list.filter(i => {
                         const spotInfo = dailyRankData[i.stockNum] || {};
                         const futInfo = dailyRankData[i.id] || {};
@@ -882,7 +939,6 @@
             const spotLimitClass = getLimitStatus(item.price, spotInfo.prev_ref, spotInfo.change_percent);
             const futLimitClass = getLimitStatus(item.futPrice, futInfo.prev_ref, futInfo.change_percent);
 
-            // 計算現貨與股期漲跌幅
             const spotPct = calculateChangePercent(item.price, spotInfo.prev_ref, spotInfo.change_percent);
             const futPct = calculateChangePercent(item.futPrice, futInfo.prev_ref, futInfo.change_percent);
 
