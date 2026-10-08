@@ -157,9 +157,9 @@
   <div class="header">
     <div class="symbol-title">
       <span class="live-dot"></span>
+      <!-- 固定顯示 TX-1 -->
       台指期 (TX-1)
     </div>
-    <!-- 右上方每秒跳動的時間 (HH:mm:ss) -->
     <div class="time-stamp" id="update-time">--:--:--</div>
   </div>
 
@@ -171,22 +171,19 @@
 
   <div class="price-main">
     <div class="price-row">
-      <!-- 左側小 K 棒 (SVG) -->
       <svg id="k-candle" width="22" height="46" viewBox="0 0 22 46" style="display: none;">
         <line id="candle-wick" x1="11" y1="2" x2="11" y2="44" stroke-width="2" />
         <rect id="candle-body" x="5" width="12" rx="1" ry="1" />
       </svg>
-      <!-- 右側成交價 -->
       <div class="price-value neutral" id="close-price">-----</div>
     </div>
     
-    <!-- 當前盤別漲跌點數與 % 數 -->
     <div class="change-info neutral" id="change-price">-- (--%)</div>
   </div>
 
   <div class="metrics-box">
     <div class="metric-row">
-      <span id="open-label">開盤價</span>
+      <span id="open-label">日盤開盤價 (08:45)</span>
       <span class="metric-value" id="session-open">-----</span>
     </div>
     <div class="metric-row">
@@ -197,20 +194,24 @@
 </div>
 
 <script>
-  const API_URL = "https://tvapi.futures-op.com/history?symbol=TX-1&resolution=1&ws=true&intraday=true";
-  
-  // 當前選擇模式: 'day' (日盤) | 'night' (夜盤)
+  // 當前選擇模式: 'day' (日盤 TXAM-1) | 'night' (夜盤 TX-1)
   let currentSession = 'day';
 
-  // 切換模式按鈕點擊事件
+  // 根據模式返回對應的 API 網址
+  function getApiUrl() {
+    return currentSession === 'day'
+      ? "https://tvapi.futures-op.com/history?symbol=TXAM-1&resolution=1&ws=true&intraday=true"
+      : "https://tvapi.futures-op.com/history?symbol=TX-1&resolution=1&ws=true&intraday=true";
+  }
+
   function switchSession(mode) {
     currentSession = mode;
     document.getElementById('btn-day').classList.toggle('active', mode === 'day');
     document.getElementById('btn-night').classList.toggle('active', mode === 'night');
-    fetchQuoteData(); // 切換後立即重新計算顯示
+    fetchQuoteData(); // 切換時立即重新拉取該 API
   }
 
-  // 1. 每秒獨立更新右上角時間 (HH:mm:ss)
+  // 每秒獨立更新時間
   function updateLiveClock() {
     const now = new Date();
     const timeString = now.toLocaleTimeString('zh-TW', { hour12: false });
@@ -220,7 +221,7 @@
   updateLiveClock();
   setInterval(updateLiveClock, 1000);
 
-  // 2. 繪製小 K 棒
+  // 繪製小 K 棒
   function renderMicroCandle(open, high, low, close) {
     const svg = document.getElementById('k-candle');
     const wick = document.getElementById('candle-wick');
@@ -257,46 +258,33 @@
     svg.style.display = 'block';
   }
 
-  // 3. 抓取 API 並根據日/夜盤過濾 K 線
+  // 抓取行情資料
   async function fetchQuoteData() {
     try {
-      const response = await fetch(API_URL, { cache: "no-cache" });
+      const url = getApiUrl();
+      const response = await fetch(url, { cache: "no-cache" });
       if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
       
       const data = await response.json();
       if (!Array.isArray(data) || data.length === 0) return;
 
-      const targetHour = currentSession === 'day' ? 8 : 15;
-      const targetMin = currentSession === 'day' ? 45 : 0;
-
-      // 1. 尋找盤別開盤點的時間索引 (08:45 或 15:00)
-      let startIndex = data.findIndex(item => {
-        const d = new Date(item.time);
-        return d.getHours() === targetHour && d.getMinutes() === targetMin;
-      });
-
-      // 如果沒找不到特定盤別起點，預設從陣列第一筆開始算
-      if (startIndex === -1) startIndex = 0;
-
-      // 2. 擷取該盤別開始之後的所有 K 線
-      const sessionData = data.slice(startIndex);
-      
-      const sessionOpenPrice = sessionData[0].open;
-      const latest = data[data.length - 1]; // 最新成交價始終取全陣列最後一筆
+      // 取得開盤與最新成交資訊
+      const sessionOpenPrice = data[0].open;
+      const latest = data[data.length - 1];
       const currentPrice = latest.close;
 
-      // 3. 計算該盤別區間內的高低點與成交量
+      // 統計全盤別區間的高低點與總成交量
       let sessionHigh = -Infinity;
       let sessionLow = Infinity;
       let totalVolume = 0;
 
-      sessionData.forEach(item => {
+      data.forEach(item => {
         if (item.high > sessionHigh) sessionHigh = item.high;
         if (item.low < sessionLow) sessionLow = item.low;
         totalVolume += (item.volume || 0);
       });
 
-      // 4. 計算相對開盤價的漲跌
+      // 計算漲跌點數與百分比
       const changeVal = currentPrice - sessionOpenPrice;
       const changePercent = ((changeVal / sessionOpenPrice) * 100).toFixed(2);
       
@@ -305,7 +293,7 @@
       const colorClass = isUp ? 'up' : (isDown ? 'down' : 'neutral');
       const sign = isUp ? '+' : '';
 
-      // 5. 更新 DOM
+      // DOM 更新
       const closeEl = document.getElementById('close-price');
       closeEl.innerText = currentPrice.toLocaleString();
       closeEl.className = `price-value ${colorClass}`;
@@ -318,7 +306,7 @@
       document.getElementById('session-open').innerText = sessionOpenPrice.toLocaleString();
       document.getElementById('total-volume').innerText = `${totalVolume.toLocaleString()} 口`;
 
-      // 繪製該盤別小 K 棒
+      // 繪製對應盤別的微型 K 棒
       renderMicroCandle(sessionOpenPrice, sessionHigh, sessionLow, currentPrice);
 
     } catch (err) {
