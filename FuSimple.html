@@ -43,10 +43,23 @@
             position: relative;
         }
 
-        /* 頂部工具列 */
+        /* 獨立第一層：標題欄 */
+        .top-header {
+            background: var(--card-bg);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-weight: 600;
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        /* 獨立第二層：設定與搜尋工具列 */
         .top-bar {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-between;
             align-items: center;
             background: var(--card-bg);
             padding: 8px 12px;
@@ -60,10 +73,36 @@
         .controls-group {
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            width: 100%;
             gap: 10px;
         }
 
-        .select-style, .search-input {
+        /* 顯眼下拉選單樣式 */
+        .select-style {
+            background-color: var(--bg-color);
+            background-image: url("data:image/svg+xml;utf8,<svg fill='%239b9ef5' height='12' viewBox='0 0 24 24' width='12' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            border: 1px solid #2962ff;
+            color: var(--text-main);
+            padding: 4px 26px 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            transition: all 0.2s ease;
+        }
+
+        .select-style:hover {
+            border-color: #5c8aff;
+            background-color: #1a1e2c;
+        }
+
+        .search-input {
             background: var(--bg-color);
             border: 1px solid var(--border-color);
             color: var(--text-main);
@@ -71,7 +110,7 @@
             border-radius: 4px;
             font-size: 12px;
             outline: none;
-            cursor: pointer;
+            width: 110px;
         }
 
         /* 頁籤與右上角選單按鈕 */
@@ -396,11 +435,15 @@
 </head>
 <body>
 
+    <!-- 獨立第一層：標題欄 -->
+    <div class="top-header">
+        📊 即時行情監控面板
+    </div>
+
+    <!-- 獨立第二層：設定與搜尋工具列 -->
     <div class="top-bar">
-        <div style="font-weight: 600; color: #fff; font-size: 14px;">📊 即時行情監控面板</div>
-        
         <div class="controls-group">
-            <label style="color: var(--text-muted); font-size: 12px;">顯示風格：
+            <label style="color: var(--text-muted); font-size: 12px; display: flex; align-items: center; gap: 4px;">顯示風格：
                 <select id="color-style" class="select-style" onchange="renderTable()">
                     <option value="RED_UP" selected>紅漲綠跌</option>
                     <option value="GREEN_UP">綠漲紅跌</option>
@@ -416,9 +459,9 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="filterCategory('ALL')">全部 (39)</button>
             <button class="tab-btn" onclick="filterCategory('WATCHLIST')" id="tab-watchlist">自選 (0)</button>
-            <button class="tab-btn" onclick="filterCategory('INDEX')">指數期貨</button>
+            <button class="tab-btn" onclick="filterCategory('INDEX')">指數期</button>
             <button class="tab-btn" onclick="filterCategory('COMMODITY')">能源/金屬</button>
-            <button class="tab-btn" onclick="filterCategory('FX')">外匯期貨</button>
+            <button class="tab-btn" onclick="filterCategory('FX')">外匯期</button>
             <button class="tab-btn" onclick="filterCategory('US_STOCK')">美股/ADR</button>
         </div>
 
@@ -453,7 +496,7 @@
             <!-- 字體大小調整滑桿 -->
             <div class="font-slider-group">
                 <div class="font-slider-header">
-                    <span>字體大小</span>
+                    <span>🔤 表格字體大小</span>
                     <span id="font-size-val">13px</span>
                 </div>
                 <input type="range" id="font-size-range" min="10" max="18" value="13" oninput="changeFontSize(this.value)">
@@ -505,17 +548,14 @@
     <!-- 右下角 AI 分析對話彈窗 (預設隱藏) -->
     <div id="ai-dialog" class="ai-dialog-panel">
         <div class="ai-dialog-header">
-            <span id="ai-dialog-title">🤖 AI 總經智算 (Gemini)</span>
+            <span id="ai-dialog-title">🤖 AI 總經智算面板</span>
             <span style="cursor:pointer;" onclick="toggleAIDialog(false)">✕</span>
         </div>
-        <div id="ai-dialog-body" class="ai-dialog-body">正在傳送即時行情至 AI 分析中...</div>
+        <div id="ai-dialog-body" class="ai-dialog-body">讀取即時數據分析中...</div>
     </div>
 
     <script>
         const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TWN-1,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
-
-        // ⚠️ 請填入您的 Gemini API Key
-        const GEMINI_API_KEY = "";
 
         const SYMBOL_META = {
             "TX-1": { name: "台指期", category: "INDEX" },
@@ -630,68 +670,80 @@
             }
         }
 
-        // 🤖 發送數據給真正的 LLM 生成分析內容
-        async function runAIAnalysis() {
+        // 💡 無需 API Key 的即時市場邏輯智算引擎
+        function runAIAnalysis() {
             const bodyEl = document.getElementById("ai-dialog-body");
-
-            if (!GEMINI_API_KEY) {
-                bodyEl.innerText = "⚠️ 請在程式碼中的 GEMINI_API_KEY 變數填入您的 API Key，即可啟用 LLM 真實 AI 生成分析。";
-                return;
-            }
-
-            bodyEl.innerText = "🧠 AI 思考中，正在分析跨市場數據...";
+            const titleEl = document.getElementById("ai-dialog-title");
 
             const now = new Date();
             const hour = now.getHours();
             const isNightSession = (hour >= 15 || hour < 5);
-            const sessionType = isNightSession ? "夜盤" : "日盤";
 
-            // 整理關鍵商品數據傳給 AI
-            const getMarketSummary = (sym) => {
+            titleEl.innerText = isNightSession ? "🌙 AI 夜盤總經智算" : "☀️ AI 日盤總經智算";
+
+            // 取得標的數據輔助函式
+            const getSymbolInfo = (sym) => {
                 const q = quotesData[sym];
-                if (!q) return `${sym}: 尚無資料`;
-                return `${SYMBOL_META[sym]?.name || sym}(${sym}): 成交價=${q.close}, 昨收=${q.prevRef}`;
+                if (!q) return { close: 0, prevRef: 0, diff: 0, pct: 0 };
+                const diff = q.close - q.prevRef;
+                const pct = q.prevRef ? (diff / q.prevRef) * 100 : 0;
+                return { close: q.close, prevRef: q.prevRef, diff, pct };
             };
 
-            const marketDataText = [
-                getMarketSummary("CL-1"),
-                getMarketSummary("GC-1"),
-                getMarketSummary("NQ-1"),
-                getMarketSummary("TX-1"),
-                getMarketSummary("TSM"),
-                getMarketSummary("NVDA")
-            ].join("\n");
+            const oil = getSymbolInfo("CL-1");
+            const gold = getSymbolInfo("GC-1");
+            const nq = getSymbolInfo("NQ-1");
+            const tx = getSymbolInfo("TX-1");
+            const tsm = getSymbolInfo("TSM");
+            const nvda = getSymbolInfo("NVDA");
 
-            const prompt = `你是一位專業的全球金融與總體經濟分析師。
-請根據以下即時行情數據（目前為【${sessionType}】時段），為交易者提供簡短精準的總經與市場觀點點評：
+            // 地緣與避險狀態評估
+            let statusTag = "";
+            let riskAssessment = "";
+            let actionSuggestion = "";
 
-【即時市場數據】
-${marketDataText}
-
-【分析指示】
-1. 分析僅供參考，不需要計算漲跌幅百分比，請著重反映「昨收價格」作為風險/進退基準。
-2. 評估原油與黃金價格表現，研判當前地緣政治恐慌情緒與避險需求。
-3. 結合美股/ADR（如 TSM 台積電 ADR、NQ 納指期）與台指期的昨收基準，分析恐慌邊際效應邊際遞減後，是否具備「利空出盡 / 跌深反彈」的情境。
-4. 字數控制在 200 字以內，使用繁體中文，格式條理分明。`;
-
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
-                });
-
-                const data = await response.json();
-                if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-                    bodyEl.innerText = data.candidates[0].content.parts[0].text;
-                } else {
-                    bodyEl.innerText = "❌ AI 回應異常，請稍後再試。";
-                }
-            } catch (err) {
-                bodyEl.innerText = "❌ 連線至 AI 服務失敗，請檢查網路或 API Key 展期。";
+            if (oil.pct > 1.5 || gold.pct > 1.0) {
+                statusTag = "⚠️ 地緣升溫 / 避險需求抬頭";
+                riskAssessment = `紐約原油目前報 ${fmt(oil.close)}，高於昨收基準 ${fmt(oil.prevRef)}。地緣政治情緒推升能源與黃金避險買盤。`;
+            } else if (oil.pct < -1.2) {
+                statusTag = "📉 恐慌釋放 / 能源溢價回落";
+                riskAssessment = `原油走弱至 ${fmt(oil.close)}（昨收 ${fmt(oil.prevRef)}），地緣政治利空對市場衝擊邊際遞減。`;
+            } else {
+                statusTag = "⚖️ 總經橫盤 / 避險資產狹幅震盪";
+                riskAssessment = `紐約原油維持在昨收 ${fmt(oil.prevRef)} 附近整理，整體避險情緒持平。`;
             }
+
+            // 盤別與科技/權值股動態邏輯
+            if (isNightSession) {
+                if (tsm.pct >= 0 || nq.pct >= 0) {
+                    actionSuggestion = `台積電 ADR (昨收 ${fmt(tsm.prevRef)}) 與納指期 (昨收 ${fmt(nq.prevRef)}) 展現強勁防禦力。若油價不再創高，夜盤台指期容易開啟利空出盡型強烈反彈。`;
+                } else {
+                    actionSuggestion = `海外科技股偏弱，夜盤操作宜密切關注台指期昨收線 ${fmt(tx.prevRef)} 附近的支撐韌性。`;
+                }
+            } else {
+                if (nq.pct > 0.3) {
+                    actionSuggestion = `國際期貨電子盤氛圍偏多，日盤台指期可隨跨市場資金回流尋求反彈點。`;
+                } else {
+                    actionSuggestion = `日盤持續觀察原油與黃金昨收防線，等待短線情緒賣壓消化後的轉折訊號。`;
+                }
+            }
+
+            // 組裝純文字內容
+            let content = `📌 【關鍵昨收價格基準】\n` +
+                `• 紐約原油 (CL-1)：${fmt(oil.prevRef)}\n` +
+                `• 黃金 (GC-1)：${fmt(gold.prevRef)}\n` +
+                `• 納指期 (NQ-1)：${fmt(nq.prevRef)}\n`;
+
+            if (isNightSession) {
+                content += `• 台積電 ADR (TSM)：${fmt(tsm.prevRef)}\n` +
+                           `• 輝達 (NVDA)：${fmt(nvda.prevRef)}\n`;
+            }
+
+            content += `• 台指期 (TX-1)：${fmt(tx.prevRef)}\n\n` +
+                `📊 【市場狀態評估】\n${statusTag}\n${riskAssessment}\n\n` +
+                `💡 【跨市場轉折判斷】\n${actionSuggestion}`;
+
+            bodyEl.innerText = content;
         }
 
         function toggleDrawer(e) {
@@ -834,7 +886,8 @@ ${marketDataText}
                 if (Array.isArray(list)) {
                     list.forEach(updateRow);
                 }
-                document.getElementById("update-time").innerText = `更新於 ${new Date().toLocaleTimeString()}`;
+                // 🕒 使用 24 小時制更新時間顯示 (HH:mm:ss)
+                document.getElementById("update-time").innerText = `更新於 ${new Date().toLocaleTimeString('zh-TW', { hour12: false })}`;
             } catch (e) {
                 document.getElementById("update-time").innerText = "連線異常";
             }
