@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台股熱門股即時報價看板 (緊湊模式)</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --up-color: #ef4444;    /* 台灣股市：紅漲 */
+      --down-color: #22c55e;  /* 台灣股市：綠跌 */
+      --flat-color: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 12px;
+      display: flex;
+      justify-content: center;
+      width: 100vw;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 自適應滿版寬度容器 */
+    .container {
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* 緊湊型 Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .title-group h1 {
+      font-size: 1.15rem; /* 微調標題字級 */
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    .title-group .subtitle {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.75rem;
+    }
+
+    /* 篩選器樣式 */
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+
+    .filter-select {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .filter-select option {
+      background-color: var(--card-bg);
+      color: var(--text-main);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--flat-color);
+    }
+
+    .indicator.active {
+      background-color: #10b981;
+      box-shadow: 0 0 6px #10b981;
+    }
+
+    .btn-refresh {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-refresh:hover {
+      background-color: #1d4ed8;
+    }
+
+    /* 緊湊頁籤 Tab Controls */
+    .tab-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .tab-btn {
+      background-color: var(--card-bg);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background-color: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    .tab-btn.limit-tab.has-stocks {
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+    }
+
+    .tab-btn.limit-tab.active {
+      background-color: #ef4444;
+      color: #ffffff;
+      border-color: #ef4444;
+    }
+
+    .stock-count {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0 5px;
+      border-radius: 8px;
+      background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* 緊湊型與自適應 Table */
+    .table-card {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      overflow-x: auto;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      width: 100%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+      font-size: 0.82rem; /* 微調表格內容字級 */
+      line-height: 1.25;
+    }
+
+    th, td {
+      padding: 7px 10px; /* 微調內距使版面更順眼 */
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    th {
+      background-color: rgba(0, 0, 0, 0.3);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8rem; /* 微調表格標題字級 */
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      position: sticky;
+      top: 0;
+      user-select: none;
+    }
+
+    /* 可排序標題樣式 */
+    th.sortable {
+      cursor: pointer;
+      transition: color 0.15s, background-color 0.15s;
+    }
+
+    th.sortable:hover {
+      color: var(--text-main);
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    th.sort-active {
+      color: #38bdf8;
+    }
+
+    .sort-icon {
+      font-size: 0.7rem;
+      margin-left: 3px;
+      display: inline-block;
+    }
+
+    th:nth-child(1), td:nth-child(1),
+    th:nth-child(2), td:nth-child(2) {
+      text-align: left;
+    }
+
+    /* 交錯背景 */
+    tbody tr:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.015);
+    }
+
+    tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .stock-code {
+      font-weight: 700;
+      font-size: 0.78rem;
+      color: #38bdf8;
+      background-color: rgba(56, 189, 248, 0.1);
+      padding: 1px 5px;
+      border-radius: 3px;
+      display: inline-block;
+      font-family: monospace;
+    }
+
+    .stock-name {
+      font-weight: 600;
+    }
+
+    .up {
+      color: var(--up-color);
+      font-weight: 600;
+    }
+
+    .down {
+      color: var(--down-color);
+      font-weight: 600;
+    }
+
+    .flat {
+      color: var(--flat-color);
+    }
+
+    .state-container {
+      padding: 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-top: 2px solid #38bdf8;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>台股熱門股即時報價看板</h1>
+        <div class="subtitle">資料來源：Market Insight API</div>
+      </div>
+      <div class="status-group">
+        <!-- 成交量過濾選單 (預設 > 10,000 張) -->
+        <div class="filter-group">
+          <label for="volume-filter">成交量門檻：</label>
+          <select id="volume-filter" class="filter-select" onchange="renderCurrentData()">
+            <option value="10000" selected>&gt; 10,000 張</option>
+            <option value="30000">&gt; 30,000 張</option>
+            <option value="50000">&gt; 50,000 張</option>
+            <option value="100000">&gt; 100,000 張</option>
+            <option value="0">不限</option>
+          </select>
+        </div>
+
+        <div class="badge">
+          <span class="indicator" id="status-indicator"></span>
+          <span id="update-time">更新：尚未更新</span>
+        </div>
+        <button class="btn-refresh" onclick="fetchStockData()">刷新</button>
+      </div>
+    </header>
+
+    <!-- 模組頁籤按鈕區 (緊湊版) -->
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-normal-btn" onclick="switchTab('normal')">
+        🔥 熱門股 <span class="stock-count" id="normal-count">0 檔</span>
+      </button>
+      <button class="tab-btn limit-tab" id="tab-limit-btn" onclick="switchTab('limit')">
+        🔴 漲停股 <span class="stock-count" id="limit-up-count">0 檔</span>
+      </button>
+    </div>
+
+    <!-- 表格區塊 -->
+    <div class="table-card">
+      <table id="stock-table">
+        <thead>
+          <tr>
+            <th class="sortable" onclick="handleSort('symbol')">代號 <span id="sort-symbol" class="sort-icon"></span></th>
+            <th>名稱</th>
+            <th class="sortable" onclick="handleSort('price')">成交價 <span id="sort-price" class="sort-icon"></span></th>
+            <th class="sortable" onclick="handleSort('change')">漲跌 <span id="sort-change" class="sort-icon"></span></th>
+            <th class="sortable" onclick="handleSort('changePercent')">漲跌幅 <span id="sort-changePercent" class="sort-icon"></span></th>
+            <th class="sortable" onclick="handleSort('volume')">成交量<span id="sort-volume" class="sort-icon"></span></th>
+          </tr>
+        </thead>
+        <tbody id="stock-list">
+          <tr>
+            <td colspan="6">
+              <div class="state-container">
+                <div class="spinner"></div>
+                載入即時報價與對照表中...
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'https://api.market-insight.futures-ai.com/api/monitor/daily_rank';
+    const NAME_MAP_URL = 'https://storage.googleapis.com/symbol-config/stock_code_to_chinese.json';
+    const REFRESH_INTERVAL = 10000;
+
+    let stockNameMap = {};
+    let currentStockData = [];
+    let currentTab = 'normal'; // 'normal' 或 'limit'
+
+    // 排序狀態管理：預設以成交量降冪 (desc)
+    let sortColumn = 'volume';
+    let sortOrder = 'desc'; // 'asc' 或 'desc'
+
+    // --- 排序處理邏輯 ---
+
+    function handleSort(column) {
+      if (sortColumn === column) {
+        // 同欄位再次點擊：切換 升冪 / 降冪
+        sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+      } else {
+        // 切換新欄位：代號預設升冪(asc)，其餘數值欄位預設降冪(desc)
+        sortColumn = column;
+        sortOrder = (column === 'symbol') ? 'asc' : 'desc';
+      }
+      renderCurrentData();
+    }
+
+    function updateSortHeaderIcons() {
+      const columns = ['symbol', 'price', 'change', 'changePercent', 'volume'];
+      columns.forEach(col => {
+        const iconElem = document.getElementById(`sort-${col}`);
+        const thElem = iconElem ? iconElem.parentElement : null;
+        if (!iconElem || !thElem) return;
+
+        if (col === sortColumn) {
+          thElem.classList.add('sort-active');
+          iconElem.innerText = sortOrder === 'desc' ? '🔻' : '🔺';
+        } else {
+          thElem.classList.remove('sort-active');
+          iconElem.innerText = '';
+        }
+      });
+    }
+
+    // --- 台股漲停價計算邏輯 ---
+
+    function getTickSize(price) {
+      if (price < 10) return 0.01;
+      if (price < 50) return 0.05;
+      if (price < 100) return 0.1;
+      if (price < 500) return 0.5;
+      if (price < 1000) return 1.0;
+      return 5.0;
+    }
+
+    function getLimitUpPrice(refPrice) {
+      if (!refPrice || refPrice <= 0) return 0;
+      let rawLimitUp = refPrice * 1.10;
+      rawLimitUp = Math.round(rawLimitUp * 1000) / 1000;
+      const tickSize = getTickSize(rawLimitUp);
+      const limitUpPrice = Math.floor(rawLimitUp / tickSize + 0.00001) * tickSize;
+      return Math.round(limitUpPrice * 100) / 100;
+    }
+
+    // --- 頁籤切換 ---
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById('tab-normal-btn').classList.toggle('active', tab === 'normal');
+      document.getElementById('tab-limit-btn').classList.toggle('active', tab === 'limit');
+      renderCurrentData();
+    }
+
+    // --- 資料讀取與處理 ---
+
+    async function loadStockNameMap() {
+      try {
+        const res = await fetch(NAME_MAP_URL);
+        if (res.ok) {
+          stockNameMap = await res.json();
+        }
+      } catch (err) {
+        console.warn('無法載入名稱對照檔:', err);
+      }
+    }
+
+    async function fetchStockData() {
+      const tbody = document.getElementById('stock-list');
+      const indicator = document.getElementById('status-indicator');
+      const timeDisplay = document.getElementById('update-time');
+
+      try {
+        const response = await fetch(API_URL);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
+        }
+
+        const resData = await response.json();
+        currentStockData = Array.isArray(resData) ? resData : (resData.data || []);
+
+        if (currentStockData.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6"><div class="state-container">目前無資料</div></td></tr>`;
+          document.getElementById('normal-count').innerText = '0 檔';
+          document.getElementById('limit-up-count').innerText = '0 檔';
+          return;
+        }
+
+        renderCurrentData();
+
+        indicator.classList.add('active');
+        const now = new Date();
+        timeDisplay.innerText = `更新：${now.toLocaleTimeString()}`;
+
+      } catch (error) {
+        console.error('Fetch error:', error);
+        indicator.classList.remove('active');
+        
+        if (tbody.children.length <= 1) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6">
+                <div class="state-container" style="color: var(--up-color);">
+                  無法讀取即時報價，請確認網路連線或 API CORS 設定。<br>
+                  <small>(${error.message})</small>
+                </div>
+              </td>
+            </tr>`;
+        }
+      }
+    }
+
+    function renderCurrentData() {
+      const minVolume = Number(document.getElementById('volume-filter').value) || 0;
+      
+      const filteredStocks = currentStockData.filter(stock => {
+        const vol = Number(stock.volume || stock.total_volume || 0);
+        return vol >= minVolume;
+      });
+
+      const limitUpStocks = [];
+      const normalStocks = [];
+
+      filteredStocks.forEach(stock => {
+        const price = Number(stock.close || stock.price || stock.last_price || 0);
+        const change = Number(stock.change || 0);
+        const refPrice = stock.refPrice || (price && change ? price - change : 0);
+        const limitUpPrice = getLimitUpPrice(refPrice);
+        const isLimitUp = price > 0 && limitUpPrice > 0 && price >= limitUpPrice;
+
+        if (isLimitUp) {
+          limitUpStocks.push(stock);
+        } else {
+          normalStocks.push(stock);
+        }
+      });
+
+      // 更新頁籤數量標籤
+      document.getElementById('normal-count').innerText = `${normalStocks.length} 檔`;
+      document.getElementById('limit-up-count').innerText = `${limitUpStocks.length} 檔`;
+
+      // 漲停頁籤外觀提醒
+      const limitBtn = document.getElementById('tab-limit-btn');
+      limitBtn.classList.toggle('has-stocks', limitUpStocks.length > 0);
+
+      // 根據當前選擇的 Tab 取得列表
+      let displayStocks = (currentTab === 'limit') ? limitUpStocks : normalStocks;
+
+      // 執行動態排序
+      displayStocks.sort((a, b) => {
+        if (sortColumn === 'symbol') {
+          const symA = String(a.symbol || a.code || a.stock_id || '').trim();
+          const symB = String(b.symbol || b.code || b.stock_id || '').trim();
+          return sortOrder === 'asc' 
+            ? symA.localeCompare(symB, undefined, { numeric: true }) 
+            : symB.localeCompare(symA, undefined, { numeric: true });
+        } else {
+          let valA = getStockValue(a, sortColumn);
+          let valB = getStockValue(b, sortColumn);
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+        }
+      });
+
+      updateSortHeaderIcons();
+      renderTableRows(displayStocks);
+    }
+
+    function getStockValue(stock, col) {
+      const price = Number(stock.close || stock.price || stock.last_price || 0);
+      const change = Number(stock.change || 0);
+
+      switch (col) {
+        case 'price':
+          return price;
+        case 'change':
+          return change;
+        case 'changePercent':
+          return Number(stock.change_rate || stock.change_percent || (stock.open ? (change / stock.open * 100) : 0));
+        case 'volume':
+        default:
+          return Number(stock.volume || stock.total_volume || 0);
+      }
+    }
+
+    function renderTableRows(stocks) {
+      const tbody = document.getElementById('stock-list');
+      tbody.innerHTML = '';
+
+      if (stocks.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="state-container">沒有符合條件的股票</div></td></tr>`;
+        return;
+      }
+
+      stocks.forEach(stock => {
+        const symbol = String(stock.symbol || stock.code || stock.stock_id || '').trim();
+        const apiName = stock.name || stock.stock_name || '';
+        const name = stockNameMap[symbol] || apiName || '--';
+
+        const price = Number(stock.close || stock.price || stock.last_price || 0);
+        const change = Number(stock.change || 0);
+        const changePercent = Number(stock.change_rate || stock.change_percent || (stock.open ? (change / stock.open * 100) : 0));
+        const volume = Number(stock.volume || stock.total_volume || 0);
+
+        let colorClass = 'flat';
+        let sign = '';
+        if (change > 0) {
+          colorClass = 'up';
+          sign = '+';
+        } else if (change < 0) {
+          colorClass = 'down';
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="stock-code">${symbol || '--'}</span></td>
+          <td><span class="stock-name">${name}</span></td>
+          <td class="${colorClass}">${formatNumber(price)}</td>
+          <td class="${colorClass}">${sign}${formatNumber(change)}</td>
+          <td class="${colorClass}">${sign}${formatNumber(changePercent)}%</td>
+          <td>${formatInteger(volume)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function formatNumber(val) {
+      if (typeof val !== 'number' || isNaN(val)) return val;
+      return val.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatInteger(val) {
+      if (typeof val !== 'number' || isNaN(val)) return val;
+      return Math.round(val).toLocaleString('zh-TW');
+    }
+
+    async function init() {
+      await loadStockNameMap();
+      await fetchStockData();
+      setInterval(fetchStockData, REFRESH_INTERVAL);
+    }
+
+    init();
+  </script>
+</body>
+</html>
