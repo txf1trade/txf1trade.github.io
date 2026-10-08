@@ -1,5 +1,5 @@
 <!-- 
-    股期監控-專業優化整合版 (含頂部指數微型 K 棒與精確 Tick Size 漲跌停判定)
+    股期監控-專業優化整合版 (含獨立 K 線欄位、正確漲跌幅與右上角浮動控制面板)
 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -21,6 +21,7 @@
             --surface: #1e1e1e;
             --fav-star: #ffcc00;
             --mini-orange: #ff9500; 
+            --btn-blue: #2962ff;
 
             /* 價格區間顏色定義 */
             --price-thousand: #ffe57f;  /* 1000元以上：高亮黃 */
@@ -78,14 +79,14 @@
         .index-price { font-weight: bold; font-size: 11px; color: #fff; }
         .index-chg { font-size: 9px; font-weight: bold; }
 
-        .mode-header { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; }
+        .mode-header { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; align-items: center; }
         .mode-btn {
-            flex: 1; min-width: 58px; padding: 7px 2px; text-align: center; font-size: 10px;
+            flex: 1; min-width: 52px; padding: 7px 2px; text-align: center; font-size: 10px;
             font-weight: bold; border-radius: 4px; border: 1px solid #333;
             cursor: pointer; background: #111; color: var(--text-dim);
             white-space: nowrap; margin-bottom: 2px;
         }
-        
+
         .mode-btn.active[data-mode="all"] { border-color: var(--accent); color: var(--accent); background: rgba(100, 255, 218, 0.1); }
         .mode-btn.active[data-mode="limit_up"] { border-color: #ff0055; color: #ff0055; background: rgba(255, 0, 85, 0.15); }
         .mode-btn.active[data-mode="range_3_5"] { border-color: #ff9500; color: #ff9500; background: rgba(255, 149, 0, 0.15); }
@@ -107,7 +108,6 @@
         .price-btn.active[data-price-range="100"] { border-color: var(--price-100); color: var(--price-100); background: rgba(24, 255, 255, 0.15); }
         .price-btn.active[data-price-range="0"] { border-color: #888; color: #fff; background: rgba(255, 255, 255, 0.15); }
 
-        /* 1. 控制拉桿區（黃框） */
         .controls-row { display: flex; align-items: center; gap: 4px; background: var(--surface); padding: 6px 8px; border-radius: 4px; position: relative; overflow: hidden; margin-top: 4px; margin-bottom: 4px; }
         .filter-toggle { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--accent); white-space: nowrap; cursor: pointer; }
         .slider-box { flex: 1; display: flex; align-items: center; gap: 4px; margin: 0 4px; }
@@ -116,7 +116,6 @@
         #timer-display { font-family: monospace; color: var(--accent); font-size: 10px; margin-left: auto; }
         #refresh-bar { position: absolute; bottom: 0; left: 0; height: 1.5px; background: var(--accent); width: 0%; }
 
-        /* 2. 搜尋框（紅框） */
         .search-row { padding: 2px 2px; margin-bottom: 4px; position: relative; display: flex; align-items: center; }
         #search-input {
             width: 100%; background: #222; border: 1px solid #444; border-radius: 4px;
@@ -128,18 +127,44 @@
             display: none; font-size: 20px; padding: 0 5px; line-height: 1;
         }
 
-        /* 3. 自選標籤列 */
+        /* 搜尋列下方自選晶片與控制按鈕區域 */
         .fav-chips-wrapper {
-            padding: 4px 2px; overflow-x: auto; white-space: nowrap;
-            display: none; -webkit-overflow-scrolling: touch; border-bottom: 1px solid #222;
+            padding: 4px 2px; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid #222; position: relative;
         }
-        .fav-chips-wrapper::-webkit-scrollbar { display: none; }
+        .fav-chips-scroll {
+            overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex: 1;
+        }
+        .fav-chips-scroll::-webkit-scrollbar { display: none; }
         .chip {
-            display: inline-block; padding: 4px 12px; margin-right: 8px;
+            display: inline-block; padding: 4px 12px; margin-right: 6px;
             border-radius: 15px; background: #222; color: #888;
             font-size: 11px; border: 1px solid #333; cursor: pointer;
         }
         .chip.active { background: rgba(255, 204, 0, 0.15); color: var(--ai-gold); border-color: var(--ai-gold); }
+
+        /* 自訂控制面板按鈕（置於自選晶片列右側） */
+        .panel-menu-btn {
+            width: 26px; height: 26px; background: var(--btn-blue); color: #fff;
+            border-radius: 5px; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; cursor: pointer; border: none; flex-shrink: 0; margin-left: 6px;
+            transition: opacity 0.2s;
+        }
+        .panel-menu-btn:active { opacity: 0.8; }
+
+        /* 右上角局部彈出選單（不佔全螢幕） */
+        .dropdown-panel {
+            display: none; position: absolute; top: 35px; right: 2px; width: 260px;
+            background: #1e222d; border: 1px solid #363c4e; border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6); z-index: 2500; padding: 12px;
+            box-sizing: border-box; color: #e0e0e0; font-size: 12px;
+        }
+        .dropdown-panel.open { display: block; }
+        .dropdown-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #2a2e3d; padding-bottom: 6px; }
+        .dropdown-title { font-weight: bold; color: #fff; font-size: 13px; }
+        .dropdown-close { cursor: pointer; color: #888; font-size: 16px; font-weight: bold; }
+        .dropdown-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        .dropdown-item { display: flex; align-items: center; gap: 4px; cursor: pointer; }
 
         .heatmap-container { margin: 10px 0; }
         .heatmap-header {
@@ -163,8 +188,10 @@
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 5px; }
         th { color: var(--text-dim); font-size: 10px; padding: 8px 1px; border-bottom: 1px solid #333; cursor: pointer; user-select: none; text-decoration: none !important; }
-        th:nth-child(1) { text-align: left; width: 32%; } 
+        th:nth-child(1) { text-align: left; width: 28%; } 
+        th:nth-child(2) { text-align: center; width: 8%; } /* K線欄位 */
         td { padding: 6px 1px; border-bottom: 1px solid #1a1a1a; text-align: right; vertical-align: middle; }
+        td.k-cell { text-align: center; }
         
         .name-col { text-align: left; overflow: hidden; }
         .name-stack { display: flex; flex-direction: column; line-height: 1.2; }
@@ -212,7 +239,8 @@
 
         .section-divider { background: #333; color: #aaa; font-size: 10px; padding: 4px 8px; text-align: left; }
 
-        #ai-modal {
+        /* AI 彈窗 */
+        .modal-mask {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center;
         }
@@ -225,7 +253,8 @@
 </head>
 <body>
 
-<div id="ai-modal" onclick="closeAI()">
+<!-- AI 標題彈窗 -->
+<div id="ai-modal" class="modal-mask" onclick="closeAI()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 id="ai-title" style="color:var(--ai-gold); margin: 0 0 20px 0; text-align: center;">🤖 標題檢索</h3>
         <div class="link-btn-group">
@@ -237,7 +266,7 @@
 
 <div class="app-wrapper">
     <div class="sticky-top">
-        <!-- 加權、櫃買與台指期顯示區塊 (含微型 K 棒) -->
+        <!-- 加權、櫃買與台指期顯示區塊 -->
         <div class="index-bar">
             <!-- 加權指數 -->
             <div class="index-box">
@@ -310,7 +339,7 @@
             <div class="price-btn" data-price-range="0">⚪平價股 (&lt;100)</div>
         </div>
 
-        <!-- 1. 【原黃框】控制拉桿區 -->
+        <!-- 控制拉桿區 -->
         <div class="controls-row">
             <label class="filter-toggle"><input type="checkbox" id="show-tse" checked> 市</label>
             <label class="filter-toggle"><input type="checkbox" id="show-otc" checked> 櫃</label>
@@ -324,16 +353,35 @@
             <div id="refresh-bar"></div>
         </div>
 
-        <!-- 2. 【原紅框】搜尋列 -->
+        <!-- 搜尋列 -->
         <div class="search-row">
             <input type="text" id="search-input" placeholder="🔍 搜尋代碼、名稱、股期代碼......">
             <span id="clear-search">&times;</span>
         </div>
 
-        <!-- 3. 自選標籤區塊 -->
+        <!-- 自選標籤與右側自訂控制面板按鈕區塊 -->
         <div class="fav-chips-wrapper" id="fav-chips-bar">
-            <span class="chip" id="chip-all" onclick="setMode('all')">全部</span>
-            <span class="chip active" id="chip-fav" onclick="setMode('fav')">⭐ 自選 (<span id="fav-count-text">0</span>)</span>
+            <div class="fav-chips-scroll">
+                <span class="chip" id="chip-all" onclick="setMode('all')">全部</span>
+                <span class="chip active" id="chip-fav" onclick="setMode('fav')">⭐ 自選 (<span id="fav-count-text">0</span>)</span>
+            </div>
+            <!-- 右側選單按鈕（點擊彈出局部選單面板） -->
+            <button class="panel-menu-btn" onclick="toggleCustomPanel(event)" title="自訂欄位與功能">☰</button>
+
+            <!-- 右上角局部彈出控制面板 -->
+            <div id="custom-dropdown" class="dropdown-panel" onclick="event.stopPropagation()">
+                <div class="dropdown-header">
+                    <span class="dropdown-title">自訂欄位與功能</span>
+                    <span class="dropdown-close" onclick="closeCustomPanel()">&times;</span>
+                </div>
+                <div class="dropdown-body">
+                    <label class="dropdown-item"><input type="checkbox" checked disabled> 漲跌幅</label>
+                    <label class="dropdown-item"><input type="checkbox" checked disabled> K線</label>
+                    <label class="dropdown-item"><input type="checkbox" checked disabled> 現貨價</label>
+                    <label class="dropdown-item"><input type="checkbox" checked disabled> 股期價</label>
+                </div>
+                <div style="font-size: 11px; color: #888; text-align: center;">(欄位顯示自訂功能持續擴充中)</div>
+            </div>
         </div>
     </div>
 
@@ -349,6 +397,7 @@
         <thead>
             <tr>
                 <th id="th-name">代號名稱</th>
+                <th>K線</th>
                 <th id="th-chg">現貨</th>
                 <th id="th-fut">股期</th> 
                 <th id="th-near">近月</th> 
@@ -402,7 +451,7 @@
 
     /* ------------------- 微型 K 棒繪製邏輯 ------------------- */
     function renderMicroCandle(svgId, open, high, low, close) {
-        const svg = document.getElementById(svgId);
+        const svg = typeof svgId === 'string' ? document.getElementById(svgId) : svgId;
         if (!svg) return;
 
         const wick = svg.querySelector('.wick');
@@ -437,6 +486,32 @@
         body.setAttribute('fill', colorHex);
 
         svg.style.display = 'block';
+    }
+
+    /* ------------------- 母股 1 分鐘線 K 棒抓取邏輯 ------------------- */
+    async function fetchStockMicroCandle(stockNum, svgElement) {
+        if (!stockNum || !svgElement) return;
+        try {
+            const url = `https://tvapi.futures-op.com/history?symbol=${stockNum}&resolution=1&ws=true&intraday=true`;
+            const res = await fetch(url, { cache: "no-cache" });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                const openPrice = data[0].open;
+                const latestPrice = data[data.length - 1].close;
+                
+                let highPrice = -Infinity;
+                let lowPrice = Infinity;
+                data.forEach(item => {
+                    if (item.high > highPrice) highPrice = item.high;
+                    if (item.low < lowPrice) lowPrice = item.low;
+                });
+
+                renderMicroCandle(svgElement, openPrice, highPrice, lowPrice, latestPrice);
+            }
+        } catch (e) {
+            console.warn(`[母股 K 棒抓取失敗] (${stockNum}):`, e);
+        }
     }
 
     /* ------------------- 漲跌停判斷與精確 Tick Size 級距邏輯 ------------------- */
@@ -494,13 +569,13 @@
     }
 
     function calculateChangePercent(price, prevRef, apiChangePct) {
-        if (apiChangePct !== undefined && !isNaN(apiChangePct)) {
-            return parseFloat(apiChangePct);
-        }
         const p = parseFloat(price);
         const ref = parseFloat(prevRef);
         if (!isNaN(p) && !isNaN(ref) && ref > 0) {
             return ((p - ref) / ref) * 100;
+        }
+        if (apiChangePct !== undefined && !isNaN(apiChangePct)) {
+            return parseFloat(apiChangePct);
         }
         return null;
     }
@@ -681,11 +756,15 @@
                     const far = scoreData[k].next_month;
                     const total = near + far;
                     const old = cachedData.find(o => o.id === k);
+                    
+                    const spotInfo = dailyRankData[stockNum] || {};
+                    const futInfo = dailyRankData[k] || {};
+
                     return { 
                         id: k, stockNum, name, market, near, far, total,
                         isLong: total >= 15 && near >= 5 && far >= 0,
-                        price: old ? old.price : '--', 
-                        futPrice: old ? old.futPrice : '--'
+                        price: (old && old.price !== '--') ? old.price : (spotInfo.close || '--'), 
+                        futPrice: (old && old.futPrice !== '--') ? old.futPrice : (futInfo.close || '--')
                     };
                 });
 
@@ -717,8 +796,8 @@
     function updateRowPrice(item) {
         const row = dom.table.querySelector(`tr[data-id="${item.id}"]`);
         if (row) {
-            const spotCell = row.cells[1];
-            const futCell = row.cells[2];
+            const spotCell = row.cells[2];
+            const futCell = row.cells[3];
 
             const spotInfo = dailyRankData[item.stockNum] || {};
             const futInfo = dailyRankData[item.id] || {};
@@ -813,7 +892,6 @@
         const isShowOtc = document.getElementById('show-otc').checked;
 
         dom.clearSearch.style.display = searchQuery ? 'block' : 'none';
-        dom.favBar.style.display = favList.length > 0 ? 'block' : 'none';
         dom.favCountText.innerText = favList.length;
 
         const baseList = getFilteredList(searchQuery, isShowEtf, isShowTse, isShowOtc);
@@ -884,6 +962,14 @@
         renderHeatmap(baseList);
         renderTable(finalDisplayList);
         
+        // 非同步載入目前列表項目的母股微型 K 棒
+        finalDisplayList.forEach(item => {
+            if (!item.isDivider) {
+                const svgEl = document.getElementById(`stk-k-${item.id}`);
+                if (svgEl) fetchStockMicroCandle(item.stockNum, svgEl);
+            }
+        });
+        
         const arrow = sortOrder === 'desc' ? '▼' : '▲';
         dom.thTotal.innerText = `總分`;
         dom.thName.innerText = `代號名稱`;
@@ -928,7 +1014,7 @@
     function renderTable(list) {
         const currentMax = cachedData.length > 0 ? Math.max(...cachedData.map(i => Math.abs(i.total))) : 1;
         dom.table.innerHTML = list.map(item => {
-            if (item.isDivider) return `<tr><td colspan="7" class="section-divider">${item.text}</td></tr>`;
+            if (item.isDivider) return `<tr><td colspan="8" class="section-divider">${item.text}</td></tr>`;
             
             const isFaved = favList.includes(item.id);
             const themeColor = item.total >= 0 ? 'var(--up-red)' : 'var(--down-green)';
@@ -971,6 +1057,14 @@
                         </div>
                     </div>
                 </td>
+                <!-- 獨立的 K 棒欄位 -->
+                <td class="k-cell">
+                    <svg id="stk-k-${item.id}" width="12" height="24" viewBox="0 0 12 24" style="display: none; margin: 0 auto;">
+                        <line class="wick" x1="6" y1="1" x2="6" y2="23" stroke-width="1.5" />
+                        <rect class="body" x="2" width="8" rx="1" ry="1" />
+                    </svg>
+                </td>
+                <!-- 現貨價格欄位 -->
                 <td>
                     <div class="price-cell-container">
                         <div class="price-val ${spotLimitClass}" style="${spotLimitClass === 'normal' ? 'color:' + getPriceColor(item.price) : ''}">
@@ -981,6 +1075,7 @@
                         </div>
                     </div>
                 </td>
+                <!-- 股期價格欄位 -->
                 <td>
                     <div class="price-cell-container">
                         <div class="fut-price-val ${futLimitClass}" style="${futLimitClass === 'normal' ? 'color:' + getPriceColor(item.futPrice) : ''}">
@@ -1038,6 +1133,18 @@
     }
 
     function closeAI() { document.getElementById('ai-modal').style.display = 'none'; }
+
+    /* 控制面板開關 */
+    function toggleCustomPanel(e) {
+        e.stopPropagation();
+        document.getElementById('custom-dropdown').classList.toggle('open');
+    }
+    function closeCustomPanel() {
+        document.getElementById('custom-dropdown').classList.remove('open');
+    }
+
+    // 點擊頁面其他地方自動關閉浮動選單
+    window.addEventListener('click', closeCustomPanel);
 
     document.getElementById('mode-selector').onclick = e => { if (e.target.dataset.mode) setMode(e.target.dataset.mode); };
     document.getElementById('price-selector').onclick = e => { if (e.target.dataset.priceRange) setPriceRange(e.target.dataset.priceRange); };
