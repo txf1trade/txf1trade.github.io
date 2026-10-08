@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>即時行情監控面板</title>
+    <title>海期即時行情監控</title>
     <style>
         :root {
             --bg-color: #131722;
@@ -58,7 +58,7 @@
         .controls-group {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .select-style, .search-input {
@@ -106,7 +106,6 @@
             background: #2962ff;
         }
 
-        /* 右上角漢堡圖示按鈕 */
         .menu-btn {
             background: #2962ff;
             color: #fff;
@@ -191,6 +190,83 @@
             user-select: none;
         }
 
+        /* 右下角浮動 AI 助理按鈕 */
+        .ai-floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #181c27;
+            border: 2px solid #2962ff;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(41, 98, 255, 0.4);
+            cursor: pointer;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+        .ai-floating-btn:hover {
+            transform: scale(1.08);
+        }
+        .ai-floating-icon {
+            font-size: 22px;
+            line-height: 1;
+        }
+        .ai-floating-badge {
+            font-size: 9px;
+            font-weight: bold;
+            color: #ffffff;
+            background: #2962ff;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        /* 右下角 AI 彈出對話面板 (預設隱藏，點擊按鈕才開啟) */
+        .ai-dialog-panel {
+            position: fixed;
+            bottom: 85px;
+            right: 20px;
+            width: 330px;
+            max-height: 480px;
+            background: #1e222d;
+            border: 1px solid #2962ff;
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+        }
+        .ai-dialog-panel.show { display: flex; }
+
+        .ai-dialog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #ffffff;
+            font-size: 13px;
+        }
+
+        .ai-dialog-body {
+            color: var(--text-main);
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-line;
+            overflow-y: auto;
+            max-height: 390px;
+            scrollbar-width: thin;
+        }
+
         /* 報價表格容器 */
         .table-container {
             background: var(--card-bg);
@@ -199,7 +275,6 @@
             flex: 1;
             overflow-y: auto;
             overflow-x: auto;
-            
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
@@ -238,7 +313,6 @@
 
         tr:hover { background-color: #2a2e39; }
 
-        /* 自選星號按鈕 */
         .star-btn {
             cursor: pointer;
             font-size: 14px;
@@ -246,9 +320,7 @@
             user-select: none;
             transition: color 0.15s ease;
         }
-        .star-btn.active {
-            color: var(--star-color);
-        }
+        .star-btn.active { color: var(--star-color); }
 
         .symbol-code { font-weight: 700; color: #ffffff; }
         .symbol-name { color: var(--text-sub); }
@@ -284,6 +356,12 @@
         .hide-qty .col-qty,
         .hide-volume .col-volume,
         .hide-datetime .col-datetime { display: none !important; }
+
+        /* 隱藏右下角 AI 助理按鈕與對話窗 */
+        .hide-ai-assistant #ai-floating-btn,
+        .hide-ai-assistant #ai-dialog {
+            display: none !important;
+        }
 
         .flash-up { animation: flashGreen 0.4s ease-out; }
         .flash-down { animation: flashRed 0.4s ease-out; }
@@ -325,7 +403,7 @@
         <!-- 自訂欄位彈出面板 -->
         <div id="drawer-panel" class="drawer-panel" onclick="event.stopPropagation()">
             <div class="drawer-header">
-                <span>自訂欄位</span>
+                <span>自訂欄位與功能</span>
                 <span style="cursor:pointer;" onclick="closeDrawer()">✕</span>
             </div>
 
@@ -346,6 +424,9 @@
                 <label><input type="checkbox" id="chk-volume" checked onchange="updateColumnVisibility()"> 總成交量</label>
                 <label><input type="checkbox" id="chk-prevRef" checked onchange="updateColumnVisibility()"> 昨收</label>
                 <label><input type="checkbox" id="chk-datetime" checked onchange="updateColumnVisibility()"> 時間</label>
+                <label style="grid-column: span 2; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px; color: var(--text-sub); font-weight: bold;">
+                    <input type="checkbox" id="chk-ai" checked onchange="updateColumnVisibility()"> 🤖 AI 助理按鈕
+                </label>
             </div>
         </div>
     </div>
@@ -379,11 +460,28 @@
         </table>
     </div>
 
+    <!-- 右下角浮動 AI 助理按鈕 (BETA) -->
+    <div class="ai-floating-btn" id="ai-floating-btn" onclick="toggleAIDialog()">
+        <span class="ai-floating-icon">🤖</span>
+        <span class="ai-floating-badge">BETA</span>
+    </div>
+
+    <!-- 右下角 AI 分析對話彈窗 (預設不帶 show，點擊按鈕才開) -->
+    <div id="ai-dialog" class="ai-dialog-panel">
+        <div class="ai-dialog-header">
+            <span id="ai-dialog-title">🤖 AI 總經助理 (日/夜盤自動判斷)</span>
+            <span style="cursor:pointer;" onclick="toggleAIDialog(false)">✕</span>
+        </div>
+        <div id="ai-dialog-body" class="ai-dialog-body">讀取跨市場與昨收價格分析中...</div>
+    </div>
+
     <script>
-        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TWN-1,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
+        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,MTX-1,TMX-1,TWN-1,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
 
         const SYMBOL_META = {
             "TX-1": { name: "台指期", category: "INDEX" },
+            "MTX-1": { name: "小台指期", category: "INDEX" },
+            "TMX-1": { name: "微台指期", category: "INDEX" },
             "TWN-1": { name: "富台指", category: "INDEX" },
             "NK-1": { name: "日經225", category: "INDEX" },
             "CN-1": { name: "中國A50", category: "INDEX" },
@@ -426,8 +524,6 @@
 
         const quotesData = {};
         let currentCategory = "ALL";
-
-        // 從 localStorage 讀取自選清單
         let watchlist = JSON.parse(localStorage.getItem("user_watchlist") || "[]");
 
         function saveWatchlist() {
@@ -472,6 +568,64 @@
             };
         }
 
+        // 切換右下角 AI 助理對話視窗
+        function toggleAIDialog(forceState) {
+            const dialog = document.getElementById("ai-dialog");
+            const isShow = typeof forceState === "boolean" ? forceState : !dialog.classList.contains("show");
+            dialog.classList.toggle("show", isShow);
+
+            if (isShow) {
+                runAIAnalysis();
+            }
+        }
+
+        // AI 總經助理 (支援夜盤 + 美股/ADR 加入判斷，反映昨收價)
+        function runAIAnalysis() {
+            const bodyEl = document.getElementById("ai-dialog-body");
+            const titleEl = document.getElementById("ai-dialog-title");
+
+            const now = new Date();
+            const hour = now.getHours();
+            const isNightSession = (hour >= 15 || hour < 5);
+
+            titleEl.innerText = isNightSession ? "🌙 AI 夜盤總經助理 (美股/ADR)" : "☀️ AI 日盤總經助理";
+
+            const getPrevRef = (sym) => {
+                const q = quotesData[sym];
+                return (q && q.prevRef) ? fmt(q.prevRef) : "-";
+            };
+
+            const oilPrev = getPrevRef("CL-1");   // 紐約原油昨收
+            const goldPrev = getPrevRef("GC-1");  // 黃金昨收
+            const nqPrev = getPrevRef("NQ-1");    // 納指期昨收
+            const txPrev = getPrevRef("TX-1");    // 台指期昨收
+            const tsmPrev = getPrevRef("TSM");    // 台積電 ADR 昨收
+            const nvdaPrev = getPrevRef("NVDA");  // 輝達昨收
+
+            setTimeout(() => {
+                let analysisText = "";
+
+                if (isNightSession) {
+                    analysisText = `🌙 【夜盤 AI 總經與跨市場觀察】\n\n` +
+                        `📌 關鍵昨收價格基準：\n` +
+                        `• 紐約原油 (CL-1)：${oilPrev} | 黃金 (GC-1)：${goldPrev}\n` +
+                        `• 台積電 ADR (TSM)：${tsmPrev} | 輝達 (NVDA)：${nvdaPrev}\n` +
+                        `• 納指期 (NQ-1)：${nqPrev} | 台指期 (TX-1)：${txPrev}\n\n` +
+                        `💡 夜盤連動與恐慌轉折情境：\n` +
+                        `夜盤時段市場高度連動美股與原油。若戰爭地緣情緒推升原油，但 TSM (台積電 ADR) 與 NQ-1 守穩昨收基準線，代表海外市場對利空抵抗力強；一旦油價/黃金衝高拉回，恐慌情緒釋放後，往往能直接帶動台指期夜盤開啟「美股連動型強烈反彈」！`;
+                } else {
+                    analysisText = `☀️ 【日盤 AI 總經觀察】\n\n` +
+                        `📌 關鍵昨收價格基準：\n` +
+                        `• 紐約原油 (CL-1)：${oilPrev} | 黃金 (GC-1)：${goldPrev}\n` +
+                        `• 納指期 (NQ-1)：${nqPrev} | 台指期 (TX-1)：${txPrev}\n\n` +
+                        `💡 地緣恐慌與利空出盡邏輯：\n` +
+                        `日盤持續追蹤原油與黃金昨收防線。地緣衝突初期易激發短線避險賣壓，但只要油價未持續突破昨收防線，利空邊際效應遞減將有利台指期重組買盤，迎接跌深反彈。`;
+                }
+
+                bodyEl.innerText = analysisText;
+            }, 300);
+        }
+
         function toggleDrawer(e) {
             e.stopPropagation();
             const panel = document.getElementById("drawer-panel");
@@ -506,13 +660,21 @@
             updateColumnVisibility();
         }
 
+        // 控制表格欄位顯隱 & 右下角 AI 助理按鈕/面板整體顯隱
         function updateColumnVisibility() {
             const container = document.getElementById("table-container");
+            const body = document.body;
+
+            // 表格欄位控制
             const cols = ["change", "changePct", "bid", "ask", "high", "low", "qty", "volume", "prevRef", "datetime"];
             cols.forEach(col => {
                 const isChecked = document.getElementById(`chk-${col}`).checked;
                 container.classList.toggle(`hide-${col}`, !isChecked);
             });
+
+            // AI 助理整體顯隱控制
+            const isAIChecked = document.getElementById("chk-ai").checked;
+            body.classList.toggle("hide-ai-assistant", !isAIChecked);
         }
 
         function renderTable() {
@@ -601,7 +763,9 @@
                 const res = await fetch(API_URL);
                 if (!res.ok) return;
                 const list = await res.json();
-                if (Array.isArray(list)) list.forEach(updateRow);
+                if (Array.isArray(list)) {
+                    list.forEach(updateRow);
+                }
                 document.getElementById("update-time").innerText = `更新於 ${new Date().toLocaleTimeString()}`;
             } catch (e) {
                 document.getElementById("update-time").innerText = "連線異常";
