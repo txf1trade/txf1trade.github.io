@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台指期即時報價</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #121318;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .card {
+      background: #1e222d;
+      border: 1px solid #2a2e39;
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 320px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #2a2e39;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+
+    .symbol-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px #22c55e;
+    }
+
+    .time-stamp {
+      font-size: 13px;
+      color: #22c55e;
+      font-family: monospace;
+      font-weight: bold;
+    }
+
+    /* 日/夜盤切換按鈕區 */
+    .session-toggle {
+      display: flex;
+      background: #131722;
+      border: 1px solid #2a2e39;
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 16px;
+    }
+
+    .toggle-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #787b86;
+      padding: 6px 0;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .toggle-btn.active {
+      background: #2a2e39;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .price-main {
+      padding: 4px 0;
+    }
+
+    .price-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .price-value {
+      font-size: 48px;
+      font-weight: 800;
+      font-family: monospace;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .change-info {
+      margin-top: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    .metrics-box {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px dashed #2a2e39;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+      color: #787b86;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .metric-value {
+      font-family: monospace;
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    /* 台股配色：紅色為上漲，綠色為下跌 */
+    .up { color: #f23645; fill: #f23645; stroke: #f23645; }
+    .down { color: #089981; fill: #089981; stroke: #089981; }
+    .neutral { color: #e0e0e0; fill: #e0e0e0; stroke: #e0e0e0; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <div class="symbol-title">
+      <span class="live-dot"></span>
+      台指期 (TX-1)
+    </div>
+    <!-- 右上方每秒跳動的時間 (HH:mm:ss) -->
+    <div class="time-stamp" id="update-time">--:--:--</div>
+  </div>
+
+  <!-- 日/夜盤切換 Tab -->
+  <div class="session-toggle">
+    <button class="toggle-btn active" id="btn-day" onclick="switchSession('day')">日盤</button>
+    <button class="toggle-btn" id="btn-night" onclick="switchSession('night')">夜盤</button>
+  </div>
+
+  <div class="price-main">
+    <div class="price-row">
+      <!-- 左側小 K 棒 (SVG) -->
+      <svg id="k-candle" width="22" height="46" viewBox="0 0 22 46" style="display: none;">
+        <line id="candle-wick" x1="11" y1="2" x2="11" y2="44" stroke-width="2" />
+        <rect id="candle-body" x="5" width="12" rx="1" ry="1" />
+      </svg>
+      <!-- 右側成交價 -->
+      <div class="price-value neutral" id="close-price">-----</div>
+    </div>
+    
+    <!-- 當前盤別漲跌點數與 % 數 -->
+    <div class="change-info neutral" id="change-price">-- (--%)</div>
+  </div>
+
+  <div class="metrics-box">
+    <div class="metric-row">
+      <span id="open-label">開盤價</span>
+      <span class="metric-value" id="session-open">-----</span>
+    </div>
+    <div class="metric-row">
+      <span>總成交量</span>
+      <span class="metric-value" id="total-volume">----- 口</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_URL = "https://tvapi.futures-op.com/history?symbol=TX-1&resolution=1&ws=true&intraday=true";
+  
+  // 當前選擇模式: 'day' (日盤) | 'night' (夜盤)
+  let currentSession = 'day';
+
+  // 切換模式按鈕點擊事件
+  function switchSession(mode) {
+    currentSession = mode;
+    document.getElementById('btn-day').classList.toggle('active', mode === 'day');
+    document.getElementById('btn-night').classList.toggle('active', mode === 'night');
+    fetchQuoteData(); // 切換後立即重新計算顯示
+  }
+
+  // 1. 每秒獨立更新右上角時間 (HH:mm:ss)
+  function updateLiveClock() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('zh-TW', { hour12: false });
+    document.getElementById('update-time').innerText = timeString;
+  }
+  
+  updateLiveClock();
+  setInterval(updateLiveClock, 1000);
+
+  // 2. 繪製小 K 棒
+  function renderMicroCandle(open, high, low, close) {
+    const svg = document.getElementById('k-candle');
+    const wick = document.getElementById('candle-wick');
+    const body = document.getElementById('candle-body');
+
+    const maxP = Math.max(open, high, low, close);
+    const minP = Math.min(open, high, low, close);
+    const range = (maxP - minP) || 1;
+
+    const svgHeight = 42; 
+    const paddingTop = 2;
+
+    const getY = (price) => paddingTop + (maxP - price) / range * svgHeight;
+
+    const highY = getY(high);
+    const lowY = getY(low);
+    const openY = getY(open);
+    const closeY = getY(close);
+
+    const isUp = close >= open;
+    const colorHex = isUp ? '#f23645' : '#089981';
+
+    wick.setAttribute('y1', highY);
+    wick.setAttribute('y2', lowY);
+    wick.setAttribute('stroke', colorHex);
+
+    const bodyTop = Math.min(openY, closeY);
+    const bodyHeight = Math.max(Math.abs(closeY - openY), 3);
+
+    body.setAttribute('y', bodyTop);
+    body.setAttribute('height', bodyHeight);
+    body.setAttribute('fill', colorHex);
+
+    svg.style.display = 'block';
+  }
+
+  // 3. 抓取 API 並根據日/夜盤過濾 K 線
+  async function fetchQuoteData() {
+    try {
+      const response = await fetch(API_URL, { cache: "no-cache" });
+      if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
+      
+      const data = await response.json();
+      if (!Array.isArray(data) || data.length === 0) return;
+
+      const targetHour = currentSession === 'day' ? 8 : 15;
+      const targetMin = currentSession === 'day' ? 45 : 0;
+
+      // 1. 尋找盤別開盤點的時間索引 (08:45 或 15:00)
+      let startIndex = data.findIndex(item => {
+        const d = new Date(item.time);
+        return d.getHours() === targetHour && d.getMinutes() === targetMin;
+      });
+
+      // 如果沒找不到特定盤別起點，預設從陣列第一筆開始算
+      if (startIndex === -1) startIndex = 0;
+
+      // 2. 擷取該盤別開始之後的所有 K 線
+      const sessionData = data.slice(startIndex);
+      
+      const sessionOpenPrice = sessionData[0].open;
+      const latest = data[data.length - 1]; // 最新成交價始終取全陣列最後一筆
+      const currentPrice = latest.close;
+
+      // 3. 計算該盤別區間內的高低點與成交量
+      let sessionHigh = -Infinity;
+      let sessionLow = Infinity;
+      let totalVolume = 0;
+
+      sessionData.forEach(item => {
+        if (item.high > sessionHigh) sessionHigh = item.high;
+        if (item.low < sessionLow) sessionLow = item.low;
+        totalVolume += (item.volume || 0);
+      });
+
+      // 4. 計算相對開盤價的漲跌
+      const changeVal = currentPrice - sessionOpenPrice;
+      const changePercent = ((changeVal / sessionOpenPrice) * 100).toFixed(2);
+      
+      const isUp = changeVal > 0;
+      const isDown = changeVal < 0;
+      const colorClass = isUp ? 'up' : (isDown ? 'down' : 'neutral');
+      const sign = isUp ? '+' : '';
+
+      // 5. 更新 DOM
+      const closeEl = document.getElementById('close-price');
+      closeEl.innerText = currentPrice.toLocaleString();
+      closeEl.className = `price-value ${colorClass}`;
+
+      const changeEl = document.getElementById('change-price');
+      changeEl.innerText = `${sign}${changeVal.toLocaleString()} (${sign}${changePercent}%)`;
+      changeEl.className = `change-info ${colorClass}`;
+
+      document.getElementById('open-label').innerText = currentSession === 'day' ? '日盤開盤價 (08:45)' : '夜盤開盤價 (15:00)';
+      document.getElementById('session-open').innerText = sessionOpenPrice.toLocaleString();
+      document.getElementById('total-volume').innerText = `${totalVolume.toLocaleString()} 口`;
+
+      // 繪製該盤別小 K 棒
+      renderMicroCandle(sessionOpenPrice, sessionHigh, sessionLow, currentPrice);
+
+    } catch (err) {
+      console.error("報價更新失敗：", err);
+    }
+  }
+
+  fetchQuoteData();
+  setInterval(fetchQuoteData, 1000);
+</script>
+
+</body>
+</html>
