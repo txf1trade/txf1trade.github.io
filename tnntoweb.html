@@ -187,7 +187,12 @@
             .container { padding: 15px 20px; }
             table { font-size: 15px; }
             th, td { padding: 8px; }
-            .charts-wrapper { grid-template-columns: 1fr 1fr; }
+            .charts-wrapper { 
+                grid-template-columns: repeat(2, minmax(0, 1fr)); 
+            }
+            .chart-box:nth-child(3) {
+                grid-column: 1 / -1;
+            }
         }
 
         .chart-box {
@@ -195,6 +200,7 @@
             border-radius: 6px;
             padding: 6px;
             background: var(--chart-bg);
+            min-width: 0; /* 防止 Grid 項目被內部元素撐破 */
         }
         .chart-title {
             font-weight: bold;
@@ -272,7 +278,7 @@
             <div class="chart-title">📊 台指全 (TX-1) 15K</div>
             <div id="chart-txall" class="chart-container"></div>
         </div>
-        <div class="chart-box" style="grid-column: 1 / -1; max-width: 100%;">
+        <div class="chart-box">
             <div class="chart-title">📊 台指期 (TXAM-1) 15K</div>
             <div id="chart-tx" class="chart-container"></div>
         </div>
@@ -311,7 +317,15 @@
             upColor: '#ef5350', downColor: '#26a69a', borderVisible: false,
             wickUpColor: '#ef5350', wickDownColor: '#26a69a'
         });
-        window.addEventListener('resize', () => chart.applyOptions({ width: container.clientWidth }));
+        
+        // 使用 ResizeObserver 監聽容器寬度變動，自動適應排版
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                chart.applyOptions({ width: entry.contentRect.width });
+            }
+        });
+        resizeObserver.observe(container);
+
         return { chart, candleSeries };
     }
 
@@ -335,7 +349,7 @@
         txViewer.chart.applyOptions(opts);
     }
 
-    // ==========================================
+        // ==========================================
     // 【核心演算法與 R² 比較機制原理解析】
     // ==========================================
     // 1. 最小平方法線性迴歸 (Least-Squares Linear Regression)：
@@ -390,7 +404,6 @@
             txAllViewer.candleSeries.setData(formattedTxAllBars);
             txViewer.candleSeries.setData(formattedTxBars);
 
-            // 點擊「推新行情」時，將所有走勢圖的時間軸推到最新 K 線
             twnViewer.chart.timeScale().scrollToRealTime();
             txAllViewer.chart.timeScale().scrollToRealTime();
             txViewer.chart.timeScale().scrollToRealTime();
@@ -558,14 +571,12 @@
         }, 1000);
     }
 
-    // 綁定按鈕事件：點擊「推新行情」時重新抓取資料並將圖表推到最新 K 線
     document.getElementById('refresh-btn').addEventListener('click', () => {
         initDashboard();
     });
 
     document.getElementById('theme-btn').addEventListener('click', toggleTheme);
 
-    // 初始載入
     initDashboard();
 </script>
 
