@@ -1,5 +1,5 @@
 <!-- 
-    股期監控-專業優化整合版 (含獨立 K 線欄位、正確漲跌幅與右上角浮動控制面板)
+    股期監控-專業優化整合版 (含兩列式 Mode 控制面板、跌停榜功能、獨立 K 線欄位、檔數統計欄)
 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -47,6 +47,23 @@
             border-bottom: 1px solid #333;
         }
 
+        /* 檔數統計列樣式 */
+        .stock-counts-summary {
+            display: flex;
+            gap: 6px;
+            justify-content: space-around;
+            align-items: center;
+            background: #1a1a1a;
+            padding: 5px 8px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 11px;
+            border: 1px solid #2a2a2a;
+        }
+        .stock-counts-summary div {
+            color: #888;
+        }
+
         .index-bar {
             display: flex; gap: 4px; margin-bottom: 6px; padding: 4px;
             background: #1a1a1a; border-radius: 6px; border: 1px solid #2a2a2a;
@@ -74,16 +91,19 @@
         .index-price { font-weight: bold; font-size: 11px; color: #fff; }
         .index-chg { font-size: 9px; font-weight: bold; }
 
-        .mode-header { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; align-items: center; }
+        /* 兩列式模式切換區塊樣式 */
+        .mode-header { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+        .mode-row { display: flex; gap: 4px; width: 100%; }
         .mode-btn {
-            flex: 1; min-width: 52px; padding: 7px 2px; text-align: center; font-size: 10px;
+            flex: 1; min-width: 0; padding: 7px 2px; text-align: center; font-size: 10px;
             font-weight: bold; border-radius: 4px; border: 1px solid #333;
             cursor: pointer; background: #111; color: var(--text-dim);
-            white-space: nowrap; margin-bottom: 2px;
+            white-space: nowrap; box-sizing: border-box;
         }
 
         .mode-btn.active[data-mode="all"] { border-color: var(--accent); color: var(--accent); background: rgba(100, 255, 218, 0.1); }
         .mode-btn.active[data-mode="limit_up"] { border-color: #ff0055; color: #ff0055; background: rgba(255, 0, 85, 0.15); }
+        .mode-btn.active[data-mode="limit_down"] { border-color: #00e676; color: #00e676; background: rgba(0, 230, 118, 0.15); }
         .mode-btn.active[data-mode="range_3_5"] { border-color: #ff9500; color: #ff9500; background: rgba(255, 149, 0, 0.15); }
         .mode-btn.active[data-mode="up"] { border-color: var(--up-red); color: var(--up-red); background: rgba(255, 59, 48, 0.1); }
         .mode-btn.active[data-mode="down"] { border-color: var(--down-green); color: var(--down-green); background: rgba(52, 199, 89, 0.1); }
@@ -256,6 +276,14 @@
 
 <div class="app-wrapper">
     <div class="sticky-top">
+        <!-- 檔數統計顯示列 -->
+        <div class="stock-counts-summary">
+            <div>總檔數: <span id="cnt-total" style="color: var(--accent); font-weight: bold;">0</span></div>
+            <div>正常股: <span id="cnt-normal" style="color: #fff; font-weight: bold;">0</span></div>
+            <div>小型股: <span id="cnt-mini" style="color: var(--mini-orange); font-weight: bold;">0</span></div>
+            <div>ETF: <span id="cnt-etf" style="color: var(--ai-gold); font-weight: bold;">0</span></div>
+        </div>
+
         <div class="index-bar">
             <div class="index-box">
                 <div class="index-header"><span class="index-title">加權指數</span></div>
@@ -303,24 +331,30 @@
             </div>
         </div>
 
+        <!-- 兩列式模式選擇區 -->
         <div class="mode-header" id="mode-selector">
-            <div class="mode-btn" data-mode="all">全部</div>
-            <div class="mode-btn" data-mode="limit_up">🔴漲停榜</div>
-            <div class="mode-btn" data-mode="range_3_5">⚡強勢3-5%</div>
-            <div class="mode-btn" data-mode="up">多方</div>
-            <div class="mode-btn" data-mode="down">空方</div>
-            <div class="mode-btn" data-mode="strong_buy">🔥強勢</div>
-            <div class="mode-btn" data-mode="mini">🎯小型</div>
-            <div class="mode-btn active" data-mode="ai_long">💎AI潛力</div>
-            <div class="mode-btn" data-mode="fav">★自選股</div>
+            <div class="mode-row">
+                <div class="mode-btn" data-mode="all">全部</div>
+                <div class="mode-btn" data-mode="up">多方</div>
+                <div class="mode-btn" data-mode="down">空方</div>
+                <div class="mode-btn" data-mode="strong_buy">🔥強勢</div>
+                <div class="mode-btn" data-mode="mini">🎯小型</div>
+            </div>
+            <div class="mode-row">
+                <div class="mode-btn" data-mode="limit_up">🔴漲停榜</div>
+                <div class="mode-btn" data-mode="limit_down">🟢跌停榜</div>
+                <div class="mode-btn" data-mode="range_3_5">⚡強勢3-5%</div>
+                <div class="mode-btn active" data-mode="ai_long">💎AI潛力</div>
+                <div class="mode-btn" data-mode="fav">★自選股</div>
+            </div>
         </div>
 
         <div class="price-filter-row" id="price-selector">
             <div class="price-btn active" data-price-range="all">全部價格</div>
-            <div class="price-btn" data-price-range="1000">👑千金股 (1000+)</div>
-            <div class="price-btn" data-price-range="500">💎準千金 (500-999)</div>
-            <div class="price-btn" data-price-range="100">🚀百元股 (100-499)</div>
-            <div class="price-btn" data-price-range="0">⚪平價股 (&lt;100)</div>
+            <div class="price-btn" data-price-range="1000">👑千金股</div>
+            <div class="price-btn" data-price-range="500">💎準千金股</div>
+            <div class="price-btn" data-price-range="100">🚀百元股</div>
+            <div class="price-btn" data-price-range="0">⚪平價股</div>
         </div>
 
         <div class="controls-row">
@@ -441,6 +475,37 @@
         thNear: document.getElementById('th-near'),
         thFar: document.getElementById('th-far')
     };
+
+    // 計算 stockMap 中的各類股票檔數
+    function updateStockCounts() {
+        const entries = Object.entries(stockMap);
+        let normalCount = 0;
+        let miniCount = 0;
+        let etfCount = 0;
+
+        entries.forEach(([key, value]) => {
+            const stockNum = value[0];
+            const name = value[1];
+
+            const isMini = name.includes('小型');
+            const isEtf = stockNum.startsWith('00');
+
+            if (isMini) {
+                miniCount++;
+            } else if (isEtf) {
+                etfCount++;
+            } else {
+                normalCount++;
+            }
+        });
+
+        const totalCount = entries.length;
+
+        if (document.getElementById('cnt-total')) document.getElementById('cnt-total').innerText = totalCount;
+        if (document.getElementById('cnt-normal')) document.getElementById('cnt-normal').innerText = normalCount;
+        if (document.getElementById('cnt-mini')) document.getElementById('cnt-mini').innerText = miniCount;
+        if (document.getElementById('cnt-etf')) document.getElementById('cnt-etf').innerText = etfCount;
+    }
 
     function renderMicroCandle(svgId, open, high, low, close) {
         const svg = typeof svgId === 'string' ? document.getElementById(svgId) : svgId;
@@ -790,6 +855,13 @@
                         return spotStatus === 'limit-up' || futStatus === 'limit-up';
                     });
                 }
+                else if (currentMode === 'limit_down') {
+                    list = list.filter(i => {
+                        const spotStatus = getLimitStatus(i.price, i.spotQuote.limitUpPrice, i.spotQuote.limitDownPrice);
+                        const futStatus = getLimitStatus(i.futPrice, i.futQuote.limitUpPrice, i.futQuote.limitDownPrice);
+                        return spotStatus === 'limit-down' || futStatus === 'limit-down';
+                    });
+                }
                 else if (currentMode === 'range_3_5') {
                     list = list.filter(i => {
                         const spotPct = calculateChangePercent(i.price, i.spotQuote.prevRef);
@@ -1069,6 +1141,8 @@
         if (refreshTimer >= REFRESH_INTERVAL) fetchData(); 
     }, 100);
 
+    // 初始執行計算與資料抓取
+    updateStockCounts();
     fetchData();
 </script>
 </body>
