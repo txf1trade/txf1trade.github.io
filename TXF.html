@@ -21,7 +21,7 @@
       align-items: center;
       min-height: 100vh;
       padding: 20px;
-      gap: 16px; /* 卡片與按鈕之間的間距 */
+      gap: 16px;
     }
 
     .card {
@@ -152,8 +152,8 @@
       display: block;
       width: 100%;
       max-width: 320px;
-      background: #2a2e39; /* 淺灰色/深介面沉穩灰 */
-      color: #b2b5be;       /* 淺灰色文字 */
+      background: #2a2e39;
+      color: #b2b5be;
       text-decoration: none;
       padding: 10px 0;
       border-radius: 8px;
@@ -162,6 +162,7 @@
       transition: all 0.2s ease;
       text-align: center;
       border: 1px solid #363a45;
+      cursor: pointer;
     }
 
     .external-link-btn:hover {
@@ -181,13 +182,11 @@
   <div class="header">
     <div class="symbol-title">
       <span class="live-dot"></span>
-      <!-- 固定顯示 TX-1 -->
       台指期 (TX-1)
     </div>
     <div class="time-stamp" id="update-time">--:--:--</div>
   </div>
 
-  <!-- 日/夜盤切換 Tab -->
   <div class="session-toggle">
     <button class="toggle-btn active" id="btn-day" onclick="switchSession('day')">☀️日盤 (08:45)</button>
     <button class="toggle-btn" id="btn-night" onclick="switchSession('night')">🌙全日盤 (15:00)</button>
@@ -217,16 +216,14 @@
   </div>
 </div>
 
-<!-- 獨立在卡片外面的淺灰色超連結按鈕 -->
-<a href="https://txf1trade.github.io/tnntoweb" target="_blank" class="external-link-btn">
+<!-- 改用一般網址導向，並確保手機全螢幕瀏覽器能順暢載入 -->
+<a href="https://txf1trade.github.io/tnntoweb" class="external-link-btn">
   🔗 富台換算台指
 </a>
 
 <script>
-  // 當前選擇模式: 'day' (日盤 TXAM-1) | 'night' (夜盤 TX-1)
   let currentSession = 'day';
 
-  // 根據模式返回對應的 API 網址
   function getApiUrl() {
     return currentSession === 'day'
       ? "https://tvapi.futures-op.com/history?symbol=TXAM-1&resolution=1&ws=true&intraday=true"
@@ -237,10 +234,9 @@
     currentSession = mode;
     document.getElementById('btn-day').classList.toggle('active', mode === 'day');
     document.getElementById('btn-night').classList.toggle('active', mode === 'night');
-    fetchQuoteData(); // 切換時立即重新拉取該 API
+    fetchQuoteData();
   }
 
-  // 每秒獨立更新時間
   function updateLiveClock() {
     const now = new Date();
     const timeString = now.toLocaleTimeString('zh-TW', { hour12: false });
@@ -250,7 +246,6 @@
   updateLiveClock();
   setInterval(updateLiveClock, 1000);
 
-  // 繪製小 K 棒
   function renderMicroCandle(open, high, low, close) {
     const svg = document.getElementById('k-candle');
     const wick = document.getElementById('candle-wick');
@@ -287,7 +282,6 @@
     svg.style.display = 'block';
   }
 
-  // 抓取行情資料
   async function fetchQuoteData() {
     try {
       const url = getApiUrl();
@@ -297,12 +291,10 @@
       const data = await response.json();
       if (!Array.isArray(data) || data.length === 0) return;
 
-      // 取得開盤與最新成交資訊
       const sessionOpenPrice = data[0].open;
       const latest = data[data.length - 1];
       const currentPrice = latest.close;
 
-      // 統計全盤別區間的高低點與總成交量
       let sessionHigh = -Infinity;
       let sessionLow = Infinity;
       let totalVolume = 0;
@@ -313,7 +305,6 @@
         totalVolume += (item.volume || 0);
       });
 
-      // 計算漲跌點數與百分比
       const changeVal = currentPrice - sessionOpenPrice;
       const changePercent = ((changeVal / sessionOpenPrice) * 100).toFixed(2);
       
@@ -322,7 +313,6 @@
       const colorClass = isUp ? 'up' : (isDown ? 'down' : 'neutral');
       const sign = isUp ? '+' : '';
 
-      // DOM 更新
       const closeEl = document.getElementById('close-price');
       closeEl.innerText = currentPrice.toLocaleString();
       closeEl.className = `price-value ${colorClass}`;
@@ -331,11 +321,10 @@
       changeEl.innerText = `${sign}${changeVal.toLocaleString()} (${sign}${changePercent}%)`;
       changeEl.className = `change-info ${colorClass}`;
 
-      document.getElementById('open-label').innerText = currentSession === 'day' ? '日盤開盤價 (08:45)' : '夜盤開盤價 (15:00)';
+      document.getElementById('open-label').innerText = currentSession === 'day' ? '日盤開盤價 (08:45)' : '夜盤陳開盤價 (15:00)';
       document.getElementById('session-open').innerText = sessionOpenPrice.toLocaleString();
       document.getElementById('total-volume').innerText = `${totalVolume.toLocaleString()} 口`;
 
-      // 繪製對應盤別的微型 K 棒
       renderMicroCandle(sessionOpenPrice, sessionHigh, sessionLow, currentPrice);
 
     } catch (err) {
