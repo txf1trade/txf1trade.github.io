@@ -3,15 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台指期籌碼監控儀表板</title>
+  <title>台指期籌碼與K線走勢</title>
+  <!-- Chart.js (用於原本的籌碼圖表) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 引入正統的 Lightweight Charts 4.x -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
   <style>
+    :root {
+      --bg-color: #050505;
+      --container-bg: #0e0e0e;
+      --text-color: #ffffff;
+      --text-muted: #787b86;
+      --border-color: #2a2e39;
+      --table-th-bg: #131722;
+      --box-bg: rgba(255, 255, 255, 0.05);
+      --chart-bg: #0e0e0e;
+      --pro-blue-bg: #2b4c7e;
+    }
+
     body {
-      font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-      background-color: #050505;
-      color: #ffffff;
+      font-family: 'PingFang TC', 'Microsoft JhengHei', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
       margin: 0;
-      padding: 5px;
+      padding: 6px;
+      font-size: 14px;
     }
 
     #clock {
@@ -24,8 +40,23 @@
       font-weight: bold;
     }
 
-    header { text-align: center; margin-top: 10px; }
-    #index-label { font-size: 14px; color: #ffffff; margin-bottom: -5px; }
+    header { text-align: center; margin-top: 10px; position: relative; }
+    
+    /* 標題固定為純白字，並具備可點擊游標 */
+    #index-label { 
+      font-size: 14px; 
+      color: #ffffff; 
+      margin-bottom: -5px; 
+      cursor: pointer;
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      transition: opacity 0.2s;
+    }
+    #index-label:hover {
+      opacity: 0.8;
+    }
+
     #index-value { font-size: 26px; font-weight: 800; color: #fff; }
     #highlow-value { font-size: 14px; color: #f9ed46; margin-top: 4px; margin-bottom: 5px; }
 
@@ -33,7 +64,7 @@
     .session-toggle {
       display: flex;
       background: #131722;
-      border: 1px solid #2a2e39;
+      border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 3px;
       max-width: 240px;
@@ -44,7 +75,7 @@
       flex: 1;
       background: transparent;
       border: none;
-      color: #787b86;
+      color: var(--text-muted);
       padding: 6px 0;
       font-size: 12px;
       font-weight: 600;
@@ -77,33 +108,241 @@
       padding: 6px;
       font-size: 13px;
       text-align: center;
-      background-color: rgba(255, 255, 255, 0.05);
+      background-color: var(--box-bg);
       border-radius: 10px;
       margin: 2px;
-      transition: transform 0.3s;
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .category-title { display: block; font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #ffffff; }
     .category-value { display: block; font-size: 15px; padding: 5px; border-radius: 5px; font-weight: bold; }
 
+    /* 原本的籌碼長條圖容器 */
     #chart-container {
       width: 90%;
       max-width: 500px; 
       margin: 10px auto;
-      background-color: #0e0e0e;
+      background-color: var(--chart-bg);
       padding: 10px;
       border-radius: 12px;
       border: 1px solid #222;
       box-sizing: border-box;
-      height: 280px;
+      height: 250px;
       position: relative;
     }
 
-    canvas { width: 100% !important; height: 100% !important; }
+    /* 左上方三線選單 (Hamburger Menu) 樣式 */
+    .menu-container {
+      position: absolute;
+      top: 10px;
+      left: 20px;
+      z-index: 100;
+    }
 
-    .footer-links { text-align: center; margin-top: 10px; padding-bottom: 20px; }
-    .data-source-btn { color: #555; text-decoration: none; font-size: 10px; border: 1px solid #222; padding: 4px 12px; border-radius: 20px; }
+    .menu-btn {
+      background: #131722;
+      border: 1px solid var(--border-color);
+      color: #ffffff;
+      font-size: 18px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      transition: background 0.2s;
+    }
+    .menu-btn:hover {
+      background: #2a2e39;
+    }
+
+    .menu-dropdown {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      background: #131722;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      display: none;
+      flex-direction: column;
+      min-width: 190px;
+      overflow: hidden;
+      z-index: 101;
+    }
+
+    .menu-dropdown.show {
+      display: flex;
+    }
+
+    .menu-header-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--text-muted);
+      padding: 8px 12px 4px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .menu-item {
+      background: transparent;
+      border: none;
+      color: #d1d4dc;
+      padding: 9px 14px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .menu-item:hover {
+      background: var(--pro-blue-bg);
+      color: #ffffff;
+    }
+
+    /* 彈出式 K 線圖 Modal 燈箱 */
+    .chart-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(3px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .chart-modal-content {
+      background: var(--container-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      width: 92%;
+      max-width: 880px;
+      padding: 15px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .modal-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    .close-modal-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 0 6px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+    .close-modal-btn:hover {
+      color: #ffffff;
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* K 線圖專用面板區 */
+    .converter-section {
+      max-width: 880px;
+      margin: 15px auto;
+      background: var(--container-bg);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      box-sizing: border-box;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .chart-box {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px;
+      background: var(--chart-bg);
+      position: relative;
+    }
+    .chart-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .chart-title {
+      font-weight: bold;
+      font-size: 13px;
+      color: #fff;
+    }
+    .chart-controls {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .res-btn {
+      background: #2a2e39;
+      color: #787b86;
+      border: 1px solid var(--border-color);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .res-btn.active {
+      background: var(--pro-blue-bg);
+      color: #fff;
+      border-color: var(--pro-blue-bg);
+    }
+    .reset-zoom-btn {
+      background: var(--table-th-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .main-chart {
+      width: 100%;
+      height: 380px;
+      position: relative;
+    }
+    .floating-tooltip {
+      position: absolute;
+      display: none;
+      padding: 6px 10px;
+      box-sizing: border-box;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: left;
+      z-index: 1000;
+      pointer-events: none;
+      background: rgba(20, 20, 20, 0.9);
+      color: #ffffff;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      white-space: nowrap;
+    }
+
+    .footer-links { text-align: center; margin-top: 15px; padding-bottom: 20px; }
+    .data-source-btn { color: #888; text-decoration: none; font-size: 11px; border: 1px solid #333; padding: 6px 14px; border-radius: 20px; display: inline-block; }
   </style>
 </head>
 <body>
@@ -111,7 +350,18 @@
   <div id="clock">00:00:00</div>
 
   <header>
-    <div id="index-label">台指期近月 TX</div> 
+    <!-- 左上方三線選單 -->
+    <div class="menu-container">
+      <button class="menu-btn" onclick="toggleMenu(event)">☰</button>
+      <div class="menu-dropdown" id="menuDropdown">
+        <div class="menu-header-title">K線圖顯示設定</div>
+        <button class="menu-item" id="menu-inline" onclick="setMode('inline')">📌固定畫面下方顯示</button>
+        <button class="menu-item" id="menu-popup" onclick="setMode('popup')">🪟 彈出畫面顯示</button>
+      </div>
+    </div>
+
+    <!-- 點擊此標題可開關下方 K 線圖或彈出視窗 -->
+    <div id="index-label" onclick="handleTitleClick()" title="點擊切換K線圖顯示">台指期近月 TX</div> 
     <div id="index-value">--</div>
     <div id="highlow-value">開盤 -- | 最高 -- | 最低 -- | 振幅 --</div>
     
@@ -122,6 +372,7 @@
     </div>
   </header>
 
+  <!-- 籌碼三方儀表板 -->
   <div id="data-container">
     <div class="category-box"><span class="category-title">坦克</span><span id="tx_bvav" class="category-value">0</span></div>
     <div class="category-box"><span class="category-title">炮灰</span><span id="mtx_tbta" class="category-value">0</span></div>
@@ -129,8 +380,42 @@
     <div class="category-box"><span class="category-title">力道</span><span id="mtx_p" class="category-value">0</span></div>
   </div>
 
+  <!-- 原本的籌碼長條圖 -->
   <div id="chart-container">
     <canvas id="barChart"></canvas>
+  </div>
+
+  <!-- K 線圖本體容器 (預設隱藏) -->
+  <div id="converterSectionWrapper" style="display: none;">
+    <div class="converter-section" id="klineConverterSection">
+      <div class="modal-header-row" id="modalHeaderRow" style="display: none;">
+        <div class="section-title" id="chart-main-title-modal">📊 K線圖 (資料載入中...)</div>
+        <button class="close-modal-btn" onclick="closeChartModal()">✕</button>
+      </div>
+      
+      <div class="section-title" id="chart-main-title" style="margin-bottom: 8px;">📊 K線圖 (資料載入中...)</div>
+
+      <div class="chart-box">
+        <div class="chart-header-bar">
+          <div class="chart-title" id="sub-chart-label">台指期走勢圖</div>
+          <div class="chart-controls">
+            <button class="res-btn active" onclick="changeResolution('5', this)">5K</button>
+            <button class="res-btn" onclick="changeResolution('15', this)">15K</button>
+            <button class="res-btn" onclick="changeResolution('60', this)">60K</button>
+            <button class="res-btn" onclick="changeResolution('1D', this)">日K</button>
+            <button class="reset-zoom-btn" id="btn-reset-tx">回最新</button>
+          </div>
+        </div>
+        <div id="tooltip-tx" class="floating-tooltip"></div>
+        <div id="chart-tx-main" class="main-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈出式 Modal 燈箱容器 -->
+  <div class="chart-modal-overlay" id="chartModal" onclick="handleModalOutsideClick(event)">
+    <div class="chart-modal-content" id="modalContentSlot">
+    </div>
   </div>
 
   <div class="footer-links">
@@ -139,9 +424,104 @@
 
 <script>
 let chartInstance = null;
-let currentSession = 'auto'; // 預設自動判斷
+let currentSession = 'auto'; 
+let currentResolution = '5'; 
+let txViewer = null;
 
-// 判斷目前時間是否為日盤時段 (週一~週五 08:45 ~ 15:00)
+let displayMode = localStorage.getItem('kline_display_mode') || 'inline';
+let inlineVisible = localStorage.getItem('kline_inline_visible') === 'true' || false;
+
+function toggleMenu(event) {
+  event.stopPropagation();
+  const dropdown = document.getElementById('menuDropdown');
+  dropdown.classList.toggle('show');
+}
+
+window.addEventListener('click', () => {
+  const dropdown = document.getElementById('menuDropdown');
+  if (dropdown) dropdown.classList.remove('show');
+});
+
+function setMode(mode) {
+  displayMode = mode;
+  localStorage.setItem('kline_display_mode', mode);
+  initDisplayMode();
+  document.getElementById('menuDropdown').classList.remove('show');
+}
+
+function initDisplayMode() {
+  const modalSlot = document.getElementById('modalContentSlot');
+  const wrapper = document.getElementById('converterSectionWrapper');
+  const section = document.getElementById('klineConverterSection');
+  const modalHeaderRow = document.getElementById('modalHeaderRow');
+  const normalTitle = document.getElementById('chart-main-title');
+
+  const btnInline = document.getElementById('menu-inline');
+  const btnPopup = document.getElementById('menu-popup');
+
+  // 更新選單項目的核選標記 (✔️)
+  if (displayMode === 'popup') {
+    btnPopup.textContent = "✔️ 🪟 彈出顯示";
+    btnInline.textContent = "📌 固定畫面下方";
+    modalHeaderRow.style.display = 'flex';
+    normalTitle.style.display = 'none';
+    wrapper.style.display = 'none'; 
+    modalSlot.appendChild(section);
+  } else {
+    btnInline.textContent = "✔️ 📌 固定畫面下方";
+    btnPopup.textContent = "🪟 彈出顯示";
+    modalHeaderRow.style.display = 'none';
+    normalTitle.style.display = 'block';
+    wrapper.appendChild(section);
+    wrapper.style.display = inlineVisible ? 'block' : 'none';
+  }
+  if (inlineVisible || displayMode === 'popup') {
+    resizeChart();
+  }
+}
+
+function handleTitleClick() {
+  if (displayMode === 'popup') {
+    openChartModal();
+  } else {
+    inlineVisible = !inlineVisible;
+    localStorage.setItem('kline_inline_visible', inlineVisible);
+    const wrapper = document.getElementById('converterSectionWrapper');
+    wrapper.style.display = inlineVisible ? 'block' : 'none';
+    if (inlineVisible) {
+      resizeChart();
+      wrapper.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+}
+
+function openChartModal() {
+  document.getElementById('chartModal').style.display = 'flex';
+  resizeChart();
+}
+
+function closeChartModal() {
+  document.getElementById('chartModal').style.display = 'none';
+}
+
+function handleModalOutsideClick(event) {
+  if (event.target.id === 'chartModal') {
+    closeChartModal();
+  }
+}
+
+function resizeChart() {
+  setTimeout(() => {
+    if (txViewer && txViewer.mainChart) {
+      const container = document.getElementById('chart-tx-main');
+      if (container && container.clientWidth > 0) {
+        txViewer.mainChart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+        txViewer.mainChart.timeScale().scrollToRealTime();
+      }
+    }
+  }, 60);
+}
+
 function checkIsDayTime() {
   const now = new Date();
   const day = now.getDay();
@@ -150,14 +530,15 @@ function checkIsDayTime() {
   return isWeekday && (totalMinutes >= 525 && totalMinutes < 900);
 }
 
+function getActiveMode() {
+  const isDayTime = checkIsDayTime();
+  return currentSession === 'auto' ? (isDayTime ? 'day' : 'night') : currentSession;
+}
+
 function getApiUrl() {
   const labelEl = document.getElementById('index-label');
-  const isDayTime = checkIsDayTime();
-  
-  // 如果是 auto 模式，則根據時間決定；若有手動點擊，則以手動為主
-  const activeMode = currentSession === 'auto' ? (isDayTime ? 'day' : 'night') : currentSession;
+  const activeMode = getActiveMode();
 
-  // 更新按鈕的高亮狀態
   document.getElementById('btn-day').classList.toggle('active', activeMode === 'day');
   document.getElementById('btn-night').classList.toggle('active', activeMode === 'night');
 
@@ -171,8 +552,9 @@ function getApiUrl() {
 }
 
 function switchSession(mode) {
-  currentSession = mode; // 使用者手動點擊後，鎖定該模式
+  currentSession = mode;
   fetchIndexValues();
+  loadTxChartData();
 }
 
 async function fetchIndexValues() {
@@ -205,7 +587,6 @@ async function fetchIndexValues() {
     const symbol = isUp ? '▲' : (isDown ? '▼' : '');
     const displayVal = Math.abs(changeVal).toLocaleString();
     const displayPercent = Math.abs(Number(changePercent)).toFixed(2);
-
     const priceColor = currentPrice > sessionOpenPrice ? '#cc393b' : '#66a43a';
 
     document.getElementById('index-value').innerHTML = `<span style="color:${priceColor};">${currentPrice.toLocaleString()}</span> <span style="font-size:14px; color:${color}; font-weight:normal;">${symbol} ${displayVal} (${displayPercent}%)</span>`;
@@ -237,14 +618,7 @@ function updateBox(id, val, isInverse) {
   if(!el || !parent) return;
 
   el.textContent = Math.round(val);
-
-  let isBullish = false;
-
-  if (isInverse) {
-    isBullish = val < 0; 
-  } else {
-    isBullish = val > 0;
-  }
+  let isBullish = isInverse ? (val < 0) : (val > 0);
   
   if (isBullish) {
     el.style.backgroundColor = '#cc393b'; 
@@ -296,16 +670,8 @@ async function fetchAndRenderChart() {
                 data: {
                     labels: sliced(timestamps),
                     datasets: [
-                        { 
-                          label: "坦克", data: sliced(tx_bvav_raw), 
-                          backgroundColor: "rgba(180, 180, 180, 0.3)", borderColor: "rgba(255, 255, 255, 0.2)",
-                          borderWidth: 1, borderRadius: 5, type: "bar", grouped: false, order: 4 
-                        },
-                        { 
-                          label: "炮灰", data: sliced(mtx_tbta_raw), 
-                          backgroundColor: "rgba(255, 60, 60, 0.4)", borderColor: "rgba(255, 60, 60, 0.7)",
-                          borderWidth: 1, borderRadius: 5, type: "bar", grouped: false, order: 3 
-                        },
+                        { label: "坦克", data: sliced(tx_bvav_raw), backgroundColor: "rgba(180, 180, 180, 0.3)", borderColor: "rgba(255, 255, 255, 0.2)", borderWidth: 1, borderRadius: 5, type: "bar", grouped: false, order: 4 },
+                        { label: "炮灰", data: sliced(mtx_tbta_raw), backgroundColor: "rgba(255, 60, 60, 0.4)", borderColor: "rgba(255, 60, 60, 0.7)", borderWidth: 1, borderRadius: 5, type: "bar", grouped: false, order: 3 },
                         { label: "游擊", data: sliced(mtx_bvav_raw), borderColor: "#00a8ff", borderWidth: 2, type: "line", pointRadius: 0, tension: 0.4, order: 2 },
                         { label: "均線", data: sliced(mtx_bvav_ma23_raw), borderColor: "#f1c40f", borderWidth: 2, type: "line", pointRadius: 0, tension: 0.4, order: 1 }
                     ]
@@ -319,9 +685,7 @@ async function fetchAndRenderChart() {
                         x: { ticks: { color: '#ffffff', font: { size: 9 }, maxTicksLimit: 6 }, grid: { display: false } },
                         y: { position: 'right', ticks: { color: '#ffffff', font: { size: 9 } }, grid: { color: (ctx) => ctx.tick.value === 0 ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.05)', drawBorder: false } }
                     },
-                    plugins: { 
-                        legend: { display: true, position: 'top', align: 'end', labels: { color: '#ffffff', boxWidth: 8, font: { size: 10 } } } 
-                    }
+                    plugins: { legend: { display: true, position: 'top', align: 'end', labels: { color: '#ffffff', boxWidth: 8, font: { size: 10 } } } }
                 }
             });
         }
@@ -332,14 +696,183 @@ function updateClock() {
   document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-Hant', { hour12: false });
 }
 
+function calculateEMA(data, period) {
+    let results = [];
+    let multiplier = 2 / (period + 1);
+    let prevEMA = null;
+    for (let i = 0; i < data.length; i++) {
+        let close = data[i].close;
+        if (i === 0) prevEMA = close;
+        else prevEMA = (close - prevEMA) * multiplier + prevEMA;
+        results.push({ time: data[i].time, value: prevEMA });
+    }
+    return results;
+}
+
+function initTxChart() {
+    const mainContainer = document.getElementById('chart-tx-main');
+    const tooltipEl = document.getElementById('tooltip-tx');
+    const resetBtn = document.getElementById('btn-reset-tx');
+
+    const mainChart = LightweightCharts.createChart(mainContainer, {
+        layout: {
+            background: { type: 'solid', color: '#0e0e0e' },
+            textColor: '#ffffff',
+        },
+        grid: {
+            vertLines: { color: '#2a2e39' },
+            horzLines: { color: '#2a2e39' },
+        },
+        timeScale: {
+            timeVisible: true,
+            secondsVisible: false,
+            rightOffset: 5,
+            barSpacing: 6,
+            fixLeftEdge: true,
+            tickMarkFormatter: (time, tickMarkType, locale) => {
+                const date = new Date(time * 1000);
+                if (currentResolution === '1D') {
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                }
+                return date.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            }
+        },
+    });
+
+    const candleSeries = mainChart.addCandlestickSeries({
+        upColor: '#ef5350',
+        downColor: '#26a69a',
+        borderVisible: false,
+        wickUpColor: '#ef5350',
+        wickDownColor: '#26a69a',
+        priceFormat: { type: 'price', precision: 0, minMove: 1 }
+    });
+
+    const ema20Series = mainChart.addLineSeries({
+        color: '#ffcc66',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        priceFormat: { type: 'price', precision: 0, minMove: 1 }
+    });
+
+    const ema60Series = mainChart.addLineSeries({
+        color: '#00e1ff',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        priceFormat: { type: 'price', precision: 0, minMove: 1 }
+    });
+
+    const scrollToRealTime = () => mainChart.timeScale().scrollToRealTime();
+    resetBtn.addEventListener('click', scrollToRealTime);
+    mainContainer.addEventListener('dblclick', scrollToRealTime);
+
+    mainChart.subscribeCrosshairMove(param => {
+        if (!param.time || param.point === undefined || param.point.x < 0 || param.point.x > mainContainer.clientWidth || param.point.y < 0 || param.point.y > mainContainer.clientHeight) {
+            tooltipEl.style.display = 'none';
+            return;
+        }
+        const data = param.seriesData.get(candleSeries);
+        if (data) {
+            const dateObj = new Date(param.time * 1000);
+            const timeStr = dateObj.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            
+            tooltipEl.style.display = 'block';
+            tooltipEl.innerHTML = `時間: ${timeStr}<br>開: ${data.open.toFixed(0)} 高: ${data.high.toFixed(0)}<br>低: ${data.low.toFixed(0)} 收: ${data.close.toFixed(0)}`;
+
+            let x = param.point.x + 15;
+            let y = param.point.y + 15;
+            if (x + 110 > mainContainer.clientWidth) x = param.point.x - 120;
+            if (y + 85 > mainContainer.clientHeight) y = param.point.y - 90;
+            tooltipEl.style.left = x + 'px';
+            tooltipEl.style.top = y + 'px';
+        }
+    });
+
+    const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+            resizeChart();
+        }
+    });
+    resizeObserver.observe(mainContainer);
+
+    txViewer = {
+        mainChart,
+        setData(bars) {
+            candleSeries.setData(bars);
+            const ema20Data = calculateEMA(bars, 20);
+            const ema60Data = calculateEMA(bars, 60);
+
+            ema20Series.setData(ema20Data);
+            ema60Series.setData(ema60Data);
+
+            if (bars.length > 0) {
+                const startDate = new Date(bars[0].time * 1000);
+                const endDate = new Date(bars[bars.length - 1].time * 1000);
+                const formatDate = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+                
+                const titleText = `📊 K線圖 (${formatDate(startDate)} ~ ${formatDate(endDate)})`;
+                document.getElementById('chart-main-title').textContent = titleText;
+                document.getElementById('chart-main-title-modal').textContent = titleText;
+
+                mainChart.timeScale().scrollToRealTime();
+            }
+        }
+    };
+}
+
+async function loadTxChartData() {
+    if (!txViewer) initTxChart();
+
+    const activeMode = getActiveMode();
+    const symbol = activeMode === 'day' ? 'TXAM-1' : 'TX-1';
+    
+    document.getElementById('sub-chart-label').textContent = activeMode === 'day' ? '台指期日盤 (TXAM-1)' : '台指期全日盤 (TX-1)';
+
+    try {
+        const toTime = Math.floor(Date.now() / 1000);
+        const daysToSubtract = currentResolution === '1D' ? 365 : 60;
+        const fromTime = toTime - (daysToSubtract * 24 * 60 * 60);
+
+        const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${symbol}&resolution=${currentResolution}&from=${fromTime}&to=${toTime}&ws=true&metaData=true`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        const normalizeTime = t => t > 1e10 ? Math.floor(t / 1000) : t;
+        const barsData = Array.isArray(data) ? data : (data.bars || []);
+        
+        const bars = barsData.map(i => ({
+            time: normalizeTime(i.time), open: i.open, high: i.high, low: i.low, close: i.close
+        })).sort((a,b) => a.time - b.time);
+
+        txViewer.setData(bars);
+    } catch (e) {
+        console.error("載入台指 K 線資料失敗", e);
+    }
+}
+
+function changeResolution(resolution, btn) {
+    const parentContainer = btn.parentElement;
+    parentContainer.querySelectorAll('.res-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentResolution = resolution;
+    loadTxChartData();
+}
+
+initDisplayMode();
+
 setInterval(fetchIndexValues, 3000);
 setInterval(fetchRealtimeValues, 2000);
 setInterval(updateClock, 1000);
 setInterval(fetchAndRenderChart, 3000);
+setInterval(loadTxChartData, 10000);
 
 fetchIndexValues();
 fetchRealtimeValues();
 fetchAndRenderChart();
+loadTxChartData();
 </script>
 </body>
 </html>
