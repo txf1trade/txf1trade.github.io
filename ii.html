@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台指期籌碼監控儀表板</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      background-color: #050505;
+      color: #ffffff;
+      margin: 0;
+      padding: 5px;
+    }
+
+    #clock {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-family: monospace;
+      font-size: 16px;
+      color: #00ff00;
+      font-weight: bold;
+    }
+
+    header { text-align: center; margin-top: 10px; }
+    #index-label { font-size: 14px; color: #ffffff; margin-bottom: -5px; }
+    #index-value { font-size: 26px; font-weight: 800; color: #fff; }
+    #highlow-value { font-size: 14px; color: #f9ed46; margin-top: 4px; margin-bottom: 5px; }
+
+    #data-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px; 
+      padding: 10px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .category-box {
+      flex: 1 1 60px;
+      max-width: 70px; 
+      min-width: 40px;
+      box-sizing: border-box;
+      padding: 6px;
+      font-size: 13px;
+      text-align: center;
+      background-color: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      margin: 2px;
+      transition: transform 0.3s;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .category-title { display: block; font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #ffffff; }
+    .category-value { display: block; font-size: 15px; padding: 5px; border-radius: 5px; font-weight: bold; }
+
+    #chart-container {
+      width: 90%;
+      max-width: 500px; 
+      margin: 10px auto;
+      background-color: #0e0e0e;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid #222;
+      box-sizing: border-box;
+      height: 280px;
+      position: relative;
+    }
+
+    canvas { width: 100% !important; height: 100% !important; }
+
+    .footer-links { text-align: center; margin-top: 10px; padding-bottom: 20px; }
+    .data-source-btn { color: #555; text-decoration: none; font-size: 10px; border: 1px solid #222; padding: 4px 12px; border-radius: 20px; }
+  </style>
+</head>
+<body>
+
+  <div id="clock">00:00:00</div>
+
+  <header>
+    <div id="index-label">台指期近月 FITX</div> 
+    <div id="index-value">--</div>
+    <div id="highlow-value">開盤 -- | 最高 -- | 最低 --</div>
+  </header>
+
+  <div id="data-container">
+    <div class="category-box"><span class="category-title">坦克</span><span id="tx_bvav" class="category-value">0</span></div>
+    <div class="category-box"><span class="category-title">炮灰</span><span id="mtx_tbta" class="category-value">0</span></div>
+    <div class="category-box"><span class="category-title">游擊</span><span id="mtx_bvav" class="category-value">0</span></div>
+    <div class="category-box"><span class="category-title">力道</span><span id="mtx_p" class="category-value">0</span></div>
+  </div>
+
+  <div id="chart-container">
+    <canvas id="barChart"></canvas>
+  </div>
+
+  <div class="footer-links">
+    <a href="https://docs.google.com/spreadsheets/d/1QLAqKWyrpG0uRTN3lwBkQaiXNGivEvRZdM_Er-qg3ZY/edit" target="_blank" class="data-source-btn">📊 數據源 Google Sheets</a>
+  </div>
+
+<script>
+let chartInstance = null;
+
+async function fetchIndexValues() {
+  try {
+    const res = await fetch('https://tvapi.futures-op.com/history?symbol=TX-1&resolution=1&ws=true&intraday=true', { cache: "no-cache" });
+    const data = await res.json();
+    
+    if (!Array.isArray(data) || data.length === 0) return;
+
+    const sessionOpenPrice = data[0].open;
+    const currentPrice = data[data.length - 1].close;
+
+    let sessionHigh = -Infinity;
+    let sessionLow = Infinity;
+
+    data.forEach(item => {
+      if (item.high > sessionHigh) sessionHigh = item.high;
+      if (item.low < sessionLow) sessionLow = item.low;
+    });
+
+    const changeVal = currentPrice - sessionOpenPrice;
+    const changePercent = ((changeVal / sessionOpenPrice) * 100).toFixed(2);
+
+    const isUp = changeVal > 0;
+    const isDown = changeVal < 0;
+    
+    const color = isDown ? '#66a43a' : (isUp ? '#cc393b' : '#ffffff');
+    const symbol = isUp ? '▲' : (isDown ? '▼' : '');
+    const displayVal = Math.abs(changeVal).toLocaleString();
+    const displayPercent = Math.abs(Number(changePercent)).toFixed(2);
+
+    // 將漲跌幅文字大小改為 14px (原本是 18px)
+    document.getElementById('index-value').innerHTML = `${currentPrice.toLocaleString()} <span style="font-size:14px; color:${color}; font-weight:normal;">${symbol} ${displayVal} (${displayPercent}%)</span>`;
+    document.getElementById('highlow-value').textContent = `開盤 ${sessionOpenPrice} | 最高 ${sessionHigh} | 最低 ${sessionLow}`;
+  } catch (e) { 
+    console.error("Index Error", e); 
+  }
+}
+
+async function fetchRealtimeValues() {
+  try {
+    const res = await fetch('https://market-data-api.futures-ai.com/chip960_tradeinfo/');
+    const data = await res.json();
+    
+    const tx = Number(data.tx_bvav);
+    const mtx = Number(data.mtx_bvav);
+    const tbta = Number(data.mtx_tbta);
+
+    updateBox('tx_bvav', tx, false);     
+    updateBox('mtx_tbta', tbta, true);   
+    updateBox('mtx_bvav', mtx, false);    
+    updateBox('mtx_p', tx + mtx, false); 
+  } catch (e) {}
+}
+
+function updateBox(id, val, isInverse) {
+  const el = document.getElementById(id);
+  const parent = el.parentElement; 
+  if(!el || !parent) return;
+
+  el.textContent = Math.round(val);
+
+  let isBullish = false;
+
+  if (isInverse) {
+    isBullish = val < 0; 
+  } else {
+    isBullish = val > 0;
+  }
+  
+  if (isBullish) {
+    el.style.backgroundColor = '#cc393b'; 
+    parent.style.backgroundColor = 'rgba(204, 57, 59, 0.15)'; 
+    parent.style.borderColor = 'rgba(204, 57, 59, 0.3)'; 
+  } else {
+    el.style.backgroundColor = '#66a43a';
+    parent.style.backgroundColor = 'rgba(102, 164, 58, 0.15)';
+    parent.style.borderColor = 'rgba(102, 164, 58, 0.3)';
+  }
+}
+
+function movingAverage(arr, period) {
+    const result = [];
+    for (let i = 0; i < arr.length; i++) {
+        if (i < period - 1) result.push(null);
+        else {
+            const sum = arr.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+            result.push(sum / period);
+        }
+    }
+    return result;
+}
+
+async function fetchAndRenderChart() {
+    try {
+        const response = await fetch("https://opensheet.elk.sh/1QLAqKWyrpG0uRTN3lwBkQaiXNGivEvRZdM_Er-qg3ZY/Sheet1");
+        const data = await response.json();
+        const maxLength = 60; 
+        const sliced = (arr) => arr.slice(-maxLength);
+
+        const tx_bvav_raw = data.map(row => Number(row.tx_bvav));
+        const mtx_bvav_raw = data.map(row => Number(row.mtx_bvav));
+        const mtx_tbta_raw = data.map(row => Number(row.mtx_tbta));
+        const timestamps = data.map(row => row.timestamp.includes(' ') ? row.timestamp.split(' ')[1] : row.timestamp);
+        const mtx_bvav_ma23_raw = movingAverage(mtx_bvav_raw, 23);
+
+        const ctx = document.getElementById("barChart").getContext("2d");
+
+        if (chartInstance) {
+            chartInstance.data.labels = sliced(timestamps);
+            chartInstance.data.datasets[0].data = sliced(tx_bvav_raw);
+            chartInstance.data.datasets[1].data = sliced(mtx_tbta_raw);
+            chartInstance.data.datasets[2].data = sliced(mtx_bvav_raw);
+            chartInstance.data.datasets[3].data = sliced(mtx_bvav_ma23_raw);
+            chartInstance.update('none');
+        } else {
+            chartInstance = new Chart(ctx, {
+                data: {
+                    labels: sliced(timestamps),
+                    datasets: [
+                        { 
+                          label: "坦克", data: sliced(tx_bvav_raw), 
+                          backgroundColor: "rgba(180, 180, 180, 0.3)", borderColor: "rgba(255, 255, 255, 0.2)",
+                          borderWidth: 1, borderRadius: 5, type: "bar", grouped: false, order: 4 
+                        },
+                        { 
+                          label: "炮灰", data: sliced(mtx_tbta_raw), 
+                          backgroundColor: "rgba(255, 60, 60, 0.4)", borderColor: "rgba(255, 60, 60, 0.7)",
+                          borderWidth: 1, borderRadius: 5, type: "bar", grouped: false, order: 3 
+                        },
+                        { label: "游擊", data: sliced(mtx_bvav_raw), borderColor: "#00a8ff", borderWidth: 2, type: "line", pointRadius: 0, tension: 0.4, order: 2 },
+                        { label: "均線", data: sliced(mtx_bvav_ma23_raw), borderColor: "#f1c40f", borderWidth: 2, type: "line", pointRadius: 0, tension: 0.4, order: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    categoryPercentage: 0.8,
+                    barPercentage: 0.9,
+                    scales: {
+                        x: { ticks: { color: '#ffffff', font: { size: 9 }, maxTicksLimit: 6 }, grid: { display: false } },
+                        y: { position: 'right', ticks: { color: '#ffffff', font: { size: 9 } }, grid: { color: (ctx) => ctx.tick.value === 0 ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.05)', drawBorder: false } }
+                    },
+                    plugins: { 
+                        legend: { display: true, position: 'top', align: 'end', labels: { color: '#ffffff', boxWidth: 8, font: { size: 10 } } } 
+                    }
+                }
+            });
+        }
+    } catch (e) {}
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-Hant', { hour12: false });
+}
+
+setInterval(fetchIndexValues, 3000);
+setInterval(fetchRealtimeValues, 2000);
+setInterval(updateClock, 1000);
+setInterval(fetchAndRenderChart, 3000);
+
+fetchIndexValues();
+fetchRealtimeValues();
+fetchAndRenderChart();
+</script>
+</body>
+</html>
