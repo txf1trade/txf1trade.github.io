@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股熱門股即時報價看板 (緊湊模式)</title>
+  <title>台股熱門股即時報價</title>
   <style>
     :root {
       --bg-color: #0f172a;
@@ -53,7 +53,7 @@
     }
 
     .title-group h1 {
-      font-size: 1.15rem; /* 微調標題字級 */
+      font-size: 1.15rem;
       font-weight: 700;
       letter-spacing: 0.3px;
     }
@@ -199,12 +199,12 @@
       width: 100%;
       border-collapse: collapse;
       text-align: right;
-      font-size: 0.82rem; /* 微調表格內容字級 */
+      font-size: 0.82rem;
       line-height: 1.25;
     }
 
     th, td {
-      padding: 7px 10px; /* 微調內距使版面更順眼 */
+      padding: 7px 10px;
       border-bottom: 1px solid var(--border-color);
       white-space: nowrap;
     }
@@ -213,7 +213,7 @@
       background-color: rgba(0, 0, 0, 0.3);
       color: var(--text-muted);
       font-weight: 600;
-      font-size: 0.8rem; /* 微調表格標題字級 */
+      font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 0.3px;
       position: sticky;
@@ -221,7 +221,6 @@
       user-select: none;
     }
 
-    /* 可排序標題樣式 */
     th.sortable {
       cursor: pointer;
       transition: color 0.15s, background-color 0.15s;
@@ -242,12 +241,13 @@
       display: inline-block;
     }
 
+    /* 欄位對齊設定：代號、名稱、K棒靠左 */
     th:nth-child(1), td:nth-child(1),
-    th:nth-child(2), td:nth-child(2) {
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(3), td:nth-child(3) {
       text-align: left;
     }
 
-    /* 交錯背景 */
     tbody tr:nth-child(even) {
       background-color: rgba(255, 255, 255, 0.015);
     }
@@ -313,11 +313,10 @@
   <div class="container">
     <header>
       <div class="title-group">
-        <h1>台股熱門股即時報價看板</h1>
+        <h1>台股熱門股報價</h1>
         <div class="subtitle">資料來源：Market Insight API</div>
       </div>
       <div class="status-group">
-        <!-- 成交量過濾選單 (預設 > 10,000 張) -->
         <div class="filter-group">
           <label for="volume-filter">成交量門檻：</label>
           <select id="volume-filter" class="filter-select" onchange="renderCurrentData()">
@@ -337,7 +336,6 @@
       </div>
     </header>
 
-    <!-- 模組頁籤按鈕區 (緊湊版) -->
     <div class="tab-bar">
       <button class="tab-btn active" id="tab-normal-btn" onclick="switchTab('normal')">
         🔥 熱門股 <span class="stock-count" id="normal-count">0 檔</span>
@@ -347,22 +345,22 @@
       </button>
     </div>
 
-    <!-- 表格區塊 -->
     <div class="table-card">
       <table id="stock-table">
         <thead>
           <tr>
             <th class="sortable" onclick="handleSort('symbol')">代號 <span id="sort-symbol" class="sort-icon"></span></th>
             <th>名稱</th>
+            <th>K棒</th>
             <th class="sortable" onclick="handleSort('price')">成交價 <span id="sort-price" class="sort-icon"></span></th>
             <th class="sortable" onclick="handleSort('change')">漲跌 <span id="sort-change" class="sort-icon"></span></th>
             <th class="sortable" onclick="handleSort('changePercent')">漲跌幅 <span id="sort-changePercent" class="sort-icon"></span></th>
-            <th class="sortable" onclick="handleSort('volume')">成交量<span id="sort-volume" class="sort-icon"></span></th>
+            <th class="sortable" onclick="handleSort('volume')">成交量 <span id="sort-volume" class="sort-icon"></span></th>
           </tr>
         </thead>
         <tbody id="stock-list">
           <tr>
-            <td colspan="6">
+            <td colspan="7">
               <div class="state-container">
                 <div class="spinner"></div>
                 載入即時報價與對照表中...
@@ -381,20 +379,15 @@
 
     let stockNameMap = {};
     let currentStockData = [];
-    let currentTab = 'normal'; // 'normal' 或 'limit'
+    let currentTab = 'normal';
 
-    // 排序狀態管理：預設以成交量降冪 (desc)
     let sortColumn = 'volume';
-    let sortOrder = 'desc'; // 'asc' 或 'desc'
-
-    // --- 排序處理邏輯 ---
+    let sortOrder = 'desc';
 
     function handleSort(column) {
       if (sortColumn === column) {
-        // 同欄位再次點擊：切換 升冪 / 降冪
         sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
       } else {
-        // 切換新欄位：代號預設升冪(asc)，其餘數值欄位預設降冪(desc)
         sortColumn = column;
         sortOrder = (column === 'symbol') ? 'asc' : 'desc';
       }
@@ -418,8 +411,6 @@
       });
     }
 
-    // --- 台股漲停價計算邏輯 ---
-
     function getTickSize(price) {
       if (price < 10) return 0.01;
       if (price < 50) return 0.05;
@@ -438,16 +429,12 @@
       return Math.round(limitUpPrice * 100) / 100;
     }
 
-    // --- 頁籤切換 ---
-
     function switchTab(tab) {
       currentTab = tab;
       document.getElementById('tab-normal-btn').classList.toggle('active', tab === 'normal');
       document.getElementById('tab-limit-btn').classList.toggle('active', tab === 'limit');
       renderCurrentData();
     }
-
-    // --- 資料讀取與處理 ---
 
     async function loadStockNameMap() {
       try {
@@ -467,23 +454,19 @@
 
       try {
         const response = await fetch(API_URL);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
 
         const resData = await response.json();
         currentStockData = Array.isArray(resData) ? resData : (resData.data || []);
 
         if (currentStockData.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6"><div class="state-container">目前無資料</div></td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7"><div class="state-container">目前無資料</div></td></tr>`;
           document.getElementById('normal-count').innerText = '0 檔';
           document.getElementById('limit-up-count').innerText = '0 檔';
           return;
         }
 
         renderCurrentData();
-
         indicator.classList.add('active');
         const now = new Date();
         timeDisplay.innerText = `更新：${now.toLocaleTimeString()}`;
@@ -491,11 +474,10 @@
       } catch (error) {
         console.error('Fetch error:', error);
         indicator.classList.remove('active');
-        
         if (tbody.children.length <= 1) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="6">
+              <td colspan="7">
                 <div class="state-container" style="color: var(--up-color);">
                   無法讀取即時報價，請確認網路連線或 API CORS 設定。<br>
                   <small>(${error.message})</small>
@@ -531,18 +513,14 @@
         }
       });
 
-      // 更新頁籤數量標籤
       document.getElementById('normal-count').innerText = `${normalStocks.length} 檔`;
       document.getElementById('limit-up-count').innerText = `${limitUpStocks.length} 檔`;
 
-      // 漲停頁籤外觀提醒
       const limitBtn = document.getElementById('tab-limit-btn');
       limitBtn.classList.toggle('has-stocks', limitUpStocks.length > 0);
 
-      // 根據當前選擇的 Tab 取得列表
       let displayStocks = (currentTab === 'limit') ? limitUpStocks : normalStocks;
 
-      // 執行動態排序
       displayStocks.sort((a, b) => {
         if (sortColumn === 'symbol') {
           const symA = String(a.symbol || a.code || a.stock_id || '').trim();
@@ -566,16 +544,62 @@
       const change = Number(stock.change || 0);
 
       switch (col) {
-        case 'price':
-          return price;
-        case 'change':
-          return change;
-        case 'changePercent':
-          return Number(stock.change_rate || stock.change_percent || (stock.open ? (change / stock.open * 100) : 0));
+        case 'price': return price;
+        case 'change': return change;
+        case 'changePercent': return Number(stock.change_rate || stock.change_percent || (stock.open ? (change / stock.open * 100) : 0));
         case 'volume':
-        default:
-          return Number(stock.volume || stock.total_volume || 0);
+        default: return Number(stock.volume || stock.total_volume || 0);
       }
+    }
+
+    // 產生迷你 K 棒 SVG HTML
+    function generateMiniCandleSvg(open, high, low, close) {
+      // 若缺乏開高低收基本資料，給予預設或隱藏
+      if (!open || !high || !low || !close) {
+        return '<span style="color: var(--text-muted); font-size: 0.75rem;">--</span>';
+      }
+
+      const svgWidth = 36;
+      const svgHeight = 20;
+      const padding = 2;
+
+      const maxVal = Math.max(high, open, close, low);
+      const minVal = Math.min(high, open, close, low);
+      const range = maxVal - minVal;
+
+      // 如果高低價完全一樣（平盤無波動）
+      if (range === 0) {
+        return `<svg width="${svgWidth}" height="${svgHeight}" style="vertical-align: middle;">
+          <line x1="2" y1="${svgHeight/2}" x2="${svgWidth-2}" y2="${svgHeight/2}" stroke="#94a3b8" stroke-width="1.5" />
+        </svg>`;
+      }
+
+      // 計算垂直座標轉換 (SVG 座標 y 軸向下為正，所以高價對應頂部 padding，低價對應底部 svgHeight - padding)
+      const scaleY = (val) => {
+        return padding + (svgHeight - padding * 2) * (1 - (val - minVal) / range);
+      };
+
+      const highY = scaleY(high);
+      const lowY = scaleY(low);
+      const openY = scaleY(open);
+      const closeY = scaleY(close);
+
+      const bodyTop = Math.min(openY, closeY);
+      const bodyBottom = Math.max(openY, closeY);
+      const bodyHeight = Math.max(Math.abs(closeY - openY), 1.5); // 確保至少有一點高度
+
+      // 顏色判定：收 >= 開為紅 (up)，否則為綠 (down)
+      const isUp = close >= open;
+      const color = isUp ? 'var(--up-color)' : 'var(--down-color)';
+      const centerX = svgWidth / 2;
+      const bodyWidth = 8;
+
+      return `<svg width="${svgWidth}" height="${svgHeight}" style="vertical-align: middle;">
+        <!-- 上下影線 -->
+        <line x1="${centerX}" y1="${highY}" x2="${centerX}" y2="${lowY}" stroke="${color}" stroke-width="1.2" />
+        <!-- K 棒實體 -->
+        <rect x="${centerX - bodyWidth/2}" y="${bodyTop}" width="${bodyWidth}" height="${bodyHeight}" fill="${color}" rx="0.5" />
+      </svg>`;
     }
 
     function renderTableRows(stocks) {
@@ -583,7 +607,7 @@
       tbody.innerHTML = '';
 
       if (stocks.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="state-container">沒有符合條件的股票</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="state-container">沒有符合條件的股票</div></td></tr>`;
         return;
       }
 
@@ -596,6 +620,14 @@
         const change = Number(stock.change || 0);
         const changePercent = Number(stock.change_rate || stock.change_percent || (stock.open ? (change / stock.open * 100) : 0));
         const volume = Number(stock.volume || stock.total_volume || 0);
+
+        // 取得開高低收數據（相容不同 API 欄位命名）
+        const open = Number(stock.open || (price && change ? price - change : price));
+        const high = Number(stock.high || Math.max(price, open));
+        const low = Number(stock.low || Math.min(price, open));
+        const close = price;
+
+        const candleHtml = generateMiniCandleSvg(open, high, low, close);
 
         let colorClass = 'flat';
         let sign = '';
@@ -610,6 +642,7 @@
         tr.innerHTML = `
           <td><span class="stock-code">${symbol || '--'}</span></td>
           <td><span class="stock-name">${name}</span></td>
+          <td>${candleHtml}</td>
           <td class="${colorClass}">${formatNumber(price)}</td>
           <td class="${colorClass}">${sign}${formatNumber(change)}</td>
           <td class="${colorClass}">${sign}${formatNumber(changePercent)}%</td>
