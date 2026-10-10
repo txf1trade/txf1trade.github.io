@@ -9,9 +9,9 @@
     <style>
         /* 定義佈景主題變數 */
         :root {
-            --bg-color: #d8dcde;          /* 護眼沈穩灰底 */
-            --container-bg: #e6eaed;      /* 柔和淺灰面板色 */
-            --text-color: #2c3e50;        /* 舒適深藍灰色字體 */
+            --bg-color: #d8dcde;          /* 更沉穩柔和的灰底，降低刺眼感 */
+            --container-bg: #e6eaed;      /* 柔和的淺灰面板色 */
+            --text-color: #2c3e50;        /* 舒適的深藍灰色字體 */
             --text-muted: #576574;        /* 次要文字色 */
             --border-color: #b0bac5;      /* 邊框色 */
             --table-th-bg: #ccd3d9;       /* 表頭底色 */
@@ -178,7 +178,7 @@
         .charts-wrapper {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 12px;
+            gap: 10px;
             margin-top: 10px;
         }
 
@@ -201,53 +201,15 @@
             padding: 6px;
             background: var(--chart-bg);
             min-width: 0;
-            position: relative;
-        }
-        .chart-header-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2px;
         }
         .chart-title {
             font-weight: bold;
             font-size: 13px;
+            margin-bottom: 4px;
         }
-        .reset-zoom-btn {
-            background: var(--table-th-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 1px 6px;
-            border-radius: 3px;
-            font-size: 11px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: opacity 0.2s;
-        }
-        .reset-zoom-btn:hover {
-            opacity: 0.8;
-        }
-        .main-chart {
+        .chart-container {
             width: 100%;
-            height: 200px;
-            position: relative;
-        }
-        .floating-tooltip {
-            position: absolute;
-            display: none;
-            padding: 6px 10px;
-            box-sizing: border-box;
-            font-size: 12px;
-            line-height: 1.4;
-            text-align: left;
-            z-index: 1000;
-            pointer-events: none;
-            background: rgba(20, 20, 20, 0.88);
-            color: #ffffff;
-            border-radius: 4px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            backdrop-filter: blur(2px);
-            white-space: nowrap;
+            height: 210px;
         }
     </style>
 </head>
@@ -259,7 +221,7 @@
         <div class="header-controls">
             <div id="timer" class="timer-badge">8秒後更新</div>
             <button class="action-btn" id="refresh-btn">推新行情</button>
-            <button class="theme-btn" id="theme-btn">🌙 模式</button>
+            <button class="theme-btn" id="theme-btn">深色模式</button>
         </div>
     </div>
 
@@ -309,28 +271,16 @@
 
     <div class="charts-wrapper">
         <div class="chart-box">
-            <div class="chart-header-bar">
-                <div class="chart-title">📊 富台指 (TWN-1) 15K</div>
-                <button class="reset-zoom-btn" id="btn-reset-twn">回最新 K</button>
-            </div>
-            <div id="tooltip-twn" class="floating-tooltip"></div>
-            <div id="chart-twn-main" class="main-chart"></div>
+            <div class="chart-title">📊 富台指 (TWN-1) 15K</div>
+            <div id="chart-twn" class="chart-container"></div>
         </div>
         <div class="chart-box">
-            <div class="chart-header-bar">
-                <div class="chart-title">📊 台指全 (TX-1) 15K</div>
-                <button class="reset-zoom-btn" id="btn-reset-txall">回最新 K</button>
-            </div>
-            <div id="tooltip-txall" class="floating-tooltip"></div>
-            <div id="chart-txall-main" class="main-chart"></div>
+            <div class="chart-title">📊 台指全 (TX-1) 15K</div>
+            <div id="chart-txall" class="chart-container"></div>
         </div>
         <div class="chart-box">
-            <div class="chart-header-bar">
-                <div class="chart-title">📊 台指期日 (TXAM-1) 15K</div>
-                <button class="reset-zoom-btn" id="btn-reset-tx">回最新 K</button>
-            </div>
-            <div id="tooltip-tx" class="floating-tooltip"></div>
-            <div id="chart-tx-main" class="main-chart"></div>
+            <div class="chart-title">📊 台指期 (TXAM-1) 15K</div>
+            <div id="chart-tx" class="chart-container"></div>
         </div>
     </div>
 </div>
@@ -340,8 +290,6 @@
     let txLastClose = 0;
     let countdown = 8;
     let timerInterval = null;
-    let chartViewers = [];
-    let lastFallbackTwn = 0;
 
     function getChartThemeOptions() {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
@@ -357,164 +305,47 @@
             timeScale: { 
                 timeVisible: true, 
                 secondsVisible: false,
-                rightOffset: 5,
-                barSpacing: 8
+                rightOffset: 5 
             },
         };
     }
 
-    function calculateEMA(data, period) {
-        let results = [];
-        let multiplier = 2 / (period + 1);
-        let prevEMA = null;
-        for (let i = 0; i < data.length; i++) {
-            let close = data[i].close;
-            if (i === 0) {
-                prevEMA = close;
-            } else {
-                prevEMA = (close - prevEMA) * multiplier + prevEMA;
-            }
-            results.push({ time: data[i].time, value: prevEMA });
-        }
-        return results;
-    }
-
-    function calculateCrossovers(bars, fastEMAData, slowEMAData) {
-        let markers = [];
-        for (let i = 1; i < bars.length; i++) {
-            let prevFast = fastEMAData[i - 1].value;
-            let prevSlow = slowEMAData[i - 1].value;
-            let currFast = fastEMAData[i].value;
-            let currSlow = slowEMAData[i].value;
-            let time = bars[i].time;
-
-            if (prevFast <= prevSlow && currFast > currSlow) {
-                markers.push({ time: time, position: 'belowBar', color: '#26a69a', shape: 'arrowUp', text: '金叉' });
-            } else if (prevFast >= prevSlow && currFast < currSlow) {
-                markers.push({ time: time, position: 'aboveBar', color: '#ef5350', shape: 'arrowDown', text: '死叉' });
-            }
-        }
-        return markers;
-    }
-
-    function createChartInstance(mainId, tooltipId, resetBtnId, fastEMA, slowEMA, tickSize) {
-        const mainContainer = document.getElementById(mainId);
-        const tooltipEl = document.getElementById(tooltipId);
-        const resetBtn = document.getElementById(resetBtnId);
-
-        const baseOpts = getChartThemeOptions();
-
-        const mainChart = LightweightCharts.createChart(mainContainer, {
-            ...baseOpts,
-            timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: 8 }
-        });
-
-        const decimals = tickSize < 1 ? 2 : 0;
-
-        const candleSeries = mainChart.addCandlestickSeries({
+    function createChart(containerId) {
+        const container = document.getElementById(containerId);
+        const chart = LightweightCharts.createChart(container, getChartThemeOptions());
+        const candleSeries = chart.addCandlestickSeries({
             upColor: '#ef5350', downColor: '#26a69a', borderVisible: false,
-            wickUpColor: '#ef5350', wickDownColor: '#26a69a',
-            priceFormat: {
-                type: 'price',
-                precision: decimals,
-                minMove: tickSize,
-            }
+            wickUpColor: '#ef5350', wickDownColor: '#26a69a'
         });
-        const emaFastSeries = mainChart.addLineSeries({ 
-            color: '#ffcc66', lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
-            priceFormat: { type: 'price', precision: decimals, minMove: tickSize }
-        });
-        const emaSlowSeries = mainChart.addLineSeries({ 
-            color: '#00e1ff', lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
-            priceFormat: { type: 'price', precision: decimals, minMove: tickSize }
-        });
-
-        // 點擊按鈕或圖表時，立即滾動回最新 K 線
-        const scrollToRealTime = () => {
-            mainChart.timeScale().scrollToRealTime();
-        };
-
-        resetBtn.addEventListener('click', scrollToRealTime);
-        mainContainer.addEventListener('dblclick', scrollToRealTime);
-
-        mainChart.subscribeCrosshairMove(param => {
-            if (!param.time || param.point === undefined || param.point.x < 0 || param.point.x > mainContainer.clientWidth || param.point.y < 0 || param.point.y > mainContainer.clientHeight) {
-                tooltipEl.style.display = 'none';
-                return;
-            }
-            const data = param.seriesData.get(candleSeries);
-            if (data) {
-                const dateObj = new Date(param.time * 1000);
-                const timeStr = dateObj.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
-                const o = data.open.toFixed(decimals);
-                const h = data.high.toFixed(decimals);
-                const l = data.low.toFixed(decimals);
-                const c = data.close.toFixed(decimals);
-                
-                tooltipEl.style.display = 'block';
-                tooltipEl.innerHTML = `時間: ${timeStr}<br>開盤: ${o}<br>最高: ${h}<br>最低: ${l}<br>收盤: ${c}`;
-
-                let x = param.point.x + 15;
-                let y = param.point.y + 15;
-                if (x + 110 > mainContainer.clientWidth) {
-                    x = param.point.x - 120;
-                }
-                if (y + 105 > mainContainer.clientHeight) {
-                    y = param.point.y - 110;
-                }
-                tooltipEl.style.left = x + 'px';
-                tooltipEl.style.top = y + 'px';
-            }
-        });
-
-        const ro = new ResizeObserver(entries => {
+        
+        const resizeObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
-                mainChart.applyOptions({ width: entry.contentRect.width });
+                chart.applyOptions({ width: entry.contentRect.width });
             }
         });
-        ro.observe(mainContainer);
+        resizeObserver.observe(container);
 
-        const viewer = {
-            mainChart,
-            setData(bars) {
-                candleSeries.setData(bars);
-                const fastData = calculateEMA(bars, fastEMA);
-                const slowData = calculateEMA(bars, slowEMA);
-
-                emaFastSeries.setData(fastData);
-                emaSlowSeries.setData(slowData);
-
-                const markers = calculateCrossovers(bars, fastData, slowData);
-                candleSeries.setMarkers(markers);
-
-                if (bars.length > 0) {
-                    mainChart.timeScale().scrollToRealTime();
-                }
-            }
-        };
-
-        chartViewers.push(viewer);
-        return viewer;
+        return { chart, candleSeries };
     }
 
-    const twnViewer = createChartInstance('chart-twn-main', 'tooltip-twn', 'btn-reset-twn', 80, 400, 0.25);
-    const txAllViewer = createChartInstance('chart-txall-main', 'tooltip-txall', 'btn-reset-txall', 76, 380, 1);
-    const txViewer = createChartInstance('chart-tx-main', 'tooltip-tx', 'btn-reset-tx', 76, 380, 1);
+    const twnViewer = createChart('chart-twn');
+    const txAllViewer = createChart('chart-txall');
+    const txViewer = createChart('chart-tx');
 
     function toggleTheme() {
         const body = document.body;
         const btn = document.getElementById('theme-btn');
         if (body.getAttribute('data-theme') === 'light') {
             body.setAttribute('data-theme', 'dark');
-            btn.textContent = '☀️ 模式';
+            btn.textContent = '淺色模式';
         } else {
             body.setAttribute('data-theme', 'light');
-            btn.textContent = '🌙 模式';
+            btn.textContent = '深色模式';
         }
         const opts = getChartThemeOptions();
-        chartViewers.forEach(v => {
-            v.mainChart.applyOptions(opts);
-        });
+        twnViewer.chart.applyOptions(opts);
+        txAllViewer.chart.applyOptions(opts);
+        txViewer.chart.applyOptions(opts);
     }
 
     const twnHistoryUrl = "https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TWN-1&resolution=15&from=1791077149&to=1791563149&ws=true&metaData=true";
@@ -546,13 +377,13 @@
             const formattedTxAllBars = formatData(txAllBars);
             const formattedTxBars = formatData(txBars);
 
-            if (formattedTwnBars.length > 0) {
-                lastFallbackTwn = formattedTwnBars[formattedTwnBars.length - 1].close;
-            }
+            twnViewer.candleSeries.setData(formattedTwnBars);
+            txAllViewer.candleSeries.setData(formattedTxAllBars);
+            txViewer.candleSeries.setData(formattedTxBars);
 
-            twnViewer.setData(formattedTwnBars);
-            txAllViewer.setData(formattedTxAllBars);
-            txViewer.setData(formattedTxBars);
+            twnViewer.chart.timeScale().scrollToRealTime();
+            txAllViewer.chart.timeScale().scrollToRealTime();
+            txViewer.chart.timeScale().scrollToRealTime();
 
             if (txBars.length > 0) {
                 const lastTxBar = txBars[txBars.length - 1];
@@ -648,29 +479,19 @@
     }
 
     async function fetchAndApplyRealtimeQuote() {
-        let currentTwn = 0;
         try {
             const res = await fetch(twnRealtimeUrl);
             const data = await res.json();
             const quote = Array.isArray(data) ? data[0] : data;
 
-            if (quote && quote.close) {
-                currentTwn = quote.close;
-                if (quote.datetime) {
-                    const dateObj = new Date(quote.datetime);
-                    document.getElementById('td-time').textContent = dateObj.toLocaleTimeString('zh-TW', { hour12: false });
-                }
+            if (!quote || !quote.close) return;
+
+            if (quote.datetime) {
+                const dateObj = new Date(quote.datetime);
+                document.getElementById('td-time').textContent = dateObj.toLocaleTimeString('zh-TW', { hour12: false });
             }
-        } catch (err) {
-            console.warn("即時行情 API 暫時無法取得，使用歷史收盤價替代:", err);
-        }
 
-        if (currentTwn === 0 && lastFallbackTwn > 0) {
-            currentTwn = lastFallbackTwn;
-            document.getElementById('td-time').textContent = "休市中(歷史收盤)";
-        }
-
-        if (currentTwn > 0) {
+            const currentTwn = quote.close;
             document.getElementById('td-twn').textContent = currentTwn.toFixed(2);
 
             if (regressionModel.a !== 0) {
@@ -683,6 +504,8 @@
                     diffEl.textContent = (diff >= 0 ? "+" : "") + diff;
                 }
             }
+        } catch (err) {
+            console.error("抓取即時行情失敗:", err);
         }
     }
 
