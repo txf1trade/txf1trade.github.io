@@ -9,16 +9,16 @@
     <style>
         /* 定義佈景主題變數 */
         :root {
-            --bg-color: #f4f6f8;
-            --container-bg: #ffffff;
-            --text-color: #111111;
-            --text-muted: #555555;
-            --border-color: #dcdcdc;
-            --table-th-bg: #f2f2f2;
-            --box-bg: #f8f9fa;
-            --chart-bg: #fafafa;
-            --chart-grid: #eeeeee;
-            --chart-text: #333333;
+            --bg-color: #d8dcde;          /* 更沉穩柔和的灰底，降低刺眼感 */
+            --container-bg: #e6eaed;      /* 柔和的淺灰面板色 */
+            --text-color: #2c3e50;        /* 舒適的深藍灰色字體 */
+            --text-muted: #576574;        /* 次要文字色 */
+            --border-color: #b0bac5;      /* 邊框色 */
+            --table-th-bg: #ccd3d9;       /* 表頭底色 */
+            --box-bg: #d4dadf;          /* 小框底色 */
+            --chart-bg: #e6eaed;          /* 圖表區底色 */
+            --chart-grid: #d0d7de;        /* 圖表網格線 */
+            --chart-text: #4b6584;        /* 圖表文字色 */
             --pro-blue-bg: #2b4c7e;
             --pro-blue-text: #ffffff;
         }
@@ -200,7 +200,7 @@
             border-radius: 6px;
             padding: 6px;
             background: var(--chart-bg);
-            min-width: 0; /* 防止 Grid 項目被內部元素撐破 */
+            min-width: 0;
         }
         .chart-title {
             font-weight: bold;
@@ -221,7 +221,7 @@
         <div class="header-controls">
             <div id="timer" class="timer-badge">8秒後更新</div>
             <button class="action-btn" id="refresh-btn">推新行情</button>
-            <button class="theme-btn" id="theme-btn">🌙 模式</button>
+            <button class="theme-btn" id="theme-btn">深色模式</button>
         </div>
     </div>
 
@@ -295,12 +295,12 @@
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         return {
             layout: { 
-                background: { color: isDark ? '#1e1e1e' : '#fafafa' }, 
-                textColor: isDark ? '#d1d4dc' : '#333333' 
+                background: { color: isDark ? '#1e1e1e' : '#e6eaed' }, 
+                textColor: isDark ? '#d1d4dc' : '#4b6584' 
             },
             grid: { 
-                vertLines: { color: isDark ? '#2a2e39' : '#eeeeee' }, 
-                horzLines: { color: isDark ? '#2a2e39' : '#eeeeee' } 
+                vertLines: { color: isDark ? '#2a2e39' : '#d0d7de' }, 
+                horzLines: { color: isDark ? '#2a2e39' : '#d0d7de' } 
             },
             timeScale: { 
                 timeVisible: true, 
@@ -318,7 +318,6 @@
             wickUpColor: '#ef5350', wickDownColor: '#26a69a'
         });
         
-        // 使用 ResizeObserver 監聽容器寬度變動，自動適應排版
         const resizeObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
                 chart.applyOptions({ width: entry.contentRect.width });
@@ -338,38 +337,16 @@
         const btn = document.getElementById('theme-btn');
         if (body.getAttribute('data-theme') === 'light') {
             body.setAttribute('data-theme', 'dark');
-            btn.textContent = '☀️ 模式';
+            btn.textContent = '淺色模式';
         } else {
             body.setAttribute('data-theme', 'light');
-            btn.textContent = '🌙 模式';
+            btn.textContent = '深色模式';
         }
         const opts = getChartThemeOptions();
         twnViewer.chart.applyOptions(opts);
         txAllViewer.chart.applyOptions(opts);
         txViewer.chart.applyOptions(opts);
     }
-
-        // ==========================================
-    // 【核心演算法與 R² 比較機制原理解析】
-    // ==========================================
-    // 1. 最小平方法線性迴歸 (Least-Squares Linear Regression)：
-    //    公式：Y = aX + b （其中 X 為富時台，Y 為台指期）
-    //    透過斜率 (a) 與截距 (b) 建立最佳配適直線模型。
-    //
-    // 2. 決定係數 R² (Coefficient of Determination)：
-    //    用來衡量迴歸模型對資料的解釋能力（擬合優度）。
-    //    R² = 1 - (SS_res / SS_tot)，數值越接近 1 代表連動性與線性解釋度越強。
-    //
-    // 3. 三種資料子集比較與動態切換策略：
-    //    - (1) 最後夜盤：僅抓取最後一個交易日的夜盤資料。若剛開盤無資料則點數為 0。
-    //    - (2) 最後一日日夜盤：抓取最後一個交易日的日盤 + 夜盤。由於能消除長天期
-    //          結構性斷裂與時間漂移，通常 R² 最高（約 0.94+），系統會優先自動採用。
-    //    - (3) 全時段綜合：納入所有歷史回測資料。樣本數大但易受歷史基差與跳空干擾。
-    //
-    // 4. 自動化選擇流程：
-    //    系統計算各子集的 (a, b, R²) 後，利用 models.sort() 找出 R² 最高者，
-    //    並自動指派給 regressionModel，確保即時換算永遠採用當下最適切的係數！
-    // ==========================================
 
     const twnHistoryUrl = "https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TWN-1&resolution=15&from=1791077149&to=1791563149&ws=true&metaData=true";
     const txAllUrl = "https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TX-1&resolution=15&from=1788836942&to=1791563582&ws=true&metaData=true";
