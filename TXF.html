@@ -147,7 +147,7 @@
       color: #e0e0e0;
     }
 
-    /* 獨立在卡片外面的淺灰色按鈕樣式 */
+    /* 觸發彈出面板的按鈕樣式 */
     .external-link-btn {
       display: block;
       width: 100%;
@@ -168,6 +168,88 @@
     .external-link-btn:hover {
       background: #363a45;
       color: #ffffff;
+    }
+
+    /* 彈出面板 (Modal) 樣式 */
+    .modal-overlay {
+      display: none; /* 預設隱藏 */
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 999;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1e222d;
+      border: 1px solid #2a2e39;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 880px;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+      overflow: hidden;
+      animation: modalFadeIn 0.25s ease;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: #131722;
+      border-bottom: 1px solid #2a2e39;
+    }
+
+    .modal-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+
+    .close-modal-btn {
+      background: #2a2e39;
+      color: #b2b5be;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .close-modal-btn:hover {
+      background: #f23645;
+      color: #ffffff;
+    }
+
+    .modal-body {
+      flex: 1;
+      width: 100%;
+      background: #121212;
+    }
+
+    .modal-body iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
     }
 
     /* 台股配色：紅色為上漲，綠色為下跌 */
@@ -216,12 +298,50 @@
   </div>
 </div>
 
-<!-- 改用一般網址導向，並確保手機全螢幕瀏覽器能順暢載入 -->
-<a href="https://txf1trade.github.io/tnntoweb" class="external-link-btn">
+<!-- 觸發彈出面板的按鈕 -->
+<button class="external-link-btn" onclick="openModal()">
   🔗 富台換算台指
-</a>
+</button>
+
+<!-- 彈出面板結構 -->
+<div class="modal-overlay" id="twnModal" onclick="handleOutsideClick(event)">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span class="modal-title">📊 富時台轉換成台指期</span>
+      <button class="close-modal-btn" onclick="closeModal()">✕ 關閉</button>
+    </div>
+    <div class="modal-body">
+      <!-- 內嵌你的富台換算網頁 -->
+      <iframe src="https://txf1trade.github.io/tnntoweb" id="twnIframe"></iframe>
+    </div>
+  </div>
+</div>
 
 <script>
+  // 控制彈出面板開關（加入重新載入 iframe 解決圖表黑掉問題）
+  function openModal() {
+    const modal = document.getElementById('twnModal');
+    const iframe = document.getElementById('twnIframe');
+    
+    modal.classList.add('active');
+    
+    // 確保視窗展開後 iframe 重新抓取正確寬高渲染圖表
+    if (iframe) {
+      iframe.src = iframe.src;
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('twnModal').classList.remove('active');
+  }
+
+  // 點擊面板外部的半透明黑色背景也可以直接關閉
+  function handleOutsideClick(event) {
+    if (event.target.id === 'twnModal') {
+      closeModal();
+    }
+  }
+
   let currentSession = 'day';
 
   function getApiUrl() {
@@ -321,7 +441,7 @@
       changeEl.innerText = `${sign}${changeVal.toLocaleString()} (${sign}${changePercent}%)`;
       changeEl.className = `change-info ${colorClass}`;
 
-      document.getElementById('open-label').innerText = currentSession === 'day' ? '日盤開盤價 (08:45)' : '夜盤陳開盤價 (15:00)';
+      document.getElementById('open-label').innerText = currentSession === 'day' ? '日盤開盤價 (08:45)' : '夜盤開盤價 (15:00)';
       document.getElementById('session-open').innerText = sessionOpenPrice.toLocaleString();
       document.getElementById('total-volume').innerText = `${totalVolume.toLocaleString()} 口`;
 
