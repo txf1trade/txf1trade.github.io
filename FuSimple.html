@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海期即時行情監控</title>
+    <title>海外期貨即時行情監控</title>
     <style>
         :root {
             --bg-color: #131722;
@@ -146,6 +146,12 @@
             border-color: #2962ff;
             background: #2962ff;
         }
+
+        /* 透過控制項動態隱藏指定頁籤 */
+        body.hide-holiday-tab #tab-holiday { display: none !important; }
+        body.hide-commodity-tab #tab-commodity { display: none !important; }
+        body.hide-fx-tab #tab-fx { display: none !important; }
+        body.hide-usstock-tab #tab-usstock { display: none !important; }
 
         .menu-btn {
             background: #2962ff;
@@ -433,11 +439,11 @@
         @keyframes flashRed { 0% { background-color: rgba(255, 77, 90, 0.4); } 100% { background-color: transparent; } }
     </style>
 </head>
-<body>
+<body class="hide-commodity-tab hide-fx-tab">
 
     <!-- 獨立第一層：標題欄 -->
     <div class="top-header">
-        📊 即時行情監控面板
+        📊 海期行情監控
     </div>
 
     <!-- 獨立第二層：設定與搜尋工具列 -->
@@ -459,10 +465,11 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="filterCategory('ALL')">全部 (39)</button>
             <button class="tab-btn" onclick="filterCategory('WATCHLIST')" id="tab-watchlist">自選 (0)</button>
+            <button class="tab-btn" onclick="filterCategory('HOLIDAY')" id="tab-holiday">連假</button>
             <button class="tab-btn" onclick="filterCategory('INDEX')">指數期</button>
-            <button class="tab-btn" onclick="filterCategory('COMMODITY')">能源/金屬</button>
-            <button class="tab-btn" onclick="filterCategory('FX')">外匯期</button>
-            <button class="tab-btn" onclick="filterCategory('US_STOCK')">美股/ADR</button>
+            <button class="tab-btn" onclick="filterCategory('COMMODITY')" id="tab-commodity">能源/金屬</button>
+            <button class="tab-btn" onclick="filterCategory('FX')" id="tab-fx">外匯期</button>
+            <button class="tab-btn" onclick="filterCategory('US_STOCK')" id="tab-usstock">美股/ADR</button>
         </div>
 
         <button class="menu-btn" onclick="toggleDrawer(event)">☰</button>
@@ -502,9 +509,24 @@
                 <input type="range" id="font-size-range" min="10" max="18" value="13" oninput="changeFontSize(this.value)">
             </div>
 
-            <div style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
-                <label style="color: var(--text-sub); font-weight: bold; font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="chk-ai" checked onchange="updateColumnVisibility()"> 🤖 AI 助理按鈕
+            <div style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                <div style="color: var(--text-muted); font-size: 11px; font-weight: bold; margin-top: 2px;">群組頁籤顯示</div>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-holiday-tab" checked onchange="updateColumnVisibility()"> 連假
+                </label>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-commodity-tab" onchange="updateColumnVisibility()"> 能源金屬
+                </label>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-fx-tab" onchange="updateColumnVisibility()"> 外匯
+                </label>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-usstock-tab" checked onchange="updateColumnVisibility()"> 美股
+                </label>
+
+                <div style="color: var(--text-muted); font-size: 11px; font-weight: bold; margin-top: 6px;">其他功能</div>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-ai" checked onchange="updateColumnVisibility()"> AI 助理按鈕
                 </label>
             </div>
         </div>
@@ -555,7 +577,10 @@
     </div>
 
     <script>
-        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TWN-1,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
+        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TWN-1,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,BTCUSDT,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
+
+        // 連假觀察清單 (自動扣重)[cite: 1]
+        const HOLIDAY_SYMBOLS = ["TX-1", "TWN-1", "YM-1", "NQ-1", "ES-1", "GC-1", "HG-1", "DX-1", "JY-1", "NVDA", "GOOGL", "AAPL", "TSM", "META", "MU", "BTCUSDT"];
 
         const SYMBOL_META = {
             "TX-1": { name: "台指期", category: "INDEX" },
@@ -582,6 +607,7 @@
             "SF-1": { name: "瑞郎", category: "FX" },
             "AD-1": { name: "澳幣", category: "FX" },
             "CD-1": { name: "加幣", category: "FX" },
+            "BTCUSDT": { name: "比特幣", category: "CRYPTO" },
             "NVDA": { name: "輝達", category: "US_STOCK" },
             "GOOGL": { name: "谷歌", category: "US_STOCK" },
             "AAPL": { name: "蘋果", category: "US_STOCK" },
@@ -780,7 +806,7 @@
             updateColumnVisibility();
         }
 
-        // 控制表格欄位顯隱 & 右下角 AI 助理按鈕/面板整體顯隱
+        // 控制表格欄位顯隱 & 右下角 AI 助理按鈕/面板整體顯隱 & 各頁籤顯隱
         function updateColumnVisibility() {
             const container = document.getElementById("table-container");
             const body = document.body;
@@ -791,6 +817,23 @@
                 const isChecked = document.getElementById(`chk-${col}`).checked;
                 container.classList.toggle(`hide-${col}`, !isChecked);
             });
+
+            // 各群組頁籤顯隱控制
+            const isHolidayTabChecked = document.getElementById("chk-holiday-tab").checked;
+            body.classList.toggle("hide-holiday-tab", !isHolidayTabChecked);
+            if (!isHolidayTabChecked && currentCategory === "HOLIDAY") filterCategory('ALL');
+
+            const isCommodityTabChecked = document.getElementById("chk-commodity-tab").checked;
+            body.classList.toggle("hide-commodity-tab", !isCommodityTabChecked);
+            if (!isCommodityTabChecked && currentCategory === "COMMODITY") filterCategory('ALL');
+
+            const isFxTabChecked = document.getElementById("chk-fx-tab").checked;
+            body.classList.toggle("hide-fx-tab", !isFxTabChecked);
+            if (!isFxTabChecked && currentCategory === "FX") filterCategory('ALL');
+
+            const isUsStockTabChecked = document.getElementById("chk-usstock-tab").checked;
+            body.classList.toggle("hide-usstock-tab", !isUsStockTabChecked);
+            if (!isUsStockTabChecked && currentCategory === "US_STOCK") filterCategory('ALL');
 
             // AI 助理整體顯隱控制
             const isAIChecked = document.getElementById("chk-ai").checked;
@@ -809,7 +852,8 @@
                 const q = quotesData[symbol];
 
                 if (currentCategory === "WATCHLIST" && !watchlist.includes(symbol)) return;
-                if (currentCategory !== "ALL" && currentCategory !== "WATCHLIST" && meta.category !== currentCategory) return;
+                if (currentCategory === "HOLIDAY" && !HOLIDAY_SYMBOLS.includes(symbol)) return;
+                if (currentCategory !== "ALL" && currentCategory !== "WATCHLIST" && currentCategory !== "HOLIDAY" && meta.category !== currentCategory) return;
                 if (filterKeyword && !symbol.includes(filterKeyword) && !meta.name.includes(filterKeyword)) return;
                 if (!q) return;
 
