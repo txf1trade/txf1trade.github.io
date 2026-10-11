@@ -63,6 +63,7 @@
             border-bottom: 2px solid var(--border-color);
             padding-bottom: 6px;
             margin-bottom: 8px;
+            position: relative;
         }
         h2 {
             font-size: 17px;
@@ -105,6 +106,78 @@
             font-weight: bold;
             font-size: 12px;
         }
+        .menu-btn {
+            background: var(--table-th-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .menu-btn:hover {
+            opacity: 0.85;
+        }
+
+        /* 漢堡選單下拉面板 */
+        .menu-dropdown {
+            position: absolute;
+            top: 45px;
+            right: 0;
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+            display: none;
+            flex-direction: column;
+            width: 270px;
+            z-index: 101;
+            padding: 12px;
+            color: #d1d4dc;
+        }
+        .menu-dropdown.show {
+            display: flex;
+        }
+
+        .menu-title-top {
+            font-size: 11px;
+            font-weight: bold;
+            color: #787b86;
+            text-align: center;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 6px;
+        }
+
+        .slider-group {
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .slider-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #2196f3;
+            margin-top: 2px;
+        }
+        .param-input {
+            background: #131722;
+            border: 1px solid #2a2e39;
+            color: #ffffff;
+            width: 55px;
+            text-align: center;
+            border-radius: 4px;
+            font-size: 13px;
+            padding: 3px;
+            font-weight: bold;
+        }
+
         .section-title {
             font-size: 14px;
             margin-top: 10px;
@@ -249,9 +322,78 @@
             backdrop-filter: blur(2px);
             white-space: nowrap;
         }
+
+        /* TradingView 風格色票彈出視窗 */
+        .tv-color-palette {
+            position: absolute;
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 6px;
+            padding: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+            display: none;
+            z-index: 10000;
+            width: 200px;
+        }
+        .tv-color-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 3px;
+        }
+        .tv-color-cell {
+            width: 15px;
+            height: 15px;
+            border-radius: 2px;
+            cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        .tv-color-cell:hover {
+            transform: scale(1.3);
+            z-index: 2;
+            border-color: #fff;
+        }
+        .color-preview {
+            display: inline-block;
+            width: 16px;
+            height: 14px;
+            border-radius: 3px;
+            vertical-align: middle;
+            margin-left: 6px;
+            cursor: pointer;
+            border: 1px solid #2a2e39;
+        }
+        .chart-legend-overlay {
+            position: absolute;
+            top: 30px;
+            left: 8px;
+            z-index: 10;
+            font-size: 11px;
+            font-weight: bold;
+            background: rgba(14, 14, 14, 0.75);
+            padding: 2px 5px;
+            border-radius: 3px;
+            display: flex;
+            gap: 6px;
+            pointer-events: none;
+        }
+        .legend-item {
+            cursor: pointer;
+            user-select: none;
+            pointer-events: auto;
+        }
+        .legend-item.hidden {
+            opacity: 0.35;
+            text-decoration: line-through;
+        }
     </style>
 </head>
 <body data-theme="dark">
+
+<!-- TradingView 風格色票彈出視窗 -->
+<div id="tvColorPalette" class="tv-color-palette">
+    <div class="tv-color-grid" id="tvColorGrid"></div>
+</div>
 
 <div class="container">
     <div class="header-row">
@@ -259,7 +401,33 @@
         <div class="header-controls">
             <div id="timer" class="timer-badge">8秒後更新</div>
             <button class="action-btn" id="refresh-btn">推新行情</button>
-            <button class="theme-btn" id="theme-btn">🌙 模式</button>
+            <button class="theme-btn" id="theme-btn">淺色模式</button>
+            <button class="menu-btn" id="menu-toggle-btn">☰</button>
+        </div>
+
+        <!-- 漢堡選單下拉面板 -->
+        <div class="menu-dropdown" id="menuDropdown">
+            <div class="menu-title-top">K線圖顯示設定</div>
+            <div class="slider-group">
+                <label><span>歷史天數 (天)</span><input type="number" id="input-days" class="param-input" min="5" max="365" value="60" oninput="updateDaysInput(this.value)" onchange="updateDaysInput(this.value)"></label>
+                <input type="range" id="slider-days" min="5" max="365" value="60" oninput="updateDaysSlider(this.value)">
+            </div>
+
+            <div class="menu-title-top" style="margin-top: 6px;">⚙️ 均線參數與顏色</div>
+            <div class="slider-group">
+                <label style="cursor:pointer;">
+                    <span>EMA 1 <span class="color-preview" id="preview-ema1" onclick="openColorPalette(1, event)"></span></span>
+                    <input type="number" id="input-ema1" class="param-input" min="1" max="400" value="76" oninput="updateEmaInput('ema1', this.value)" onchange="updateEmaInput('ema1', this.value)">
+                </label>
+                <input type="range" id="slider-ema1" min="1" max="400" value="76" oninput="updateEmaSlider('ema1', this.value)">
+            </div>
+            <div class="slider-group" style="margin-top: 6px;">
+                <label style="cursor:pointer;">
+                    <span>EMA 2 <span class="color-preview" id="preview-ema2" onclick="openColorPalette(2, event)"></span></span>
+                    <input type="number" id="input-ema2" class="param-input" min="1" max="400" value="380" oninput="updateEmaInput('ema2', this.value)" onchange="updateEmaInput('ema2', this.value)">
+                </label>
+                <input type="range" id="slider-ema2" min="1" max="400" value="380" oninput="updateEmaSlider('ema2', this.value)">
+            </div>
         </div>
     </div>
 
@@ -309,6 +477,10 @@
 
     <div class="charts-wrapper">
         <div class="chart-box">
+            <div class="chart-legend-overlay">
+                <span class="legend-item" id="legend-twn-ema1" onclick="toggleChartEma('twn', 1)">EMA80: --</span>
+                <span class="legend-item" id="legend-twn-ema2" onclick="toggleChartEma('twn', 2)">EMA400: --</span>
+            </div>
             <div class="chart-header-bar">
                 <div class="chart-title">📊 富台指 (TWN-1) 15K</div>
                 <button class="reset-zoom-btn" id="btn-reset-twn">回最新 K</button>
@@ -317,6 +489,10 @@
             <div id="chart-twn-main" class="main-chart"></div>
         </div>
         <div class="chart-box">
+            <div class="chart-legend-overlay">
+                <span class="legend-item" id="legend-txall-ema1" onclick="toggleChartEma('txall', 1)">EMA76: --</span>
+                <span class="legend-item" id="legend-txall-ema2" onclick="toggleChartEma('txall', 2)">EMA380: --</span>
+            </div>
             <div class="chart-header-bar">
                 <div class="chart-title">📊 台指全 (TX-1) 15K</div>
                 <button class="reset-zoom-btn" id="btn-reset-txall">回最新 K</button>
@@ -325,8 +501,12 @@
             <div id="chart-txall-main" class="main-chart"></div>
         </div>
         <div class="chart-box">
+            <div class="chart-legend-overlay">
+                <span class="legend-item" id="legend-tx-ema1" onclick="toggleChartEma('tx', 1)">EMA76: --</span>
+                <span class="legend-item" id="legend-tx-ema2" onclick="toggleChartEma('tx', 2)">EMA380: --</span>
+            </div>
             <div class="chart-header-bar">
-                <div class="chart-title">📊 台指期日 (TXAM-1) 15K</div>
+                <div class="chart-title">📊 台指期 (TXAM-1) 15K</div>
                 <button class="reset-zoom-btn" id="btn-reset-tx">回最新 K</button>
             </div>
             <div id="tooltip-tx" class="floating-tooltip"></div>
@@ -343,6 +523,140 @@
     let chartViewers = [];
     let lastFallbackTwn = 0;
 
+    let historyDays = 60; // 圖表顯示的歷史天數
+
+    // 台指期 / 台指全自訂均線設定
+    let ema1Period = 76;
+    let ema2Period = 380;
+    let ema1Color = '#ffcc66';
+    let ema2Color = '#00e1ff';
+    let activeColorEma = null;
+
+    // 富台指固定均線設定
+    let twnEma1Period = 80;
+    let twnEma2Period = 400;
+    let twnEma1Color = '#ffcc66';
+    let twnEma2Color = '#00e1ff';
+
+    // 漢堡選單開關控制
+    const menuToggleBtn = document.getElementById('menu-toggle-btn');
+    const menuDropdown = document.getElementById('menuDropdown');
+
+    menuToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.toggle('show');
+    });
+
+    menuDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    window.addEventListener('click', () => {
+        if (menuDropdown) menuDropdown.classList.remove('show');
+        const palette = document.getElementById('tvColorPalette');
+        if (palette) palette.style.display = 'none';
+    });
+
+    // TradingView 風格色票矩陣
+    const tvColors = [
+        "#ffffff", "#d9d9d9", "#b3b3b3", "#8c8c8c", "#666666", "#404040", "#262626", "#1a1a1a", "#0d0d0d", "#000000",
+        "#f44336", "#e91e63", "#9c27b0", "#673ab7", "#3f51b5", "#2196f3", "#03a9f4", "#00bcd4", "#009688", "#4caf50",
+        "#ff5722", "#ff9800", "#ffeb3b", "#cddc39", "#8bc34a", "#00e676", "#1de9b6", "#00e5ff", "#2979ff", "#651fff",
+        "#ff8a80", "#ff80ab", "#ea80fc", "#b388ff", "#8c9eff", "#80d8ff", "#84ffff", "#a7ffeb", "#b9f6ca", "#f4ff81",
+        "#ffe082", "#ffcc80", "#ffab91", "#bcaaa4", "#eeeeee", "#b0bec5", "#78909c", "#455a64", "#37474f", "#263238"
+    ];
+
+    function initColorPaletteGrid() {
+        const grid = document.getElementById('tvColorGrid');
+        grid.innerHTML = '';
+        tvColors.forEach(hex => {
+            const cell = document.createElement('div');
+            cell.className = 'tv-color-cell';
+            cell.style.backgroundColor = hex;
+            cell.onclick = (e) => {
+                e.stopPropagation();
+                selectPaletteColor(hex);
+            };
+            grid.appendChild(cell);
+        });
+    }
+
+    function openColorPalette(index, event) {
+        event.stopPropagation();
+        activeColorEma = index;
+        const palette = document.getElementById('tvColorPalette');
+        const rect = event.target.getBoundingClientRect();
+        
+        palette.style.display = 'block';
+        palette.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+        palette.style.left = (rect.left + window.scrollX - 80) + 'px';
+    }
+
+    function selectPaletteColor(hex) {
+        if (activeColorEma !== null) {
+            updateEmaColor(activeColorEma, hex);
+        }
+        document.getElementById('tvColorPalette').style.display = 'none';
+    }
+
+    function updateEmaColor(index, color) {
+        if (index === 1) {
+            ema1Color = color;
+            document.getElementById('preview-ema1').style.backgroundColor = color;
+        } else if (index === 2) {
+            ema2Color = color;
+            document.getElementById('preview-ema2').style.backgroundColor = color;
+        }
+        chartViewers.forEach(v => {
+            if (v.chartKey !== 'twn') v.updateColors();
+        });
+    }
+
+    function updateEmaInput(type, val) {
+        let num = parseInt(val);
+        if (isNaN(num) || num < 1) num = 1;
+        if (num > 400) num = 400;
+
+        if (type === 'ema1') {
+            ema1Period = num;
+            document.getElementById('slider-ema1').value = num;
+            document.getElementById('input-ema1').value = num;
+        } else if (type === 'ema2') {
+            ema2Period = num;
+            document.getElementById('slider-ema2').value = num;
+            document.getElementById('input-ema2').value = num;
+        }
+        chartViewers.forEach(v => {
+            if (v.chartKey !== 'twn') v.redraw();
+        });
+    }
+
+    function updateEmaSlider(type, val) {
+        updateEmaInput(type, val);
+    }
+
+    function updateDaysInput(val) {
+        let num = parseInt(val);
+        if (isNaN(num) || num < 5) num = 5;
+        if (num > 365) num = 365;
+        historyDays = num;
+        document.getElementById('slider-days').value = num;
+        document.getElementById('input-days').value = num;
+        
+        reloadChartDisplay();
+    }
+
+    function updateDaysSlider(val) {
+        updateDaysInput(val);
+    }
+
+    function toggleChartEma(chartKey, index) {
+        const viewer = chartViewers.find(v => v.chartKey === chartKey);
+        if (viewer) {
+            viewer.toggleVisibility(index);
+        }
+    }
+
     function getChartThemeOptions() {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         return {
@@ -358,13 +672,14 @@
                 timeVisible: true, 
                 secondsVisible: false,
                 rightOffset: 5,
-                barSpacing: 8
+                barSpacing: 12  // 放大 K 棒間距，使 K 線更寬敞清晰
             },
         };
     }
 
     function calculateEMA(data, period) {
         let results = [];
+        if (period <= 0 || data.length === 0) return results;
         let multiplier = 2 / (period + 1);
         let prevEMA = null;
         for (let i = 0; i < data.length; i++) {
@@ -379,25 +694,7 @@
         return results;
     }
 
-    function calculateCrossovers(bars, fastEMAData, slowEMAData) {
-        let markers = [];
-        for (let i = 1; i < bars.length; i++) {
-            let prevFast = fastEMAData[i - 1].value;
-            let prevSlow = slowEMAData[i - 1].value;
-            let currFast = fastEMAData[i].value;
-            let currSlow = slowEMAData[i].value;
-            let time = bars[i].time;
-
-            if (prevFast <= prevSlow && currFast > currSlow) {
-                markers.push({ time: time, position: 'belowBar', color: '#26a69a', shape: 'arrowUp', text: '金叉' });
-            } else if (prevFast >= prevSlow && currFast < currSlow) {
-                markers.push({ time: time, position: 'aboveBar', color: '#ef5350', shape: 'arrowDown', text: '死叉' });
-            }
-        }
-        return markers;
-    }
-
-    function createChartInstance(mainId, tooltipId, resetBtnId, fastEMA, slowEMA, tickSize) {
+    function createChartInstance(mainId, tooltipId, resetBtnId, prefixTickSize, chartKey) {
         const mainContainer = document.getElementById(mainId);
         const tooltipEl = document.getElementById(tooltipId);
         const resetBtn = document.getElementById(resetBtnId);
@@ -406,10 +703,10 @@
 
         const mainChart = LightweightCharts.createChart(mainContainer, {
             ...baseOpts,
-            timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: 8 }
+            timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: 12 }
         });
 
-        const decimals = tickSize < 1 ? 2 : 0;
+        const decimals = prefixTickSize < 1 ? 2 : 0;
 
         const candleSeries = mainChart.addCandlestickSeries({
             upColor: '#ef5350', downColor: '#26a69a', borderVisible: false,
@@ -417,19 +714,21 @@
             priceFormat: {
                 type: 'price',
                 precision: decimals,
-                minMove: tickSize,
+                minMove: prefixTickSize,
             }
         });
         const emaFastSeries = mainChart.addLineSeries({ 
-            color: '#ffcc66', lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
-            priceFormat: { type: 'price', precision: decimals, minMove: tickSize }
+            color: chartKey === 'twn' ? twnEma1Color : ema1Color, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, visible: true,
+            priceFormat: { type: 'price', precision: decimals, minMove: prefixTickSize }
         });
         const emaSlowSeries = mainChart.addLineSeries({ 
-            color: '#00e1ff', lineWidth: 2, priceLineVisible: false, lastValueVisible: false,
-            priceFormat: { type: 'price', precision: decimals, minMove: tickSize }
+            color: chartKey === 'twn' ? twnEma2Color : ema2Color, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, visible: true,
+            priceFormat: { type: 'price', precision: decimals, minMove: prefixTickSize }
         });
 
-        // 點擊按鈕或圖表時，立即滾動回最新 K 線
+        let ema1Visible = true;
+        let ema2Visible = true;
+
         const scrollToRealTime = () => {
             mainChart.timeScale().scrollToRealTime();
         };
@@ -437,34 +736,87 @@
         resetBtn.addEventListener('click', scrollToRealTime);
         mainContainer.addEventListener('dblclick', scrollToRealTime);
 
+        mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+            if (!viewer || viewer._currentBars.length === 0) return;
+            const logicalRange = mainChart.timeScale().getVisibleLogicalRange();
+            if (!logicalRange) return;
+
+            const bars = viewer._currentBars;
+            let minIdx = Math.max(0, Math.floor(logicalRange.from));
+            let maxIdx = Math.min(bars.length - 1, Math.ceil(logicalRange.to));
+
+            let highestPrice = -Infinity;
+            let lowestPrice = Infinity;
+            let highestTime = null;
+            let lowestTime = null;
+
+            for (let i = minIdx; i <= maxIdx; i++) {
+                if (bars[i]) {
+                    if (bars[i].high > highestPrice) {
+                        highestPrice = bars[i].high;
+                        highestTime = bars[i].time;
+                    }
+                    if (bars[i].low < lowestPrice) {
+                        lowestPrice = bars[i].low;
+                        lowestTime = bars[i].time;
+                    }
+                }
+            }
+
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            const markerColor = isDark ? '#ffeb3b' : '#000000'; // 深色模式黃色，淺色模式黑色
+
+            const markers = [];
+            if (highestTime !== null && highestPrice !== -Infinity) {
+                markers.push({
+                    time: highestTime,
+                    position: 'aboveBar',
+                    color: markerColor,
+                    shape: 'arrowDown',
+                    text: highestPrice.toFixed(decimals)
+                });
+            }
+            if (lowestTime !== null && lowestPrice !== Infinity) {
+                markers.push({
+                    time: lowestTime,
+                    position: 'belowBar',
+                    color: markerColor,
+                    shape: 'arrowUp',
+                    text: lowestPrice.toFixed(decimals)
+                });
+            }
+            candleSeries.setMarkers(markers);
+        });
+
         mainChart.subscribeCrosshairMove(param => {
             if (!param.time || param.point === undefined || param.point.x < 0 || param.point.x > mainContainer.clientWidth || param.point.y < 0 || param.point.y > mainContainer.clientHeight) {
                 tooltipEl.style.display = 'none';
                 return;
             }
             const data = param.seriesData.get(candleSeries);
+            const fastVal = param.seriesData.get(emaFastSeries);
+            const slowVal = param.seriesData.get(emaSlowSeries);
+
             if (data) {
                 const dateObj = new Date(param.time * 1000);
                 const timeStr = dateObj.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
-                const o = data.open.toFixed(decimals);
-                const h = data.high.toFixed(decimals);
-                const l = data.low.toFixed(decimals);
-                const c = data.close.toFixed(decimals);
                 
                 tooltipEl.style.display = 'block';
-                tooltipEl.innerHTML = `時間: ${timeStr}<br>開盤: ${o}<br>最高: ${h}<br>最低: ${l}<br>收盤: ${c}`;
+                tooltipEl.innerHTML = `時間: ${timeStr}<br>開: ${data.open.toFixed(decimals)} 高: ${data.high.toFixed(decimals)}<br>低: ${data.low.toFixed(decimals)} 收: ${data.close.toFixed(decimals)}`;
 
                 let x = param.point.x + 15;
                 let y = param.point.y + 15;
-                if (x + 110 > mainContainer.clientWidth) {
-                    x = param.point.x - 120;
-                }
-                if (y + 105 > mainContainer.clientHeight) {
-                    y = param.point.y - 110;
-                }
+                if (x + 110 > mainContainer.clientWidth) x = param.point.x - 120;
+                if (y + 85 > mainContainer.clientHeight) y = param.point.y - 90;
                 tooltipEl.style.left = x + 'px';
                 tooltipEl.style.top = y + 'px';
             }
+
+            const fPeriod = (chartKey === 'twn') ? twnEma1Period : ema1Period;
+            const sPeriod = (chartKey === 'twn') ? twnEma2Period : ema2Period;
+
+            document.getElementById(`legend-${chartKey}-ema1`).textContent = `EMA${fPeriod}: ${fastVal && fastVal.value ? fastVal.value.toFixed(decimals) : '--'}`;
+            document.getElementById(`legend-${chartKey}-ema2`).textContent = `EMA${sPeriod}: ${slowVal && slowVal.value ? slowVal.value.toFixed(decimals) : '--'}`;
         });
 
         const ro = new ResizeObserver(entries => {
@@ -474,21 +826,52 @@
         });
         ro.observe(mainContainer);
 
+        let cachedBars = [];
+
         const viewer = {
             mainChart,
+            chartKey,
+            _currentBars: [],
             setData(bars) {
+                cachedBars = bars;
+                this._currentBars = bars;
                 candleSeries.setData(bars);
-                const fastData = calculateEMA(bars, fastEMA);
-                const slowData = calculateEMA(bars, slowEMA);
+                this.redraw();
+                if (bars.length > 0) {
+                    mainChart.timeScale().scrollToRealTime();
+                }
+            },
+            redraw() {
+                if (cachedBars.length === 0) return;
+                const fPeriod = (this.chartKey === 'twn') ? twnEma1Period : ema1Period;
+                const sPeriod = (this.chartKey === 'twn') ? twnEma2Period : ema2Period;
+
+                const fastData = calculateEMA(cachedBars, fPeriod);
+                const slowData = calculateEMA(cachedBars, sPeriod);
 
                 emaFastSeries.setData(fastData);
                 emaSlowSeries.setData(slowData);
 
-                const markers = calculateCrossovers(bars, fastData, slowData);
-                candleSeries.setMarkers(markers);
-
-                if (bars.length > 0) {
-                    mainChart.timeScale().scrollToRealTime();
+                document.getElementById(`legend-${this.chartKey}-ema1`).textContent = `EMA${fPeriod}: ${fastData.length > 0 ? fastData[fastData.length-1].value.toFixed(decimals) : '--'}`;
+                document.getElementById(`legend-${this.chartKey}-ema2`).textContent = `EMA${sPeriod}: ${slowData.length > 0 ? slowData[slowData.length-1].value.toFixed(decimals) : '--'}`;
+            },
+            updateColors() {
+                if (this.chartKey !== 'twn') {
+                    emaFastSeries.applyOptions({ color: ema1Color });
+                    emaSlowSeries.applyOptions({ color: ema2Color });
+                }
+                document.getElementById(`legend-${this.chartKey}-ema1`).style.color = (this.chartKey === 'twn') ? twnEma1Color : ema1Color;
+                document.getElementById(`legend-${this.chartKey}-ema2`).style.color = (this.chartKey === 'twn') ? twnEma2Color : ema2Color;
+            },
+            toggleVisibility(index) {
+                if (index === 1) {
+                    ema1Visible = !ema1Visible;
+                    emaFastSeries.applyOptions({ visible: ema1Visible });
+                    document.getElementById(`legend-${this.chartKey}-ema1`).classList.toggle('hidden', !ema1Visible);
+                } else if (index === 2) {
+                    ema2Visible = !ema2Visible;
+                    emaSlowSeries.applyOptions({ visible: ema2Visible });
+                    document.getElementById(`legend-${this.chartKey}-ema2`).classList.toggle('hidden', !ema2Visible);
                 }
             }
         };
@@ -497,25 +880,30 @@
         return viewer;
     }
 
-    const twnViewer = createChartInstance('chart-twn-main', 'tooltip-twn', 'btn-reset-twn', 80, 400, 0.25);
-    const txAllViewer = createChartInstance('chart-txall-main', 'tooltip-txall', 'btn-reset-txall', 76, 380, 1);
-    const txViewer = createChartInstance('chart-tx-main', 'tooltip-tx', 'btn-reset-tx', 76, 380, 1);
+    const twnViewer = createChartInstance('chart-twn-main', 'tooltip-twn', 'btn-reset-twn', 0.25, 'twn');
+    const txAllViewer = createChartInstance('chart-txall-main', 'tooltip-txall', 'btn-reset-txall', 1, 'txall');
+    const txViewer = createChartInstance('chart-tx-main', 'tooltip-tx', 'btn-reset-tx', 1, 'tx');
 
     function toggleTheme() {
         const body = document.body;
         const btn = document.getElementById('theme-btn');
         if (body.getAttribute('data-theme') === 'light') {
             body.setAttribute('data-theme', 'dark');
-            btn.textContent = '☀️ 模式';
+            btn.textContent = '淺色模式';
         } else {
             body.setAttribute('data-theme', 'light');
-            btn.textContent = '🌙 模式';
+            btn.textContent = '深色模式';
         }
         const opts = getChartThemeOptions();
         chartViewers.forEach(v => {
             v.mainChart.applyOptions(opts);
+            v.setData(v._currentBars);
         });
     }
+
+    let rawTwnBars = [];
+    let rawTxAllBars = [];
+    let rawTxBars = [];
 
     const twnHistoryUrl = "https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TWN-1&resolution=15&from=1791077149&to=1791563149&ws=true&metaData=true";
     const txAllUrl = "https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TX-1&resolution=15&from=1788836942&to=1791563582&ws=true&metaData=true";
@@ -542,20 +930,25 @@
                 open: i.open, high: i.high, low: i.low, close: i.close
             })).sort((a,b) => a.time - b.time);
 
-            const formattedTwnBars = formatData(twnBars);
-            const formattedTxAllBars = formatData(txAllBars);
-            const formattedTxBars = formatData(txBars);
+            rawTwnBars = formatData(twnBars);
+            rawTxAllBars = formatData(txAllBars);
+            rawTxBars = formatData(txBars);
 
-            if (formattedTwnBars.length > 0) {
-                lastFallbackTwn = formattedTwnBars[formattedTwnBars.length - 1].close;
+            if (rawTwnBars.length > 0) {
+                lastFallbackTwn = rawTwnBars[rawTwnBars.length - 1].close;
             }
 
-            twnViewer.setData(formattedTwnBars);
-            txAllViewer.setData(formattedTxAllBars);
-            txViewer.setData(formattedTxBars);
+            reloadChartDisplay();
 
-            if (txBars.length > 0) {
-                const lastTxBar = txBars[txBars.length - 1];
+            chartViewers.forEach(v => {
+                v.updateColors();
+            });
+            initColorPaletteGrid();
+            document.getElementById('preview-ema1').style.backgroundColor = ema1Color;
+            document.getElementById('preview-ema2').style.backgroundColor = ema2Color;
+
+            if (rawTxBars.length > 0) {
+                const lastTxBar = rawTxBars[rawTxBars.length - 1];
                 txLastClose = lastTxBar.close;
                 
                 const d = new Date(normalizeTime(lastTxBar.time) * 1000);
@@ -568,8 +961,8 @@
                 document.getElementById('td-tx-close').textContent = txLastClose;
             }
 
-            const twnMap = new Map(formattedTwnBars.map(i => [i.time, i.close]));
-            const txMap = new Map(formattedTxBars.map(i => [i.time, i.close]));
+            const twnMap = new Map(rawTwnBars.map(i => [i.time, i.close]));
+            const txMap = new Map(rawTxBars.map(i => [i.time, i.close]));
 
             let allPairs = [];
             txMap.forEach((txClose, time) => {
@@ -620,6 +1013,20 @@
             console.error("初始化資料失敗:", e);
             document.getElementById('td-time').textContent = "讀取失敗";
         }
+    }
+
+    function reloadChartDisplay() {
+        if (rawTwnBars.length === 0) return;
+        const nowSec = Math.floor(Date.now() / 1000);
+        const cutoffTime = nowSec - (historyDays * 24 * 60 * 60);
+
+        const filteredTwn = rawTwnBars.filter(i => i.time >= cutoffTime);
+        const filteredTxAll = rawTxAllBars.filter(i => i.time >= cutoffTime);
+        const filteredTx = rawTxBars.filter(i => i.time >= cutoffTime);
+
+        twnViewer.setData(filteredTwn);
+        txAllViewer.setData(filteredTxAll);
+        txViewer.setData(filteredTx);
     }
 
     function evaluateSubset(pairs, name) {
