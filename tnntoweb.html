@@ -657,12 +657,11 @@
         }
     }
 
-    // 完全直接搬用 indexTab1.html 的時間軸與視圖設定
     function getChartThemeOptions() {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         return {
             layout: { 
-                background: { type: 'solid', color: isDark ? '#1e1e1e' : '#e6eaed' }, 
+                background: { color: isDark ? '#1e1e1e' : '#e6eaed' }, 
                 textColor: isDark ? '#d1d4dc' : '#4b6584' 
             },
             grid: { 
@@ -673,12 +672,7 @@
                 timeVisible: true, 
                 secondsVisible: false,
                 rightOffset: 5,
-                barSpacing: 6,         // 完美對齊 indexTab1 的 K 棒清爽間距
-                fixLeftEdge: true,     // 固定左邊界，滑動體驗最佳
-                tickMarkFormatter: (time, tickMarkType, locale) => {
-                    const date = new Date(time * 1000);
-                    return date.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
-                }
+                barSpacing: 12  // 放大 K 棒間距，使 K 線更寬敞清晰
             },
         };
     }
@@ -706,7 +700,11 @@
         const resetBtn = document.getElementById(resetBtnId);
 
         const baseOpts = getChartThemeOptions();
-        const mainChart = LightweightCharts.createChart(mainContainer, baseOpts);
+
+        const mainChart = LightweightCharts.createChart(mainContainer, {
+            ...baseOpts,
+            timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: 12 }
+        });
 
         const decimals = prefixTickSize < 1 ? 2 : 0;
 
@@ -731,7 +729,6 @@
         let ema1Visible = true;
         let ema2Visible = true;
 
-        // 與 indexTab1 相同的雙擊與按鈕重置行為：直接捲動回最新 K 棒
         const scrollToRealTime = () => {
             mainChart.timeScale().scrollToRealTime();
         };
@@ -767,7 +764,7 @@
             }
 
             const isDark = document.body.getAttribute('data-theme') === 'dark';
-            const markerColor = isDark ? '#ffeb3b' : '#000000';
+            const markerColor = isDark ? '#ffeb3b' : '#000000'; // 深色模式黃色，淺色模式黑色
 
             const markers = [];
             if (highestTime !== null && highestPrice !== -Infinity) {
@@ -840,9 +837,6 @@
                 this._currentBars = bars;
                 candleSeries.setData(bars);
                 this.redraw();
-                if (bars.length > 0) {
-                    mainChart.timeScale().scrollToRealTime();
-                }
             },
             redraw() {
                 if (cachedBars.length === 0) return;
@@ -1139,7 +1133,7 @@
         }, 1000);
     }
 
-    // 每 10 秒自動背景輪詢更新 K 棒資料
+    // 每 10 秒自動背景輪詢更新 K 棒資料，不需手動重整
     setInterval(async () => {
         try {
             const nowSec = Math.floor(Date.now() / 1000);
