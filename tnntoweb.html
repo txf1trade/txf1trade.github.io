@@ -657,11 +657,12 @@
         }
     }
 
+    // 完全直接搬用 indexTab1.html 的時間軸與視圖設定
     function getChartThemeOptions() {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         return {
             layout: { 
-                background: { color: isDark ? '#1e1e1e' : '#e6eaed' }, 
+                background: { type: 'solid', color: isDark ? '#1e1e1e' : '#e6eaed' }, 
                 textColor: isDark ? '#d1d4dc' : '#4b6584' 
             },
             grid: { 
@@ -672,7 +673,12 @@
                 timeVisible: true, 
                 secondsVisible: false,
                 rightOffset: 5,
-                barSpacing: 12  // 放大 K 棒間距，使 K 線更寬敞清晰
+                barSpacing: 6,         // 完美對齊 indexTab1 的 K 棒清爽間距
+                fixLeftEdge: true,     // 固定左邊界，滑動體驗最佳
+                tickMarkFormatter: (time, tickMarkType, locale) => {
+                    const date = new Date(time * 1000);
+                    return date.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                }
             },
         };
     }
@@ -700,11 +706,7 @@
         const resetBtn = document.getElementById(resetBtnId);
 
         const baseOpts = getChartThemeOptions();
-
-        const mainChart = LightweightCharts.createChart(mainContainer, {
-            ...baseOpts,
-            timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: 12 }
-        });
+        const mainChart = LightweightCharts.createChart(mainContainer, baseOpts);
 
         const decimals = prefixTickSize < 1 ? 2 : 0;
 
@@ -729,6 +731,7 @@
         let ema1Visible = true;
         let ema2Visible = true;
 
+        // 與 indexTab1 相同的雙擊與按鈕重置行為：直接捲動回最新 K 棒
         const scrollToRealTime = () => {
             mainChart.timeScale().scrollToRealTime();
         };
@@ -764,7 +767,7 @@
             }
 
             const isDark = document.body.getAttribute('data-theme') === 'dark';
-            const markerColor = isDark ? '#ffeb3b' : '#000000'; // 深色模式黃色，淺色模式黑色
+            const markerColor = isDark ? '#ffeb3b' : '#000000';
 
             const markers = [];
             if (highestTime !== null && highestPrice !== -Infinity) {
@@ -905,14 +908,18 @@
     let rawTxAllBars = [];
     let rawTxBars = [];
 
-    const twnHistoryUrl = "https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TWN-1&resolution=15&from=1791077149&to=1791563149&ws=true&metaData=true";
-    const txAllUrl = "https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TX-1&resolution=15&from=1788836942&to=1791563582&ws=true&metaData=true";
-    const txUrl = "https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TXAM-1&resolution=15&from=1788836942&to=1791563582&ws=true&metaData=true";
     const twnRealtimeUrl = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TWN-1";
 
     async function initDashboard() {
         document.getElementById('td-time').textContent = "更新中...";
         try {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const fromSec = nowSec - (120 * 24 * 60 * 60);
+
+            const twnHistoryUrl = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TWN-1&resolution=15&from=${fromSec}&to=${nowSec}&ws=true&metaData=true`;
+            const txAllUrl = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TX-1&resolution=15&from=${fromSec}&to=${nowSec}&ws=true&metaData=true`;
+            const txUrl = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TXAM-1&resolution=15&from=${fromSec}&to=${nowSec}&ws=true&metaData=true`;
+
             const [twnRes, txAllRes, txRes] = await Promise.all([
                 fetch(twnHistoryUrl).then(r => r.json()),
                 fetch(txAllUrl).then(r => r.json()),
@@ -1131,6 +1138,37 @@
             document.getElementById('timer').textContent = `${countdown}秒後更新`;
         }, 1000);
     }
+
+    // 每 10 秒自動背景輪詢更新 K 棒資料
+    setInterval(async () => {
+        try {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const fromSec = nowSec - (120 * 24 * 60 * 60);
+
+            const twnHistoryUrl = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TWN-1&resolution=15&from=${fromSec}&to=${nowSec}&ws=true&metaData=true`;
+            const txAllUrl = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TX-1&resolution=15&from=${fromSec}&to=${nowSec}&ws=true&metaData=true`;
+            const txUrl = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=TXAM-1&resolution=15&from=${fromSec}&to=${nowSec}&ws=true&metaData=true`;
+
+            const [twnRes, txAllRes, txRes] = await Promise.all([
+                fetch(twnHistoryUrl).then(r => r.json()),
+                fetch(txAllUrl).then(r => r.json()),
+                fetch(txUrl).then(r => r.json())
+            ]);
+
+            const normalizeTime = t => t > 1e10 ? Math.floor(t / 1000) : t;
+            const formatData = bars => (bars || []).map(i => ({
+                time: normalizeTime(i.time), open: i.open, high: i.high, low: i.low, close: i.close
+            })).sort((a,b) => a.time - b.time);
+
+            rawTwnBars = formatData(twnRes.bars);
+            rawTxAllBars = formatData(txAllRes.bars);
+            rawTxBars = formatData(txRes.bars);
+
+            reloadChartDisplay();
+        } catch (e) {
+            console.warn("背景自動更新 K 棒失敗:", e);
+        }
+    }, 10000);
 
     document.getElementById('refresh-btn').addEventListener('click', () => {
         initDashboard();
