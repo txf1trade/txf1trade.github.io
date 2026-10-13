@@ -147,12 +147,6 @@
             background: #2962ff;
         }
 
-        /* 透過控制項動態隱藏指定頁籤 */
-        body.hide-holiday-tab #tab-holiday { display: none !important; }
-        body.hide-commodity-tab #tab-commodity { display: none !important; }
-        body.hide-fx-tab #tab-fx { display: none !important; }
-        body.hide-usstock-tab #tab-usstock { display: none !important; }
-
         .menu-btn {
             background: #2962ff;
             color: #fff;
@@ -300,8 +294,8 @@
             position: fixed;
             bottom: 85px;
             right: 20px;
-            width: 330px;
-            max-height: 480px;
+            width: 350px;
+            max-height: 520px;
             background: #1e222d;
             border: 1px solid #2962ff;
             border-radius: 8px;
@@ -331,7 +325,7 @@
             line-height: 1.6;
             white-space: pre-line;
             overflow-y: auto;
-            max-height: 390px;
+            max-height: 430px;
             scrollbar-width: thin;
         }
 
@@ -439,7 +433,7 @@
         @keyframes flashRed { 0% { background-color: rgba(255, 77, 90, 0.4); } 100% { background-color: transparent; } }
     </style>
 </head>
-<body class="hide-commodity-tab hide-fx-tab">
+<body>
 
     <!-- 獨立第一層：標題欄 -->
     <div class="top-header">
@@ -465,11 +459,10 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="filterCategory('ALL')">全部 (39)</button>
             <button class="tab-btn" onclick="filterCategory('WATCHLIST')" id="tab-watchlist">自選 (0)</button>
-            <button class="tab-btn" onclick="filterCategory('HOLIDAY')" id="tab-holiday">連假</button>
             <button class="tab-btn" onclick="filterCategory('INDEX')">指數期</button>
-            <button class="tab-btn" onclick="filterCategory('COMMODITY')" id="tab-commodity">能源/金屬</button>
-            <button class="tab-btn" onclick="filterCategory('FX')" id="tab-fx">外匯期</button>
-            <button class="tab-btn" onclick="filterCategory('US_STOCK')" id="tab-usstock">美股/ADR</button>
+            <button class="tab-btn" onclick="filterCategory('COMMODITY')">能源/金屬</button>
+            <button class="tab-btn" onclick="filterCategory('FX')">外匯期</button>
+            <button class="tab-btn" onclick="filterCategory('US_STOCK')">美股/ADR</button>
         </div>
 
         <button class="menu-btn" onclick="toggleDrawer(event)">☰</button>
@@ -509,24 +502,9 @@
                 <input type="range" id="font-size-range" min="10" max="18" value="13" oninput="changeFontSize(this.value)">
             </div>
 
-            <div style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
-                <div style="color: var(--text-muted); font-size: 11px; font-weight: bold; margin-top: 2px;">群組頁籤顯示</div>
-                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="chk-holiday-tab" checked onchange="updateColumnVisibility()"> 連假
-                </label>
-                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="chk-commodity-tab" onchange="updateColumnVisibility()"> 能源金屬
-                </label>
-                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="chk-fx-tab" onchange="updateColumnVisibility()"> 外匯
-                </label>
-                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="chk-usstock-tab" checked onchange="updateColumnVisibility()"> 美股
-                </label>
-
-                <div style="color: var(--text-muted); font-size: 11px; font-weight: bold; margin-top: 6px;">其他功能</div>
-                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="chk-ai" checked onchange="updateColumnVisibility()"> AI 助理按鈕
+            <div style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                <label style="color: var(--text-sub); font-weight: bold; font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-ai" checked onchange="updateColumnVisibility()"> 🤖 AI 助理按鈕
                 </label>
             </div>
         </div>
@@ -570,21 +548,19 @@
     <!-- 右下角 AI 分析對話彈窗 (預設隱藏) -->
     <div id="ai-dialog" class="ai-dialog-panel">
         <div class="ai-dialog-header">
-            <span id="ai-dialog-title">🤖 AI 總經智算面板</span>
+            <span id="ai-dialog-title">🤖 AI 總經與期權智算面板</span>
             <span style="cursor:pointer;" onclick="toggleAIDialog(false)">✕</span>
         </div>
         <div id="ai-dialog-body" class="ai-dialog-body">讀取即時數據分析中...</div>
     </div>
 
     <script>
-        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TWN-1,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,BTCUSDT,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
-
-        // 連假觀察清單 (自動扣重)[cite: 1]
-        const HOLIDAY_SYMBOLS = ["TX-1", "TWN-1", "YM-1", "NQ-1", "ES-1", "GC-1", "HG-1", "DX-1", "JY-1", "NVDA", "GOOGL", "AAPL", "TSM", "META", "MU", "BTCUSDT"];
+        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TWN-1,TAIWANVIX,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,BTCUSDT,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
 
         const SYMBOL_META = {
             "TX-1": { name: "台指期", category: "INDEX" },
             "TWN-1": { name: "富台指", category: "INDEX" },
+            "TAIWANVIX": { name: "波動率", category: "INDEX" },
             "NK-1": { name: "日經225", category: "INDEX" },
             "CN-1": { name: "中國A50", category: "INDEX" },
             "HSI-1": { name: "恆生期", category: "INDEX" },
@@ -696,7 +672,6 @@
             }
         }
 
-        // 💡 無需 API Key 的即時市場邏輯智算引擎
         function runAIAnalysis() {
             const bodyEl = document.getElementById("ai-dialog-body");
             const titleEl = document.getElementById("ai-dialog-title");
@@ -705,9 +680,8 @@
             const hour = now.getHours();
             const isNightSession = (hour >= 15 || hour < 5);
 
-            titleEl.innerText = isNightSession ? "🌙 AI 夜盤總經智算" : "☀️ AI 日盤總經智算";
+            titleEl.innerText = isNightSession ? "🌙 AI 總經與台指期夜盤智算" : "☀️ AI 總經與台指期日盤智算";
 
-            // 取得標的數據輔助函式
             const getSymbolInfo = (sym) => {
                 const q = quotesData[sym];
                 if (!q) return { close: 0, prevRef: 0, diff: 0, pct: 0 };
@@ -716,58 +690,58 @@
                 return { close: q.close, prevRef: q.prevRef, diff, pct };
             };
 
+            // 核心監控標的抓取
+            const tx = getSymbolInfo("TX-1");
+            const twn = getSymbolInfo("TWN-1");
+            const vix = getSymbolInfo("TAIWANVIX");
+            const nq = getSymbolInfo("NQ-1");
+            const tsm = getSymbolInfo("TSM");
             const oil = getSymbolInfo("CL-1");
             const gold = getSymbolInfo("GC-1");
-            const nq = getSymbolInfo("NQ-1");
-            const tx = getSymbolInfo("TX-1");
-            const tsm = getSymbolInfo("TSM");
-            const nvda = getSymbolInfo("NVDA");
 
-            // 地緣與避險狀態評估
-            let statusTag = "";
-            let riskAssessment = "";
-            let actionSuggestion = "";
-
-            if (oil.pct > 1.5 || gold.pct > 1.0) {
-                statusTag = "⚠️ 地緣升溫 / 避險需求抬頭";
-                riskAssessment = `紐約原油目前報 ${fmt(oil.close)}，高於昨收基準 ${fmt(oil.prevRef)}。地緣政治情緒推升能源與黃金避險買盤。`;
-            } else if (oil.pct < -1.2) {
-                statusTag = "📉 恐慌釋放 / 能源溢價回落";
-                riskAssessment = `原油走弱至 ${fmt(oil.close)}（昨收 ${fmt(oil.prevRef)}），地緣政治利空對市場衝擊邊際遞減。`;
+            // 1. 波動率 (VIX) 風控判定
+            let vixEval = "";
+            let vixVal = vix.close || 16.0;
+            if (vixVal > 20) {
+                vixEval = `🔥 台指波動率 VIX 高達 ${fmt(vixVal, 1)} (>20)，市場恐慌情緒濃厚，選擇權買方優勢明顯，期貨應嚴格縮小部位並提高停損頻率。`;
+            } else if (vixVal < 14) {
+                vixEval = `🛡️ 台指波動率 VIX 僅 ${fmt(vixVal, 1)} (<14)，市場處於低波動緩漲或盤整期，慎防突發性變盤或騙線。`;
             } else {
-                statusTag = "⚖️ 總經橫盤 / 避險資產狹幅震盪";
-                riskAssessment = `紐約原油維持在昨收 ${fmt(oil.prevRef)} 附近整理，整體避險情緒持平。`;
+                vixEval = `⚖️ 台指波動率 VIX 位於 ${fmt(vixVal, 1)} 的常態區間，多空交戰均衡。`;
             }
 
-            // 盤別與科技/權值股動態邏輯
-            if (isNightSession) {
-                if (tsm.pct >= 0 || nq.pct >= 0) {
-                    actionSuggestion = `台積電 ADR (昨收 ${fmt(tsm.prevRef)}) 與納指期 (昨收 ${fmt(nq.prevRef)}) 展現強勁防禦力。若油價不再創高，夜盤台指期容易開啟利空出盡型強烈反彈。`;
-                } else {
-                    actionSuggestion = `海外科技股偏弱，夜盤操作宜密切關注台指期昨收線 ${fmt(tx.prevRef)} 附近的支撐韌性。`;
-                }
+            // 2. 跨市場與總經連動判定 (台指期、富台指、美股 ADR、納指、原油)
+            let macroDirection = "";
+            let actionAdvice = "";
+
+            const isTxBull = tx.pct > 0.2 || twn.pct > 0.2;
+            const isTxBear = tx.pct < -0.2 || twn.pct < -0.2;
+            const isNqBull = nq.pct > 0.3;
+            const isNqBear = nq.pct < -0.3;
+            const isTsmStrong = tsm.pct > 0.4;
+
+            if (isTxBull && isNqBull) {
+                macroDirection = "🟢 【偏多格局】台指期與富台指連袂上揚，配合納指期電子盤走強，跨市場資金情緒積極。";
+                actionAdvice = `• 交易建議：可於拉回時尋求帶量支撐點偏多操作。\n• 風控指引：停損設於近期關鍵防守價，若 VIX 隨指數下滑可適度抱單。`;
+            } else if (isTxBear || isNqBear) {
+                macroDirection = "🔴 【防守警戒】台指期與海外期貨面臨修正壓力，避險情緒升溫。";
+                actionAdvice = `• 交易建議：高檔空方轉弱或跌破平盤時可順勢執行短空，避免盲目抄底。\n• 風控指引：留意油金避險買盤，嚴格控管槓桿與部位。`;
             } else {
-                if (nq.pct > 0.3) {
-                    actionSuggestion = `國際期貨電子盤氛圍偏多，日盤台指期可隨跨市場資金回流尋求反彈點。`;
-                } else {
-                    actionSuggestion = `日盤持續觀察原油與黃金昨收防線，等待短線情緒賣壓消化後的轉折訊號。`;
-                }
+                macroDirection = "⚖️ 【震盪整理】指數與期貨多空拉鋸，缺乏強勢方向性指引。";
+                actionAdvice = `• 交易建議：採取區間高出低進策略，避免追價。\n• 風控指引：等待 VIX 變動或台積電 ADR (${fmt(tsm.close)}) 出現明確突破方向再行擴大部位。`;
             }
 
-            // 組裝純文字內容
-            let content = `📌 【關鍵昨收價格基準】\n` +
-                `• 紐約原油 (CL-1)：${fmt(oil.prevRef)}\n` +
-                `• 黃金 (GC-1)：${fmt(gold.prevRef)}\n` +
-                `• 納指期 (NQ-1)：${fmt(nq.prevRef)}\n`;
-
-            if (isNightSession) {
-                content += `• 台積電 ADR (TSM)：${fmt(tsm.prevRef)}\n` +
-                           `• 輝達 (NVDA)：${fmt(nvda.prevRef)}\n`;
-            }
-
-            content += `• 台指期 (TX-1)：${fmt(tx.prevRef)}\n\n` +
-                `📊 【市場狀態評估】\n${statusTag}\n${riskAssessment}\n\n` +
-                `💡 【跨市場轉折判斷】\n${actionSuggestion}`;
+            // 組合輸出報告
+            let content = `📌 【核心商品即時狀態】\n` +
+                `• 台指期 (TX-1)：${fmt(tx.close)} (${tx.pct >= 0 ? '+' : ''}${fmt(tx.pct)}%)\n` +
+                `• 富台指 (TWN-1)：${fmt(twn.close)} (${twn.pct >= 0 ? '+' : ''}${fmt(twn.pct)}%)\n` +
+                `• 台指波動率 (TAIWANVIX)：${fmt(vix.close, 2)}\n` +
+                `• 納指期 (NQ-1)：${fmt(nq.close)} (${nq.pct >= 0 ? '+' : ''}${fmt(nq.pct)}%)\n` +
+                `• 台積電 ADR (TSM)：${fmt(tsm.close)} (${tsm.pct >= 0 ? '+' : ''}${fmt(tsm.pct)}%)\n` +
+                `• 紐約原油 (CL-1)：${fmt(oil.close)} | 黃金 (GC-1)：${fmt(gold.close)}\n\n` +
+                `📊 【波動率風控診斷】\n${vixEval}\n\n` +
+                `🌐 【總經與跨市場智算】\n${macroDirection}\n\n` +
+                `💡 【具體交易與風控建議】\n${actionAdvice}`;
 
             bodyEl.innerText = content;
         }
@@ -806,7 +780,7 @@
             updateColumnVisibility();
         }
 
-        // 控制表格欄位顯隱 & 右下角 AI 助理按鈕/面板整體顯隱 & 各頁籤顯隱
+        // 控制表格欄位顯隱 & 右下角 AI 助理按鈕/面板整體顯隱
         function updateColumnVisibility() {
             const container = document.getElementById("table-container");
             const body = document.body;
@@ -817,23 +791,6 @@
                 const isChecked = document.getElementById(`chk-${col}`).checked;
                 container.classList.toggle(`hide-${col}`, !isChecked);
             });
-
-            // 各群組頁籤顯隱控制
-            const isHolidayTabChecked = document.getElementById("chk-holiday-tab").checked;
-            body.classList.toggle("hide-holiday-tab", !isHolidayTabChecked);
-            if (!isHolidayTabChecked && currentCategory === "HOLIDAY") filterCategory('ALL');
-
-            const isCommodityTabChecked = document.getElementById("chk-commodity-tab").checked;
-            body.classList.toggle("hide-commodity-tab", !isCommodityTabChecked);
-            if (!isCommodityTabChecked && currentCategory === "COMMODITY") filterCategory('ALL');
-
-            const isFxTabChecked = document.getElementById("chk-fx-tab").checked;
-            body.classList.toggle("hide-fx-tab", !isFxTabChecked);
-            if (!isFxTabChecked && currentCategory === "FX") filterCategory('ALL');
-
-            const isUsStockTabChecked = document.getElementById("chk-usstock-tab").checked;
-            body.classList.toggle("hide-usstock-tab", !isUsStockTabChecked);
-            if (!isUsStockTabChecked && currentCategory === "US_STOCK") filterCategory('ALL');
 
             // AI 助理整體顯隱控制
             const isAIChecked = document.getElementById("chk-ai").checked;
@@ -852,8 +809,7 @@
                 const q = quotesData[symbol];
 
                 if (currentCategory === "WATCHLIST" && !watchlist.includes(symbol)) return;
-                if (currentCategory === "HOLIDAY" && !HOLIDAY_SYMBOLS.includes(symbol)) return;
-                if (currentCategory !== "ALL" && currentCategory !== "WATCHLIST" && currentCategory !== "HOLIDAY" && meta.category !== currentCategory) return;
+                if (currentCategory !== "ALL" && currentCategory !== "WATCHLIST" && meta.category !== currentCategory) return;
                 if (filterKeyword && !symbol.includes(filterKeyword) && !meta.name.includes(filterKeyword)) return;
                 if (!q) return;
 
@@ -930,7 +886,6 @@
                 if (Array.isArray(list)) {
                     list.forEach(updateRow);
                 }
-                // 🕒 使用 24 小時制更新時間顯示 (HH:mm:ss)
                 document.getElementById("update-time").innerText = `更新於 ${new Date().toLocaleTimeString('zh-TW', { hour12: false })}`;
             } catch (e) {
                 document.getElementById("update-time").innerText = "連線異常";
