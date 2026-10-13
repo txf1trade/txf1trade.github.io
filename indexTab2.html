@@ -1,5 +1,5 @@
 <!-- 
-    股期監控-專業優化整合版 (含兩列式 Mode 控制面板、跌停榜功能、獨立 K 線欄位、檔數統計欄)
+    股期監控-專業優化整合版 (含兩列式 Mode 控制面板、跌停榜功能、獨立 K 線欄位、檔數統計欄、VIX波動率)
 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -329,6 +329,21 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 新增 TAIWANVIX 波動率方塊 -->
+            <div class="index-box">
+                <div class="index-header"><span class="index-title">台指波動率</span></div>
+                <div class="index-content-row">
+                    <svg id="vix-k-candle" width="12" height="24" viewBox="0 0 12 24" style="display: none;">
+                        <line class="wick" x1="6" y1="1" x2="6" y2="23" stroke-width="1.5" />
+                        <rect class="body" x="2" width="8" rx="1" ry="1" />
+                    </svg>
+                    <div class="index-details">
+                        <div id="vix-price" class="index-price">--</div>
+                        <div id="vix-chg" class="index-chg" style="color: #888;">--</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 兩列式模式選擇區 -->
@@ -633,13 +648,52 @@
         return null;
     }
 
+    async function fetchVixQuote() {
+        try {
+            const url = "https://tv-signalr.futures-op.com/history?symbol=TAIWANVIX&resolution=1&ws=true&intraday=true";
+            const res = await fetch(url, { cache: "no-cache" });
+            if (!res.ok) return null;
+            const json = await res.json();
+            const list = json && Array.isArray(json.bars) ? json.bars : [];
+            if (list.length === 0) return null;
+
+            const prevRef = json.prevRef !== undefined ? json.prevRef : 
+                            (json.meta && json.meta.prevRef !== undefined ? json.meta.prevRef : list[0].open);
+            
+            const openPrice = list[0].open;
+            const latestPrice = list[list.length - 1].close;
+
+            let highPrice = -Infinity;
+            let lowPrice = Infinity;
+            list.forEach(item => {
+                if (item.high > highPrice) highPrice = item.high;
+                if (item.low < lowPrice) lowPrice = item.low;
+            });
+
+            const diff = latestPrice - prevRef;
+            const pct = prevRef ? (diff / prevRef) * 100 : 0;
+            return {
+                open: openPrice,
+                high: highPrice,
+                low: lowPrice,
+                price: latestPrice,
+                diff: diff,
+                pct: pct
+            };
+        } catch (e) {
+            console.warn(`[VIX API 抓取失敗]:`, e);
+        }
+        return null;
+    }
+
     async function fetchMarketIndices() {
         const txSymbol = (txMode === 'full') ? 'TX-1' : 'TXAM-1';
         
-        const [tse, otc, tx] = await Promise.all([
+        const [tse, otc, tx, vix] = await Promise.all([
             fetchTvApiQuote('TSEA'),
             fetchTvApiQuote('OTCA'),
-            fetchTvApiQuote(txSymbol)
+            fetchTvApiQuote(txSymbol),
+            fetchVixQuote()
         ]);
 
         if (tse) {
@@ -653,6 +707,10 @@
         if (tx) {
             updateIndexUI('tx', tx.price, tx.diff, tx.pct, true);
             renderMicroCandle('tx-k-candle', tx.open, tx.high, tx.low, tx.price);
+        }
+        if (vix) {
+            updateIndexUI('vix', vix.price, vix.diff, vix.pct, false);
+            renderMicroCandle('vix-k-candle', vix.open, vix.high, vix.low, vix.price);
         }
     }
 
@@ -804,9 +862,7 @@
         const isShowOtc = document.getElementById('show-otc').checked;
         const showVol = document.getElementById('col-vol').checked;
 
-        // 控制總量欄位顯隱
         dom.thVol.style.display = showVol ? '' : 'none';
-
         dom.clearSearch.style.display = searchQuery ? 'block' : 'none';
         dom.favCountText.innerText = favList.length;
 
