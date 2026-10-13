@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台指期即時報價</title>
+  <title>台指期即時報價與波動率監控</title>
   <style>
     * {
       box-sizing: border-box;
@@ -30,9 +30,8 @@
       border-radius: 12px;
       padding: 24px;
       width: 100%;
-      max-width: 320px;
+      max-width: 400px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      text-align: center;
     }
 
     .header {
@@ -122,6 +121,7 @@
       font-size: 16px;
       font-weight: 700;
       font-family: monospace;
+      text-align: center;
     }
 
     .metrics-box {
@@ -147,11 +147,59 @@
       color: #e0e0e0;
     }
 
+    /* 波動率圖表卡片樣式 */
+    .vix-card {
+      background: #1e222d;
+      border: 1px solid #2a2e39;
+      border-radius: 12px;
+      padding: 16px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .vix-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .vix-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .vix-stats-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: monospace;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .vix-canvas-container {
+      width: 100%;
+      height: 160px;
+      position: relative;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
     /* 觸發彈出面板的按鈕樣式 */
     .external-link-btn {
       display: block;
       width: 100%;
-      max-width: 320px;
+      max-width: 400px;
       background: #2a2e39;
       color: #b2b5be;
       text-decoration: none;
@@ -172,7 +220,7 @@
 
     /* 彈出面板 (Modal) 樣式 */
     .modal-overlay {
-      display: none; /* 預設隱藏 */
+      display: none;
       position: fixed;
       top: 0;
       left: 0;
@@ -200,12 +248,6 @@
       flex-direction: column;
       box-shadow: 0 15px 40px rgba(0,0,0,0.6);
       overflow: hidden;
-      animation: modalFadeIn 0.25s ease;
-    }
-
-    @keyframes modalFadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
     }
 
     .modal-header {
@@ -260,6 +302,7 @@
 </head>
 <body>
 
+<!-- 台指期卡片 -->
 <div class="card">
   <div class="header">
     <div class="symbol-title">
@@ -282,7 +325,6 @@
       </svg>
       <div class="price-value neutral" id="close-price">-----</div>
     </div>
-    
     <div class="change-info neutral" id="change-price">-- (--%)</div>
   </div>
 
@@ -298,6 +340,27 @@
   </div>
 </div>
 
+<!-- 仿造圖片樣式的台指波動率 (TAIWANVIX) 卡片 -->
+<div class="vix-card">
+  <div class="vix-card-header">
+    <div class="vix-title-group">
+      <svg id="vix-mini-candle" width="14" height="28" viewBox="0 0 22 46" style="display:none;">
+        <line id="vix-wick" x1="11" y1="2" x2="11" y2="44" stroke-width="2" />
+        <rect id="vix-body" x="5" width="12" rx="1" ry="1" />
+      </svg>
+      <span>台指波動率 VIX</span>
+    </div>
+    <div class="vix-stats-group">
+      <span id="vix-current-val" class="neutral">--</span>
+      <span id="vix-change-val" class="neutral">--</span>
+      <span id="vix-pct-val" class="neutral">--%</span>
+    </div>
+  </div>
+  <div class="vix-canvas-container">
+    <canvas id="vixCanvas"></canvas>
+  </div>
+</div>
+
 <!-- 觸發彈出面板的按鈕 -->
 <button class="external-link-btn" onclick="openModal()">
   🔗 富台換算台指
@@ -307,39 +370,29 @@
 <div class="modal-overlay" id="twnModal" onclick="handleOutsideClick(event)">
   <div class="modal-content">
     <div class="modal-header">
-      <span class="modal-title">📊 富台轉換台指期</span>
+      <span class="modal-title">📊 富時台轉換成台指期</span>
       <button class="close-modal-btn" onclick="closeModal()">✕ 關閉</button>
     </div>
     <div class="modal-body">
-      <!-- 內嵌你的富台換算網頁 -->
       <iframe src="https://txf1trade.github.io/tnntoweb" id="twnIframe"></iframe>
     </div>
   </div>
 </div>
 
 <script>
-  // 控制彈出面板開關（加入重新載入 iframe 解決圖表黑掉問題）
   function openModal() {
     const modal = document.getElementById('twnModal');
     const iframe = document.getElementById('twnIframe');
-    
     modal.classList.add('active');
-    
-    // 確保視窗展開後 iframe 重新抓取正確寬高渲染圖表
-    if (iframe) {
-      iframe.src = iframe.src;
-    }
+    if (iframe) iframe.src = iframe.src;
   }
 
   function closeModal() {
     document.getElementById('twnModal').classList.remove('active');
   }
 
-  // 點擊面板外部的半透明黑色背景也可以直接關閉
   function handleOutsideClick(event) {
-    if (event.target.id === 'twnModal') {
-      closeModal();
-    }
+    if (event.target.id === 'twnModal') closeModal();
   }
 
   let currentSession = 'day';
@@ -359,54 +412,39 @@
 
   function updateLiveClock() {
     const now = new Date();
-    const timeString = now.toLocaleTimeString('zh-TW', { hour12: false });
-    document.getElementById('update-time').innerText = timeString;
+    document.getElementById('update-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: false });
   }
   
   updateLiveClock();
   setInterval(updateLiveClock, 1000);
 
-  function renderMicroCandle(open, high, low, close) {
-    const svg = document.getElementById('k-candle');
-    const wick = document.getElementById('candle-wick');
-    const body = document.getElementById('candle-body');
-
+  function renderMicroCandle(wickEl, bodyEl, svgEl, open, high, low, close) {
     const maxP = Math.max(open, high, low, close);
     const minP = Math.min(open, high, low, close);
     const range = (maxP - minP) || 1;
 
     const svgHeight = 42; 
     const paddingTop = 2;
-
     const getY = (price) => paddingTop + (maxP - price) / range * svgHeight;
-
-    const highY = getY(high);
-    const lowY = getY(low);
-    const openY = getY(open);
-    const closeY = getY(close);
 
     const isUp = close >= open;
     const colorHex = isUp ? '#f23645' : '#089981';
 
-    wick.setAttribute('y1', highY);
-    wick.setAttribute('y2', lowY);
-    wick.setAttribute('stroke', colorHex);
+    wickEl.setAttribute('y1', getY(high));
+    wickEl.setAttribute('y2', getY(low));
+    wickEl.setAttribute('stroke', colorHex);
 
-    const bodyTop = Math.min(openY, closeY);
-    const bodyHeight = Math.max(Math.abs(closeY - openY), 3);
+    bodyEl.setAttribute('y', Math.min(getY(open), getY(close)));
+    bodyEl.setAttribute('height', Math.max(Math.abs(getY(close) - getY(open)), 3));
+    bodyEl.setAttribute('fill', colorHex);
 
-    body.setAttribute('y', bodyTop);
-    body.setAttribute('height', bodyHeight);
-    body.setAttribute('fill', colorHex);
-
-    svg.style.display = 'block';
+    svgEl.style.display = 'block';
   }
 
   async function fetchQuoteData() {
     try {
-      const url = getApiUrl();
-      const response = await fetch(url, { cache: "no-cache" });
-      if (!response.ok) throw new Error(`HTTP 錯誤: ${response.status}`);
+      const response = await fetch(getApiUrl(), { cache: "no-cache" });
+      if (!response.ok) return;
       
       const data = await response.json();
       if (!Array.isArray(data) || data.length === 0) return;
@@ -415,10 +453,7 @@
       const latest = data[data.length - 1];
       const currentPrice = latest.close;
 
-      let sessionHigh = -Infinity;
-      let sessionLow = Infinity;
-      let totalVolume = 0;
-
+      let sessionHigh = -Infinity, sessionLow = Infinity, totalVolume = 0;
       data.forEach(item => {
         if (item.high > sessionHigh) sessionHigh = item.high;
         if (item.low < sessionLow) sessionLow = item.low;
@@ -427,9 +462,7 @@
 
       const changeVal = currentPrice - sessionOpenPrice;
       const changePercent = ((changeVal / sessionOpenPrice) * 100).toFixed(2);
-      
-      const isUp = changeVal > 0;
-      const isDown = changeVal < 0;
+      const isUp = changeVal > 0, isDown = changeVal < 0;
       const colorClass = isUp ? 'up' : (isDown ? 'down' : 'neutral');
       const sign = isUp ? '+' : '';
 
@@ -445,15 +478,218 @@
       document.getElementById('session-open').innerText = sessionOpenPrice.toLocaleString();
       document.getElementById('total-volume').innerText = `${totalVolume.toLocaleString()} 口`;
 
-      renderMicroCandle(sessionOpenPrice, sessionHigh, sessionLow, currentPrice);
+      renderMicroCandle(
+        document.getElementById('candle-wick'), 
+        document.getElementById('candle-body'), 
+        document.getElementById('k-candle'), 
+        sessionOpenPrice, sessionHigh, sessionLow, currentPrice
+      );
+    } catch (err) {
+      console.error("台指期報價更新失敗：", err);
+    }
+  }
+
+  // 抓取並繪製 TAIWANVIX 走勢圖（精準對齊最高最低點圖示旁）
+  async function fetchAndRenderVIX() {
+    try {
+      const vixUrl = "https://tv-signalr.futures-op.com/history?symbol=TAIWANVIX&resolution=1&ws=true&intraday=true";
+      const response = await fetch(vixUrl, { cache: "no-cache" });
+      if (!response.ok) return;
+
+      const json = await response.json();
+      const list = json && Array.isArray(json.bars) ? json.bars : [];
+      if (list.length === 0) return;
+
+      const openPrice = list[0].open;
+      const latest = list[list.length - 1];
+      const currentVal = latest.close;
+
+      let highVal = -Infinity, lowVal = Infinity;
+      let highIdx = 0, lowIdx = 0;
+
+      list.forEach((item, idx) => {
+        if (item.close > highVal) {
+          highVal = item.close;
+          highIdx = idx;
+        }
+        if (item.close < lowVal) {
+          lowVal = item.close;
+          lowIdx = idx;
+        }
+      });
+
+      const changeVal = currentVal - openPrice;
+      const changePct = openPrice ? (changeVal / openPrice) * 100 : 0;
+      const isUp = changeVal > 0, isDown = changeVal < 0;
+      const colorClass = isUp ? 'up' : (isDown ? 'down' : 'neutral');
+      const sign = isUp ? '+' : '';
+
+      // 更新頂部數值
+      const curEl = document.getElementById('vix-current-val');
+      curEl.innerText = currentVal.toFixed(2);
+      curEl.className = colorClass;
+
+      const chgEl = document.getElementById('vix-change-val');
+      chgEl.innerText = `${sign}${changeVal.toFixed(2)}`;
+      chgEl.className = colorClass;
+
+      const pctEl = document.getElementById('vix-pct-val');
+      pctEl.innerText = `${sign}${changePct.toFixed(2)}%`;
+      pctEl.className = colorClass;
+
+      renderMicroCandle(
+        document.getElementById('vix-wick'),
+        document.getElementById('vix-body'),
+        document.getElementById('vix-mini-candle'),
+        openPrice, highVal, lowVal, currentVal
+      );
+
+      // 繪製 Canvas 走勢圖
+      const canvas = document.getElementById('vixCanvas');
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const width = rect.width;
+      const height = rect.height;
+      ctx.clearRect(0, 0, width, height);
+
+      const prices = list.map(item => item.close);
+      const minP = Math.min(...prices);
+      const maxP = Math.max(...prices);
+      const range = (maxP - minP) || 1;
+
+      const paddingLeft = 35;
+      const paddingRight = 55;
+      const paddingTop = 20;
+      const paddingBottom = 30;
+
+      const graphWidth = width - paddingLeft - paddingRight;
+      const graphHeight = height - paddingTop - paddingBottom;
+
+      const lineColor = isUp ? '#f23645' : (isDown ? '#089981' : '#f0b90b');
+
+      // 1. 繪製 Y 軸價格刻度與白色格線
+      ctx.font = '10px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#2a2e39';
+      ctx.lineWidth = 1;
+
+      const ySteps = 4;
+      for (let i = 0; i <= ySteps; i++) {
+        const val = minP + (range * (ySteps - i) / ySteps);
+        const y = paddingTop + (graphHeight / ySteps) * i;
+
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, y);
+        ctx.lineTo(width - paddingRight, y);
+        ctx.stroke();
+
+        ctx.textAlign = 'left';
+        ctx.fillText(val.toFixed(2), width - paddingRight + 8, y + 3);
+      }
+
+      // 2. 繪製 X 軸時間標籤
+      const startTimeMs = list[0].time ? list[0].time : Date.now();
+      const endTimeMs = list[list.length - 1].time ? list[list.length - 1].time : Date.now();
+      const totalDuration = endTimeMs - startTimeMs || 1;
+
+      const xSteps = 4;
+      for (let i = 0; i <= xSteps; i++) {
+        const targetTimeMs = startTimeMs + (totalDuration * (i / xSteps));
+        const targetDate = new Date(targetTimeMs);
+        const timeStr = targetDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const x = paddingLeft + (graphWidth / xSteps) * i;
+
+        ctx.beginPath();
+        ctx.moveTo(x, paddingTop);
+        ctx.lineTo(x, paddingTop + graphHeight);
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.fillText(timeStr, x, height - 8);
+      }
+
+      // 3. 計算點位座標
+      const points = prices.map((val, idx) => {
+        const itemTime = list[idx].time ? list[idx].time : startTimeMs;
+        const ratio = totalDuration === 0 ? 0 : Math.max(0, Math.min(1, (itemTime - startTimeMs) / totalDuration));
+        return {
+          x: paddingLeft + ratio * graphWidth,
+          y: paddingTop + graphHeight - ((val - minP) / range) * graphHeight
+        };
+      });
+
+      // 4. 繪製走勢折線圖
+      ctx.beginPath();
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2;
+
+      points.forEach((pt, idx) => {
+        if (idx === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.stroke();
+
+      // 5. 繪製底部漸層填滿
+      const lastPt = points[points.length - 1];
+      ctx.lineTo(lastPt.x, paddingTop + graphHeight);
+      ctx.lineTo(points[0].x, paddingTop + graphHeight);
+      ctx.closePath();
+
+      const gradient = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
+      const gradColor = isUp ? 'rgba(242, 54, 69, 0.2)' : (isDown ? 'rgba(8, 153, 129, 0.2)' : 'rgba(240, 185, 11, 0.2)');
+      gradient.addColorStop(0, gradColor);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // 6. 精準標記最高點（▼ 緊貼最高點右上方）與最低點（▲ 緊貼最低點右上方/下方）
+      const highPt = points[highIdx];
+      const lowPt = points[lowIdx];
+
+      ctx.font = 'bold 11px monospace';
+
+      // 標記最高點
+      ctx.fillStyle = '#f23645';
+      ctx.textAlign = 'left';
+      let highX = highPt.x + 6;
+      let highY = highPt.y - 4;
+      // 若太靠近右邊則改顯示在左側
+      if (highX + 50 > width - paddingRight) {
+        highX = highPt.x - 55;
+      }
+      ctx.fillText(`▼ ${highVal.toFixed(2)}`, highX, highY);
+
+      // 標記最低點
+      ctx.fillStyle = '#089981';
+      ctx.textAlign = 'left';
+      let lowX = lowPt.x + 6;
+      let lowY = lowPt.y + 14;
+      // 若太靠近右邊則改顯示在左側
+      if (lowX + 50 > width - paddingRight) {
+        lowX = lowPt.x - 55;
+      }
+      // 若太靠近底部則改顯示在上方
+      if (lowY > paddingTop + graphHeight - 10) {
+        lowY = lowPt.y - 6;
+      }
+      ctx.fillText(`▲ ${lowVal.toFixed(2)}`, lowX, lowY);
 
     } catch (err) {
-      console.error("報價更新失敗：", err);
+      console.error("VIX 資料載入失敗：", err);
     }
   }
 
   fetchQuoteData();
-  setInterval(fetchQuoteData, 1000);
+  fetchAndRenderVIX();
+  setInterval(() => {
+    fetchQuoteData();
+    fetchAndRenderVIX();
+  }, 1000);
 </script>
 
 </body>
