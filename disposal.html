@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>處置 / 注意股卡片速查（緊湊模式）</title>
+  <title>處置 / 注意股卡片速查</title>
   <style>
     :root {
       --primary: #1e3a8a;
       --primary-hover: #1e40af;
-      --bg: #d8dcde;          /* 護眼沈穩灰底 */
-      --card-bg: #e6eaed;     /* 容器與卡片背景 */
+      --bg: #d8dcde;         /* 護眼沈穩灰底 */
+      --card-bg: #e6eaed;    /* 容器與卡片背景 */
       --text: #0f172a;
       --text-muted: #64748b;
       --border: #cbd5e1;
@@ -22,8 +22,8 @@
     [data-theme="dark"] {
       --primary: #3b82f6;
       --primary-hover: #60a5fa;
-      --bg: #0f172a;          /* 深色模式背景 */
-      --card-bg: #1e293b;     /* 深色模式卡片背景 */
+      --bg: #0f172a;         /* 深色模式背景 */
+      --card-bg: #1e293b;    /* 深色模式卡片背景 */
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --border: #334155;
@@ -130,6 +130,48 @@
       border: 1px solid var(--border);
     }
 
+    /* 重置按鈕樣式 */
+    .reset-btn {
+      background-color: var(--card-bg);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .reset-btn:hover {
+      background-color: var(--border);
+      color: var(--text);
+    }
+
+    /* 頁籤按鈕群組樣式 */
+    .tabs-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .tab-btn {
+      background-color: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      height: 26px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--primary);
+    }
+
+    .tab-btn.active {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
     /* 緊湊卡片網格布局 */
     .grid-container {
       display: grid;
@@ -161,7 +203,7 @@
       gap: 6px;
     }
 
-    canvas.sparkline {
+    svg.sparkline {
       display: block;
       background: transparent;
     }
@@ -218,6 +260,7 @@
     .badge-no-margin { background-color: #fee2e2; color: #991b1b; }
     .badge-industry { background-color: var(--badge-tag-bg); color: var(--text-muted); border: 1px solid var(--border); }
     .badge-disposal { background-color: #ffedd5; color: #c2410c; }
+    .badge-expiring { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
 
     /* 資訊列 */
     .info-row {
@@ -310,14 +353,18 @@
           <label for="endDate">結束</label>
           <input type="date" id="endDate">
         </div>
-        <div class="input-group">
-          <label for="typeSelect">類型</label>
-          <select id="typeSelect">
-            <option value="disposal">處置股</option>
-            <option value="attention">注意股</option>
-          </select>
+        <button type="button" id="resetBtn" class="reset-btn" style="height: 26px; padding: 2px 8px; font-size: 0.75rem;">重置</button>
+
+        <!-- 頁籤按鈕群組 -->
+        <div class="input-group" style="margin-left: 4px;">
+          <label>類型</label>
+          <div class="tabs-group" id="typeTabs">
+            <button type="button" class="tab-btn active" data-value="disposal">處置中 (<span id="count-disposal">0</span>)</button>
+            <button type="button" class="tab-btn" data-value="expiring">即將出關 (<span id="count-expiring">0</span>)</button>
+            <button type="button" class="tab-btn" data-value="attention">注意股 (<span id="count-attention">0</span>)</button>
+          </div>
         </div>
-        <button id="fetchBtn" style="height: 26px; padding: 2px 10px;">查詢</button>
+
         <div class="input-group" style="margin-left: auto;">
           <label for="searchInput">搜尋</label>
           <input type="text" id="searchInput" placeholder="代號 / 名稱..." style="width: 120px;">
@@ -333,6 +380,8 @@
   <script>
     let rawData = [];
     let nameMapping = {};
+    let currentType = 'disposal';
+    let cachedDataMap = {};
 
     const MAPPING_URL = 'https://storage.googleapis.com/symbol-config/stock_code_to_chinese.json';
 
@@ -369,14 +418,9 @@
       }
     }
 
-    function drawCandleStick(canvas, candle) {
-      if (!canvas || !candle) return;
-      const ctx = canvas.getContext('2d');
-      const width = canvas.width;
-      const height = canvas.height;
-
-      ctx.clearRect(0, 0, width, height);
-
+    // 改用 SVG 繪製迷你 K 棒
+    function drawSvgCandleStick(svgEl, candle) {
+      if (!svgEl || !candle) return;
       let { open, high, low, close } = candle;
       let minPrice = Math.min(low, open, close);
       let maxPrice = Math.max(high, open, close);
@@ -386,9 +430,10 @@
         maxPrice *= 1.01;
       }
 
+      const height = 26;
       const padding = 2;
       const drawableHeight = height - padding * 2;
-      const x = width / 2;
+      const x = 10;
       const barWidth = 5;
 
       const highY = padding + ((maxPrice - high) / (maxPrice - minPrice)) * drawableHeight;
@@ -397,19 +442,12 @@
       const closeY = padding + ((maxPrice - close) / (maxPrice - minPrice)) * drawableHeight;
 
       const isUp = close >= open;
-      const color = isUp ? '#ef4444' : getComputedStyle(document.documentElement).getPropertyValue('--color-green').trim() || '#15803d';
+      const color = isUp ? '#ef4444' : 'var(--color-green)';
 
-      ctx.beginPath();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.moveTo(x, highY);
-      ctx.lineTo(x, lowY);
-      ctx.stroke();
-
-      ctx.fillStyle = color;
-      const bodyTop = Math.min(openY, closeY);
-      const bodyHeight = Math.max(Math.abs(openY - closeY), 1.5);
-      ctx.fillRect(x - barWidth / 2, bodyTop, barWidth, bodyHeight);
+      svgEl.innerHTML = `
+        <line x1="${x}" y1="${highY}" x2="${x}" y2="${lowY}" stroke="${color}" stroke-width="1" />
+        <rect x="${x - barWidth / 2}" y="${Math.min(openY, closeY)}" width="${barWidth}" height="${Math.max(Math.abs(openY - closeY), 1.5)}" fill="${color}" rx="0.5" />
+      `;
     }
 
     async function fetchBatchQuotes(symbols) {
@@ -439,7 +477,7 @@
 
           const priceEl = document.getElementById(`price-${cleanSymbol}`);
           const changeEl = document.getElementById(`change-${cleanSymbol}`);
-          const canvasEl = document.getElementById(`canvas-${cleanSymbol}`);
+          const svgEl = document.getElementById(`svg-${cleanSymbol}`);
 
           if (priceEl) {
             priceEl.textContent = closePrice.toFixed(2);
@@ -449,8 +487,8 @@
             const sign = diff > 0 ? '+' : '';
             changeEl.innerHTML = `<span class="${diff > 0 ? 'price-up' : diff < 0 ? 'price-down' : 'price-flat'}">${sign}${diff.toFixed(2)}</span> <span class="${diff > 0 ? 'price-up' : diff < 0 ? 'price-down' : 'price-flat'}">${sign}${pct.toFixed(2)}%</span>`;
           }
-          if (canvasEl) {
-            drawCandleStick(canvasEl, { open: openPrice, high: highPrice, low: lowPrice, close: closePrice });
+          if (svgEl) {
+            drawSvgCandleStick(svgEl, { open: openPrice, high: highPrice, low: lowPrice, close: closePrice });
           }
         });
       } catch (e) {
@@ -458,48 +496,89 @@
       }
     }
 
-    async function fetchData() {
+    async function fetchTypeData(typeKey) {
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
-      const type = document.getElementById('typeSelect').value;
-      const gridContainer = document.getElementById('cardGrid');
-      const countDisplay = document.getElementById('countDisplay');
+      const apiType = typeKey === 'expiring' ? 'disposal' : typeKey;
 
-      gridContainer.innerHTML = '<div class="loading">資料讀取中...</div>';
+      const params = new URLSearchParams({
+        type: apiType,
+        datetime_gte: startDate,
+        datetime_lte: endDate,
+        sort_order: 'desc'
+      });
 
-      const dataUrl = `https://api.market-insight.futures-ai.com/api/fundamental/attention_disposal?type=${type}&datetime_gte=${startDate}&datetime_lte=${endDate}&sort_order=desc`;
+      const dataUrl = `https://api.market-insight.futures-ai.com/api/fundamental/attention_disposal?${params.toString()}`;
 
       try {
-        if (Object.keys(nameMapping).length === 0) {
-          await loadStockNames();
-        }
-
         const response = await fetch(dataUrl);
         if (!response.ok) {
-          if (response.status === 422) {
-            rawData = [];
-            gridContainer.innerHTML = `<div class="no-data">暫無${type === 'attention' ? '注意股' : '處置股'}</div>`;
-            countDisplay.textContent = '共 0 筆';
-            return;
-          }
+          if (response.status === 422) return [];
           throw new Error(`HTTP ${response.status}`);
         }
-
         const json = await response.json();
-        rawData = Array.isArray(json) ? json : (json.data || json.items || []);
-        renderCards(rawData, type);
-      } catch (err) {
-        gridContainer.innerHTML = `<div class="error-msg">讀取失敗：${err.message}</div>`;
-        countDisplay.textContent = '共 0 筆';
+        let items = Array.isArray(json) ? json : (json.data || json.items || []);
+
+        if (typeKey === 'expiring') {
+          const todayStr = new Date().toISOString().split('T')[0];
+          items = items.filter(item => {
+            const endD = item.end_date || item.disposal_end_date || '';
+            return endD >= todayStr;
+          });
+          items.sort((a, b) => {
+            const dateA = a.end_date || a.disposal_end_date || '';
+            const dateB = b.end_date || b.disposal_end_date || '';
+            return dateA.localeCompare(dateB);
+          });
+        }
+        return items;
+      } catch (e) {
+        return [];
       }
     }
 
-    function renderCards(data, currentType) {
+    async function fetchData() {
+      const gridContainer = document.getElementById('cardGrid');
+      gridContainer.innerHTML = '<div class="loading">資料讀取中...</div>';
+
+      if (Object.keys(nameMapping).length === 0) {
+        await loadStockNames();
+      }
+
+      const [disposalItems, attentionItems] = await Promise.all([
+        fetchTypeData('disposal'),
+        fetchTypeData('attention')
+      ]);
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const expiringItems = disposalItems.filter(item => {
+        const endD = item.end_date || item.disposal_end_date || '';
+        return endD >= todayStr;
+      });
+
+      cachedDataMap = {
+        disposal: disposalItems,
+        expiring: expiringItems,
+        attention: attentionItems
+      };
+
+      document.getElementById('count-disposal').textContent = disposalItems.length;
+      document.getElementById('count-expiring').textContent = expiringItems.length;
+      document.getElementById('count-attention').textContent = attentionItems.length;
+
+      rawData = cachedDataMap[currentType] || [];
+      renderCards(rawData, currentType);
+    }
+
+    function renderCards(data, type) {
       const gridContainer = document.getElementById('cardGrid');
       const countDisplay = document.getElementById('countDisplay');
 
       if (!data || data.length === 0) {
-        const typeLabel = (currentType || document.getElementById('typeSelect').value) === 'attention' ? '注意股' : '處置股';
+        let typeLabel = '處置中';
+        if (type === 'attention') typeLabel = '注意股';
+        else if (type === 'expiring') typeLabel = '即將出關';
+
         gridContainer.innerHTML = `<div class="no-data">暫無${typeLabel}</div>`;
         countDisplay.textContent = '共 0 筆';
         return;
@@ -531,7 +610,7 @@
 
         const priceId = `price-${cleanSymbol}`;
         const changeId = `change-${cleanSymbol}`;
-        const canvasId = `canvas-${cleanSymbol}`;
+        const svgId = `svg-${cleanSymbol}`;
         const detailId = `detail-${index}`;
         const btnId = `btn-${index}`;
 
@@ -539,7 +618,7 @@
           <div class="stock-card">
             <div class="stock-header">
               <div class="stock-title-area">
-                <canvas id="${canvasId}" class="sparkline" width="20" height="26" title="K線"></canvas>
+                <svg id="${svgId}" class="sparkline" width="20" height="26" viewBox="0 0 20 26" title="K線"></svg>
                 <div>
                   <span class="stock-code-name">${cleanSymbol}</span>
                   <span class="stock-name-text">${stockName}</span>
@@ -555,6 +634,7 @@
               <span class="badge badge-no-margin">禁現沖</span>
               <span class="badge badge-industry">${category}</span>
               <span class="badge badge-disposal">${disposalLabel}</span>
+              ${type === 'expiring' ? `<span class="badge badge-expiring">即將出關</span>` : ''}
             </div>
 
             <div class="info-row">
@@ -587,22 +667,54 @@
       }
     }
 
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        const targetBtn = e.currentTarget;
+        targetBtn.classList.add('active');
+        
+        currentType = targetBtn.getAttribute('data-value');
+        rawData = cachedDataMap[currentType] || [];
+        
+        const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+        if (keyword) {
+          const filtered = rawData.filter(item => {
+            const rawSymbol = item.symbol || item.code || '';
+            const cleanSymbol = rawSymbol.split('.')[0];
+            const stockName = nameMapping[cleanSymbol] || nameMapping[rawSymbol] || item.name || '';
+            return cleanSymbol.toLowerCase().includes(keyword) || stockName.toLowerCase().includes(keyword);
+          });
+          renderCards(filtered, currentType);
+        } else {
+          renderCards(rawData, currentType);
+        }
+      });
+    });
+
     document.getElementById('searchInput').addEventListener('input', (e) => {
       const keyword = e.target.value.toLowerCase().trim();
+      const baseData = cachedDataMap[currentType] || [];
       if (!keyword) {
-        renderCards(rawData);
+        renderCards(baseData, currentType);
         return;
       }
-      const filtered = rawData.filter(item => {
+      const filtered = baseData.filter(item => {
         const rawSymbol = item.symbol || item.code || '';
         const cleanSymbol = rawSymbol.split('.')[0];
         const stockName = nameMapping[cleanSymbol] || nameMapping[rawSymbol] || item.name || '';
         return cleanSymbol.toLowerCase().includes(keyword) || stockName.toLowerCase().includes(keyword);
       });
-      renderCards(filtered);
+      renderCards(filtered, currentType);
     });
 
-    document.getElementById('fetchBtn').addEventListener('click', fetchData);
+    document.getElementById('startDate').addEventListener('change', fetchData);
+    document.getElementById('endDate').addEventListener('change', fetchData);
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      initDefaultDates();
+      document.getElementById('searchInput').value = '';
+      fetchData();
+    });
 
     window.addEventListener('DOMContentLoaded', () => {
       initDefaultDates();
