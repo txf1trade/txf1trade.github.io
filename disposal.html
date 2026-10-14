@@ -68,6 +68,7 @@
       color: var(--primary);
     }
 
+    /* 篩選控制列卡片 */
     .card-filter {
       background: var(--card-bg);
       border-radius: 6px;
@@ -76,17 +77,18 @@
       margin-bottom: 8px;
     }
 
+    /* 控制項區域：彈性佈局整齊對齊 */
     .controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px 12px;
       align-items: center;
     }
 
     .input-group {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
 
     .input-group label {
@@ -104,7 +106,8 @@
       color: var(--text);
       font-size: 0.8rem;
       outline: none;
-      height: 26px;
+      height: 28px;
+      box-sizing: border-box;
     }
 
     input:focus, select:focus {
@@ -136,6 +139,8 @@
       color: var(--text-muted);
       border: 1px solid var(--border);
       font-weight: 600;
+      height: 28px;
+      padding: 0 10px;
     }
     .reset-btn:hover {
       background-color: var(--border);
@@ -145,7 +150,7 @@
     /* 頁籤按鈕群組樣式 */
     .tabs-group {
       display: flex;
-      gap: 6px;
+      gap: 4px;
       align-items: center;
     }
 
@@ -153,13 +158,15 @@
       background-color: var(--input-bg);
       color: var(--text);
       border: 1px solid var(--border);
-      padding: 3px 10px;
+      padding: 0 10px;
       border-radius: 4px;
       font-size: 0.8rem;
       font-weight: 600;
-      height: 26px;
+      height: 28px;
       cursor: pointer;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
     }
 
     .tab-btn:hover {
@@ -170,6 +177,11 @@
       background-color: var(--primary);
       color: white;
       border-color: var(--primary);
+    }
+
+    /* 靠右搜尋欄位組 */
+    .search-group {
+      margin-left: auto;
     }
 
     /* 緊湊卡片網格布局 */
@@ -339,12 +351,13 @@
       <h1>處置 / 注意股速查</h1>
       <div style="display: flex; align-items: center; gap: 8px;">
         <div id="countDisplay" style="font-weight: 600; color: var(--primary); font-size: 0.9rem;">共 0 筆</div>
-        <button id="themeToggleBtn" class="theme-toggle-btn" style="height: 26px; padding: 2px 8px; font-size: 0.75rem;">🌙 深色模式</button>
+        <button id="themeToggleBtn" class="theme-toggle-btn" style="height: 28px; padding: 0 10px; font-size: 0.75rem;">🌙 深色模式</button>
       </div>
     </header>
 
     <div class="card-filter">
       <div class="controls">
+        <!-- 起始 & 結束日期 -->
         <div class="input-group">
           <label for="startDate">起始</label>
           <input type="date" id="startDate">
@@ -353,10 +366,10 @@
           <label for="endDate">結束</label>
           <input type="date" id="endDate">
         </div>
-        <button type="button" id="resetBtn" class="reset-btn" style="height: 26px; padding: 2px 8px; font-size: 0.75rem;">重置</button>
+        <button type="button" id="resetBtn" class="reset-btn">重置</button>
 
-        <!-- 頁籤按鈕群組 -->
-        <div class="input-group" style="margin-left: 4px;">
+        <!-- 類型頁籤群組 -->
+        <div class="input-group">
           <label>類型</label>
           <div class="tabs-group" id="typeTabs">
             <button type="button" class="tab-btn active" data-value="disposal">處置中 (<span id="count-disposal">0</span>)</button>
@@ -365,9 +378,16 @@
           </div>
         </div>
 
-        <div class="input-group" style="margin-left: auto;">
+        <!-- 出關天數設定（切換至「即將出關」時才顯示，預設隱藏） -->
+        <div class="input-group" id="expiringDaysGroup" style="display: none;">
+          <label for="expiringDaysInput">出關天數≤</label>
+          <input type="number" id="expiringDaysInput" value="3" min="1" max="30" style="width: 50px; text-align: center;">
+        </div>
+
+        <!-- 搜尋欄（固定靠右） -->
+        <div class="input-group search-group">
           <label for="searchInput">搜尋</label>
-          <input type="text" id="searchInput" placeholder="代號 / 名稱..." style="width: 120px;">
+          <input type="text" id="searchInput" placeholder="代號 / 名稱..." style="width: 130px;">
         </div>
       </div>
     </div>
@@ -418,7 +438,6 @@
       }
     }
 
-    // 改用 SVG 繪製迷你 K 棒
     function drawSvgCandleStick(svgEl, candle) {
       if (!svgEl || !candle) return;
       let { open, high, low, close } = candle;
@@ -520,11 +539,22 @@
         let items = Array.isArray(json) ? json : (json.data || json.items || []);
 
         if (typeKey === 'expiring') {
-          const todayStr = new Date().toISOString().split('T')[0];
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const maxDays = parseInt(document.getElementById('expiringDaysInput').value) || 3;
+
           items = items.filter(item => {
             const endD = item.end_date || item.disposal_end_date || '';
-            return endD >= todayStr;
+            if (!endD) return false;
+            const endDateObj = new Date(endD);
+            endDateObj.setHours(0, 0, 0, 0);
+            
+            const diffTime = endDateObj - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            return diffDays >= 0 && diffDays <= maxDays;
           });
+
           items.sort((a, b) => {
             const dateA = a.end_date || a.disposal_end_date || '';
             const dateB = b.end_date || b.disposal_end_date || '';
@@ -550,10 +580,17 @@
         fetchTypeData('attention')
       ]);
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const maxDays = parseInt(document.getElementById('expiringDaysInput').value) || 3;
+
       const expiringItems = disposalItems.filter(item => {
         const endD = item.end_date || item.disposal_end_date || '';
-        return endD >= todayStr;
+        if (!endD) return false;
+        const endDateObj = new Date(endD);
+        endDateObj.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((endDateObj - today) / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= maxDays;
       });
 
       cachedDataMap = {
@@ -674,6 +711,15 @@
         targetBtn.classList.add('active');
         
         currentType = targetBtn.getAttribute('data-value');
+
+        // 控制「出關天數」欄位的顯示/隱藏
+        const expiringGroup = document.getElementById('expiringDaysGroup');
+        if (currentType === 'expiring') {
+          expiringGroup.style.display = 'flex';
+        } else {
+          expiringGroup.style.display = 'none';
+        }
+
         rawData = cachedDataMap[currentType] || [];
         
         const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
@@ -709,9 +755,11 @@
 
     document.getElementById('startDate').addEventListener('change', fetchData);
     document.getElementById('endDate').addEventListener('change', fetchData);
+    document.getElementById('expiringDaysInput').addEventListener('change', fetchData);
 
     document.getElementById('resetBtn').addEventListener('click', () => {
       initDefaultDates();
+      document.getElementById('expiringDaysInput').value = '3';
       document.getElementById('searchInput').value = '';
       fetchData();
     });
