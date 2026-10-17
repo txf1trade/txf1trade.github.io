@@ -1,5 +1,5 @@
 <!-- 
-    股期監控-專業優化整合版 (含兩列式 Mode 控制面板、跌停榜功能、獨立 K 線欄位、檔數統計欄、VIX波動率與互動走勢面板)
+    股期監控-專業優化整合版 (含兩列式 Mode 控制面板、跌停榜功能、獨立 K 線欄位、檔數統計欄、VIX波動率、互動走勢面板與股期/現貨切換開關)
 -->
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -22,7 +22,7 @@
             --fav-star: #ffcc00;
             --mini-orange: #ff9500; 
             --btn-blue: #2962ff;
-            --price-normal: #ffffff;    /* 統一預設白字 */
+            --price-normal: #ffffff;
         }
 
         html, body {
@@ -47,22 +47,12 @@
             border-bottom: 1px solid #333;
         }
 
-        /* 檔數統計列樣式 */
         .stock-counts-summary {
-            display: flex;
-            gap: 6px;
-            justify-content: space-around;
-            align-items: center;
-            background: #1a1a1a;
-            padding: 5px 8px;
-            border-radius: 6px;
-            margin-bottom: 6px;
-            font-size: 11px;
-            border: 1px solid #2a2a2a;
+            display: flex; gap: 6px; justify-content: space-around; align-items: center;
+            background: #1a1a1a; padding: 5px 8px; border-radius: 6px; margin-bottom: 6px;
+            font-size: 11px; border: 1px solid #2a2a2a;
         }
-        .stock-counts-summary div {
-            color: #888;
-        }
+        .stock-counts-summary div { color: #888; }
 
         .index-bar {
             display: flex; gap: 4px; margin-bottom: 6px; padding: 4px;
@@ -72,7 +62,6 @@
             flex: 1; display: flex; flex-direction: column; justify-content: center;
             background: #222; padding: 4px 6px; border-radius: 4px; font-size: 11px; box-sizing: border-box;
         }
-        
         .index-box.interactive { cursor: pointer; border: 1px solid #333; transition: background 0.2s, border-color 0.2s; user-select: none; }
         .index-box.interactive:active { background: #2a2a2a; border-color: var(--accent); }
 
@@ -80,18 +69,11 @@
         .index-title { font-weight: bold; color: var(--text-dim); font-size: 10px; }
         .index-tag { font-size: 9px; background: #333; color: var(--accent); padding: 0 3px; border-radius: 2px; font-weight: bold; }
 
-        .index-content-row {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 4px;
-        }
-
+        .index-content-row { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
         .index-details { text-align: right; font-family: monospace; line-height: 1.1; }
         .index-price { font-weight: bold; font-size: 11px; color: #fff; }
         .index-chg { font-size: 9px; font-weight: bold; }
 
-        /* 兩列式模式切換區塊樣式 */
         .mode-header { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
         .mode-row { display: flex; gap: 4px; width: 100%; }
         .mode-btn {
@@ -146,9 +128,7 @@
             padding: 4px 2px; display: flex; align-items: center; justify-content: space-between;
             border-bottom: 1px solid #222; position: relative;
         }
-        .fav-chips-scroll {
-            overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex: 1;
-        }
+        .fav-chips-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex: 1; }
         .fav-chips-scroll::-webkit-scrollbar { display: none; }
         .chip {
             display: inline-block; padding: 4px 12px; margin-right: 6px;
@@ -221,13 +201,7 @@
         .tag-tse { color: #fff; border: 1px solid #555; }
         .tag-otc { color: #ff7fe5; border: 1px solid #ff7fe5; }
 
-        .price-cell-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            justify-content: center;
-        }
-
+        .price-cell-container { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
         .price-val, .fut-price-val { font-weight: bold; font-family: monospace; font-size: 11px; display: inline-block; padding: 1px 3px; border-radius: 2px; }
         .change-percent { font-size: 9px; font-family: monospace; font-weight: bold; margin-top: 1px; }
 
@@ -237,17 +211,8 @@
         .rank-strength-container { width: 100%; height: 8px; background: #000; border-radius: 4px; overflow: hidden; border: 1px solid #333; }
         .rank-strength-fill { height: 100%; }
 
-        .limit-up {
-            background-color: #ff0000 !important;
-            color: #ffffff !important;
-            font-weight: bold;
-        }
-
-        .limit-down {
-            background-color: #008800 !important;
-            color: #ffffff !important;
-            font-weight: bold;
-        }
+        .limit-up { background-color: #ff0000 !important; color: #ffffff !important; font-weight: bold; }
+        .limit-down { background-color: #008800 !important; color: #ffffff !important; font-weight: bold; }
 
         .section-divider { background: #333; color: #aaa; font-size: 10px; padding: 4px 8px; text-align: left; }
 
@@ -260,88 +225,44 @@
         .modal-mask.active { display: flex; }
 
         .vix-card {
-            background: #1e222d;
-            border: 1px solid #2a2e39;
-            border-radius: 12px;
-            padding: 16px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+            background: #1e222d; border: 1px solid #2a2e39; border-radius: 12px;
+            padding: 16px; width: 100%; max-width: 420px; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
         }
 
         .vix-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            user-select: none;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; user-select: none;
         }
+        .vix-title-clickable { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; }
+        .vix-title-group { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: #ffffff; }
+        .vix-stats-group { display: flex; align-items: center; gap: 6px; font-family: monospace; font-weight: 700; font-size: 13px; }
 
-        .vix-title-clickable {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            flex: 1;
+        /* 股期/現貨切換按鈕列樣式 */
+        .modal-type-switcher {
+            display: flex; gap: 6px; margin-bottom: 10px; background: #131722; padding: 3px; border-radius: 6px; border: 1px solid #2a2e39;
         }
-
-        .vix-title-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 15px;
-            font-weight: 700;
-            color: #ffffff;
-        }
-
-        .vix-stats-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-family: monospace;
-            font-weight: 700;
-            font-size: 13px;
-        }
-
-        /* ✕ 關閉按鈕樣式 */
-        .vix-close-btn {
-            background: #2a2e39;
-            color: #b2b5be;
-            border: none;
-            border-radius: 6px;
-            padding: 3px 8px;
-            font-size: 12px;
-            cursor: pointer;
-            font-weight: bold;
+        .switcher-btn {
+            flex: 1; padding: 5px; text-align: center; font-size: 11px; font-weight: bold;
+            border-radius: 4px; border: none; cursor: pointer; background: transparent; color: #787b86;
             transition: background 0.2s, color 0.2s;
-            margin-left: 10px;
         }
-        .vix-close-btn:hover {
-            background: #f23645;
-            color: #ffffff;
+        .switcher-btn.active {
+            background: #2962ff; color: #ffffff;
         }
 
-        .vix-content-area {
-            width: 100%;
-            height: 180px;
-            position: relative;
-            cursor: pointer;
+        .vix-close-btn {
+            background: #2a2e39; color: #b2b5be; border: none; border-radius: 6px;
+            padding: 3px 8px; font-size: 12px; cursor: pointer; font-weight: bold;
+            transition: background 0.2s, color 0.2s; margin-left: 10px;
         }
+        .vix-close-btn:hover { background: #f23645; color: #ffffff; }
 
-        .vix-card canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
+        .vix-content-area { width: 100%; height: 180px; position: relative; cursor: pointer; }
+        .vix-card canvas { width: 100%; height: 100%; display: block; }
 
         .vix-details-view {
-            display: none;
-            width: 100%;
-            height: 100%;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(2, 1fr);
-            gap: 4px;
-            align-content: center;
+            display: none; width: 100%; height: 100%;
+            grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr);
+            gap: 4px; align-content: center;
         }
         .vix-details-view.active { display: grid; }
 
@@ -349,14 +270,8 @@
         .vix-canvas-wrap.hidden { display: none; }
 
         .grid-cell {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 1px;
-            background: #131722;
-            padding: 6px 8px;
-            border-radius: 4px;
-            border: 1px solid #2a2e39;
+            display: flex; flex-direction: column; justify-content: center; gap: 1px;
+            background: #131722; padding: 6px 8px; border-radius: 4px; border: 1px solid #2a2e39;
         }
         .grid-label { font-size: 10px; color: #787b86; line-height: 1; }
         .grid-val { font-size: 13px; font-family: monospace; font-weight: bold; line-height: 1.2; }
@@ -373,11 +288,10 @@
 </head>
 <body>
 
-<!-- 升級後的互動走勢與資訊彈出面板 -->
+<!-- 互動走勢與資訊彈出面板 (支援股期/現貨切換) -->
 <div id="ai-modal" class="modal-mask" onclick="closeAI()">
     <div class="vix-card" onclick="event.stopPropagation()">
         <div class="vix-card-header">
-            <!-- 點擊標題區塊可切換「走勢圖 / 詳細資料」 -->
             <div class="vix-title-clickable" onclick="toggleModalVixView()" title="點擊切換圖表與詳細資訊">
                 <div class="vix-title-group">
                     <svg id="modal-mini-candle" width="14" height="28" viewBox="0 0 22 46" style="display:none;">
@@ -392,17 +306,20 @@
                     <span id="modal-pct-val" class="neutral">--%</span>
                 </div>
             </div>
-            <!-- ✕ 關閉按鈕 -->
             <button class="vix-close-btn" onclick="closeAI()">✕ 關閉</button>
         </div>
 
+        <!-- 股期 / 現貨切換按鈕列 -->
+        <div class="modal-type-switcher">
+            <button class="switcher-btn active" id="btn-switch-spot" onclick="setModalTargetType('spot')">現貨</button>
+            <button class="switcher-btn" id="btn-switch-fut" onclick="setModalTargetType('fut')">股期</button>
+        </div>
+
         <div class="vix-content-area" onclick="toggleModalVixView()" title="點擊切換圖表與詳細資訊">
-            <!-- 圖表視圖 -->
             <div class="vix-canvas-wrap" id="modalCanvasWrap">
                 <canvas id="modalCanvas"></canvas>
             </div>
 
-            <!-- 詳細數據視圖 -->
             <div class="vix-details-view" id="modalDetailsView">
                 <div class="grid-cell"><span class="grid-label">成交</span><span class="grid-val neutral" id="m-close">--</span></div>
                 <div class="grid-cell"><span class="grid-label">開盤</span><span class="grid-val neutral" id="m-open">--</span></div>    
@@ -424,7 +341,6 @@
 
 <div class="app-wrapper">
     <div class="sticky-top">
-        <!-- 檔數統計顯示列 -->
         <div class="stock-counts-summary">
             <div>總檔數: <span id="cnt-total" style="color: var(--accent); font-weight: bold;">0</span></div>
             <div>正常股: <span id="cnt-normal" style="color: #fff; font-weight: bold;">0</span></div>
@@ -478,7 +394,6 @@
                 </div>
             </div>
 
-            <!-- TAIWANVIX 波動率方塊 -->
             <div class="index-box">
                 <div class="index-header"><span class="index-title">台指波動率</span></div>
                 <div class="index-content-row">
@@ -494,7 +409,6 @@
             </div>
         </div>
 
-        <!-- 兩列式模式選擇區 -->
         <div class="mode-header" id="mode-selector">
             <div class="mode-row">
                 <div class="mode-btn" data-mode="all">全部</div>
@@ -590,9 +504,6 @@
 </div>
 
 <script>
-    /* ==========================================================
-       統一 API 與外部連結設定區塊
-       ========================================================== */
     const API_CONFIG = {
         dailyRankStock: 'https://api.market-insight.futures-ai.com/api/monitor/daily_rank?symbol_root=stock',
         dailyRankFut: 'https://api.market-insight.futures-ai.com/api/monitor/daily_rank?symbol_root=stock_futures',
@@ -618,8 +529,10 @@
 
     let txMode = 'full';
 
-    // 互動走勢彈窗相關變數
-    let activeModalSymbol = null;
+    // 互動走勢彈窗相關變數 (支援股期/現貨切換)
+    let modalStockNum = null;     // 現貨代號 (例如 2330)
+    let modalFutSymbol = null;    // 股期代碼 (例如 CDF)
+    let modalTargetType = 'spot'; // 當前檢視類型: 'spot' 或 'fut'
     let isModalDetailsView = false;
     let modalFetchInterval = null;
 
@@ -646,21 +559,13 @@
 
     function updateStockCounts() {
         const entries = Object.entries(stockMap);
-        let normalCount = 0;
-        let miniCount = 0;
-        let etfCount = 0;
-
+        let normalCount = 0, miniCount = 0, etfCount = 0;
         entries.forEach(([key, value]) => {
-            const stockNum = value[0];
-            const name = value[1];
-            const isMini = name.includes('小型');
-            const isEtf = stockNum.startsWith('00');
-
-            if (isMini) miniCount++;
-            else if (isEtf) etfCount++;
+            const stockNum = value[0], name = value[1];
+            if (name.includes('小型')) miniCount++;
+            else if (stockNum.startsWith('00')) etfCount++;
             else normalCount++;
         });
-
         if (document.getElementById('cnt-total')) document.getElementById('cnt-total').innerText = entries.length;
         if (document.getElementById('cnt-normal')) document.getElementById('cnt-normal').innerText = normalCount;
         if (document.getElementById('cnt-mini')) document.getElementById('cnt-mini').innerText = miniCount;
@@ -670,71 +575,41 @@
     function renderMicroCandle(svgId, open, high, low, close) {
         const svg = typeof svgId === 'string' ? document.getElementById(svgId) : svgId;
         if (!svg) return;
-
-        const wick = svg.querySelector('.wick');
-        const body = svg.querySelector('.body');
+        const wick = svg.querySelector('.wick'), body = svg.querySelector('.body');
         if (!wick || !body) return;
 
-        const maxP = Math.max(open, high, low, close);
-        const minP = Math.min(open, high, low, close);
-        const range = (maxP - minP) || 1;
-
-        const svgHeight = 22; 
-        const paddingTop = 1;
+        const maxP = Math.max(open, high, low, close), minP = Math.min(open, high, low, close);
+        const range = (maxP - minP) || 1, svgHeight = 22, paddingTop = 1;
         const getY = (price) => paddingTop + (maxP - price) / range * svgHeight;
+        const isUp = close >= open, colorHex = isUp ? 'var(--up-red)' : 'var(--down-green)';
 
-        const highY = getY(high);
-        const lowY = getY(low);
-        const openY = getY(open);
-        const closeY = getY(close);
-
-        const isUp = close >= open;
-        const colorHex = isUp ? 'var(--up-red)' : 'var(--down-green)';
-
-        wick.setAttribute('y1', highY);
-        wick.setAttribute('y2', lowY);
-        wick.setAttribute('stroke', colorHex);
-
-        const bodyTop = Math.min(openY, closeY);
-        const bodyHeight = Math.max(Math.abs(closeY - openY), 2);
-
-        body.setAttribute('y', bodyTop);
-        body.setAttribute('height', bodyHeight);
+        wick.setAttribute('y1', getY(high)); wick.setAttribute('y2', getY(low)); wick.setAttribute('stroke', colorHex);
+        body.setAttribute('y', Math.min(getY(open), getY(close)));
+        body.setAttribute('height', Math.max(Math.abs(getY(close) - getY(open)), 2));
         body.setAttribute('fill', colorHex);
-
         svg.style.display = 'block';
     }
 
     async function fetchStockMicroCandle(stockNum, svgElement) {
         if (!stockNum || !svgElement) return;
         try {
-            const url = `${API_CONFIG.tvApiHistory}?symbol=${stockNum}&resolution=1&ws=true&intraday=true`;
-            const res = await fetch(url, { cache: "no-cache" });
+            const res = await fetch(`${API_CONFIG.tvApiHistory}?symbol=${stockNum}&resolution=1&ws=true&intraday=true`, { cache: "no-cache" });
             if (!res.ok) return;
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
-                const openPrice = data[0].open;
-                const latestPrice = data[data.length - 1].close;
-                
-                let highPrice = -Infinity;
-                let lowPrice = Infinity;
+                const openPrice = data[0].open, latestPrice = data[data.length - 1].close;
+                let highPrice = -Infinity, lowPrice = Infinity;
                 data.forEach(item => {
                     if (item.high > highPrice) highPrice = item.high;
                     if (item.low < lowPrice) lowPrice = item.low;
                 });
-
                 renderMicroCandle(svgElement, openPrice, highPrice, lowPrice, latestPrice);
             }
-        } catch (e) {
-            console.warn(`[母股 K 棒抓取失敗] (${stockNum}):`, e);
-        }
+        } catch (e) { console.warn(e); }
     }
 
     function getLimitStatus(price, limitUpPrice, limitDownPrice) {
-        const currentPrice = parseFloat(price);
-        const up = parseFloat(limitUpPrice);
-        const down = parseFloat(limitDownPrice);
-
+        const currentPrice = parseFloat(price), up = parseFloat(limitUpPrice), down = parseFloat(limitDownPrice);
         if (isNaN(currentPrice) || currentPrice <= 0) return 'normal';
         if (!isNaN(up) && currentPrice >= up) return 'limit-up';
         if (!isNaN(down) && currentPrice <= down) return 'limit-down';
@@ -742,17 +617,12 @@
     }
 
     function calculateChangePercent(price, prevRef) {
-        const p = parseFloat(price);
-        const ref = parseFloat(prevRef);
-        if (!isNaN(p) && !isNaN(ref) && ref > 0) {
-            return ((p - ref) / ref) * 100;
-        }
-        return null;
+        const p = parseFloat(price), ref = parseFloat(prevRef);
+        return (!isNaN(p) && !isNaN(ref) && ref > 0) ? ((p - ref) / ref) * 100 : null;
     }
 
     function getPriceColor(price, prevRef) {
-        const p = parseFloat(price);
-        const ref = parseFloat(prevRef);
+        const p = parseFloat(price), ref = parseFloat(prevRef);
         if (isNaN(p) || isNaN(ref) || ref <= 0) return 'var(--price-normal)';
         if (p > ref) return 'var(--up-red)';
         if (p < ref) return 'var(--down-green)';
@@ -761,102 +631,48 @@
 
     async function fetchTvApiQuote(symbol) {
         try {
-            const url = `${API_CONFIG.tvApiHistory}?symbol=${symbol}&resolution=1&ws=true&intraday=true`;
-            const res = await fetch(url, { cache: "no-cache" });
+            const res = await fetch(`${API_CONFIG.tvApiHistory}?symbol=${symbol}&resolution=1&ws=true&intraday=true`, { cache: "no-cache" });
             if (!res.ok) return null;
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
-                const openPrice = data[0].open;
-                const latestPrice = data[data.length - 1].close;
-                
-                let highPrice = -Infinity;
-                let lowPrice = Infinity;
+                const openPrice = data[0].open, latestPrice = data[data.length - 1].close;
+                let highPrice = -Infinity, lowPrice = Infinity;
                 data.forEach(item => {
                     if (item.high > highPrice) highPrice = item.high;
                     if (item.low < lowPrice) lowPrice = item.low;
                 });
-
-                const diff = latestPrice - openPrice;
-                const pct = (diff / openPrice) * 100;
-                return { 
-                    open: openPrice, 
-                    high: highPrice, 
-                    low: lowPrice, 
-                    price: latestPrice, 
-                    diff: diff, 
-                    pct: pct 
-                };
+                return { open: openPrice, high: highPrice, low: lowPrice, price: latestPrice, diff: latestPrice - openPrice, pct: (latestPrice - openPrice) / openPrice * 100 };
             }
-        } catch (e) {
-            console.warn(`[API 抓取失敗] (${symbol}):`, e);
-        }
+        } catch (e) { console.warn(e); }
         return null;
     }
 
     async function fetchVixQuote() {
         try {
-            const url = "https://tv-signalr.futures-op.com/history?symbol=TAIWANVIX&resolution=1&ws=true&intraday=true";
-            const res = await fetch(url, { cache: "no-cache" });
+            const res = await fetch("https://tv-signalr.futures-op.com/history?symbol=TAIWANVIX&resolution=1&ws=true&intraday=true", { cache: "no-cache" });
             if (!res.ok) return null;
             const json = await res.json();
             const list = json && Array.isArray(json.bars) ? json.bars : [];
             if (list.length === 0) return null;
-
-            const prevRef = json.prevRef !== undefined ? json.prevRef : 
-                            (json.meta && json.meta.prevRef !== undefined ? json.meta.prevRef : list[0].open);
-            
-            const openPrice = list[0].open;
+            const prevRef = json.prevRef !== undefined ? json.prevRef : (json.meta && json.meta.prevRef !== undefined ? json.meta.prevRef : list[0].open);
             const latestPrice = list[list.length - 1].close;
-
-            let highPrice = -Infinity;
-            let lowPrice = Infinity;
+            let highPrice = -Infinity, lowPrice = Infinity;
             list.forEach(item => {
                 if (item.high > highPrice) highPrice = item.high;
                 if (item.low < lowPrice) lowPrice = item.low;
             });
-
-            const diff = latestPrice - prevRef;
-            const pct = prevRef ? (diff / prevRef) * 100 : 0;
-            return {
-                open: openPrice,
-                high: highPrice,
-                low: lowPrice,
-                price: latestPrice,
-                diff: diff,
-                pct: pct
-            };
-        } catch (e) {
-            console.warn(`[VIX API 抓取失敗]:`, e);
-        }
+            return { open: list[0].open, high: highPrice, low: lowPrice, price: latestPrice, diff: latestPrice - prevRef, pct: prevRef ? (latestPrice - prevRef) / prevRef * 100 : 0 };
+        } catch (e) { console.warn(e); }
         return null;
     }
 
     async function fetchMarketIndices() {
         const txSymbol = (txMode === 'full') ? 'TX-1' : 'TXAM-1';
-        
-        const [tse, otc, tx, vix] = await Promise.all([
-            fetchTvApiQuote('TSEA'),
-            fetchTvApiQuote('OTCA'),
-            fetchTvApiQuote(txSymbol),
-            fetchVixQuote()
-        ]);
-
-        if (tse) {
-            updateIndexUI('tse', tse.price, tse.diff, tse.pct, false);
-            renderMicroCandle('tse-k-candle', tse.open, tse.high, tse.low, tse.price);
-        }
-        if (otc) {
-            updateIndexUI('otc', otc.price, otc.diff, otc.pct, false);
-            renderMicroCandle('otc-k-candle', otc.open, otc.high, otc.low, otc.price);
-        }
-        if (tx) {
-            updateIndexUI('tx', tx.price, tx.diff, tx.pct, true);
-            renderMicroCandle('tx-k-candle', tx.open, tx.high, tx.low, tx.price);
-        }
-        if (vix) {
-            updateIndexUI('vix', vix.price, vix.diff, vix.pct, false);
-            renderMicroCandle('vix-k-candle', vix.open, vix.high, vix.low, vix.price);
-        }
+        const [tse, otc, tx, vix] = await Promise.all([fetchTvApiQuote('TSEA'), fetchTvApiQuote('OTCA'), fetchTvApiQuote(txSymbol), fetchVixQuote()]);
+        if (tse) { updateIndexUI('tse', tse.price, tse.diff, tse.pct, false); renderMicroCandle('tse-k-candle', tse.open, tse.high, tse.low, tse.price); }
+        if (otc) { updateIndexUI('otc', otc.price, otc.diff, otc.pct, false); renderMicroCandle('otc-k-candle', otc.open, otc.high, otc.low, otc.price); }
+        if (tx) { updateIndexUI('tx', tx.price, tx.diff, tx.pct, true); renderMicroCandle('tx-k-candle', tx.open, tx.high, tx.low, tx.price); }
+        if (vix) { updateIndexUI('vix', vix.price, vix.diff, vix.pct, false); renderMicroCandle('vix-k-candle', vix.open, vix.high, vix.low, vix.price); }
     }
 
     function toggleTXMode() {
@@ -864,50 +680,29 @@
         document.getElementById('tx-mode-tag').innerText = txMode === 'full' ? '全' : '日';
         document.getElementById('tx-price').innerText = '...';
         document.getElementById('tx-chg').innerText = '--';
-        document.getElementById('tx-chg').style.color = '#888';
         document.getElementById('tx-k-candle').style.display = 'none';
         fetchMarketIndices();
     }
 
     function updateIndexUI(type, price, diff, pct, isInteger) {
-        const priceEl = document.getElementById(`${type}-price`);
-        const chgEl = document.getElementById(`${type}-chg`);
-        
+        const priceEl = document.getElementById(`${type}-price`), chgEl = document.getElementById(`${type}-chg`);
         if (!priceEl || !chgEl) return;
-
         priceEl.innerText = isInteger ? Math.round(price).toLocaleString() : price.toFixed(2);
-        
         const sign = diff > 0 ? '+' : '';
-        const diffStr = isInteger ? Math.round(diff) : diff.toFixed(2);
-        chgEl.innerText = `${sign}${diffStr} (${sign}${pct.toFixed(2)}%)`;
-        
-        if(diff > 0) {
-            chgEl.style.color = 'var(--up-red)';
-        } else if(diff < 0) {
-            chgEl.style.color = 'var(--down-green)';
-        } else {
-            chgEl.style.color = '#888';
-        }
+        chgEl.innerText = `${sign}${isInteger ? Math.round(diff) : diff.toFixed(2)} (${sign}${pct.toFixed(2)}%)`;
+        chgEl.style.color = diff > 0 ? 'var(--up-red)' : (diff < 0 ? 'var(--down-green)' : '#888');
     }
 
     async function fetchBatchQuotes(symbols) {
         if (!symbols || symbols.length === 0) return {};
         try {
-            const url = `${API_CONFIG.realtimeQuote}?symbol=${symbols.join(',')}`;
-            const res = await fetch(url, { cache: "no-cache" });
+            const res = await fetch(`${API_CONFIG.realtimeQuote}?symbol=${symbols.join(',')}`, { cache: "no-cache" });
             if (!res.ok) return {};
             const data = await res.json();
             const map = {};
-            if (Array.isArray(data)) {
-                data.forEach(item => {
-                    map[item.symbol] = item;
-                });
-            }
+            if (Array.isArray(data)) data.forEach(item => map[item.symbol] = item);
             return map;
-        } catch (e) {
-            console.warn('[即時行情 API 抓取失敗]:', e);
-            return {};
-        }
+        } catch (e) { return {}; }
     }
 
     async function fetchData() {
@@ -915,88 +710,57 @@
         isFetching = true;
         try {
             fetchMarketIndices();
-
-            const timestamp = Date.now();
-            const [scoreRes, allKeys] = await Promise.all([
-                fetch(`${API_CONFIG.marketDataTradeInfo}?_t=${timestamp}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-                Promise.resolve(Object.keys(stockMap))
-            ]);
-            
+            const scoreRes = await fetch(`${API_CONFIG.marketDataTradeInfo}?_t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null);
             if (scoreRes) {
                 const symbolsToFetch = new Set();
                 Object.keys(scoreRes).forEach(k => {
                     if (stockMap[k]) {
-                        symbolsToFetch.add(k + '-1'); 
-                        symbolsToFetch.add(stockMap[k][0]); 
+                        symbolsToFetch.add(k + '-1');
+                        symbolsToFetch.add(stockMap[k][0]);
                     }
                 });
-
                 const quoteMap = await fetchBatchQuotes(Array.from(symbolsToFetch));
 
-                let baseList = Object.keys(scoreRes).filter(k => stockMap[k]).map(k => {
+                cachedData = Object.keys(scoreRes).filter(k => stockMap[k]).map(k => {
                     const [stockNum, name, market] = stockMap[k];
-                    const near = scoreRes[k].near_month;
-                    const far = scoreRes[k].next_month;
-                    const total = near + far;
+                    const near = scoreRes[k].near_month, far = scoreRes[k].next_month, total = near + far;
                     const old = cachedData.find(o => o.id === k);
-                    
                     const spotQuote = quoteMap[stockNum] || {};
                     const futQuote = quoteMap[k + '-1'] || {};
-                    const vol = spotQuote.v !== undefined ? spotQuote.v : (spotQuote.volume !== undefined ? spotQuote.volume : '--');
-
                     return { 
-                        id: k, stockNum, name, market, near, far, total, vol,
+                        id: k, stockNum, name, market, near, far, total,
+                        vol: spotQuote.v !== undefined ? spotQuote.v : (spotQuote.volume !== undefined ? spotQuote.volume : '--'),
                         isLong: total >= 15 && near >= 5 && far >= 0,
                         price: spotQuote.close !== undefined ? spotQuote.close : ((old && old.price !== '--') ? old.price : '--'),
                         futPrice: futQuote.close !== undefined ? futQuote.close : ((old && old.futPrice !== '--') ? old.futPrice : '--'),
-                        spotQuote,
-                        futQuote
+                        spotQuote, futQuote
                     };
                 });
-
-                cachedData = baseList;
-                render(); 
+                render();
                 refreshTimer = 0;
             }
-        } catch (e) { 
-            console.error(e); 
-        } finally { 
-            isFetching = false; 
-        }
+        } finally { isFetching = false; }
     }
 
     function getFilteredList(searchQuery, isShowEtf, isShowTse, isShowOtc) {
         return cachedData.filter(i => {
             const isFaved = favList.includes(i.id);
-            const isSearchMatched = searchQuery && (
-                i.stockNum.includes(searchQuery) || 
-                i.name.includes(searchQuery) || 
-                i.id.toLowerCase().includes(searchQuery)
-            );
-
-            const isMini = i.name.includes('小型');
-            if (isMini && currentMode !== 'mini' && currentMode !== 'fav' && !isSearchMatched && currentMode !== 'all') {
-                return false;
-            }
-
+            const isSearchMatched = searchQuery && (i.stockNum.includes(searchQuery) || i.name.includes(searchQuery) || i.id.toLowerCase().includes(searchQuery));
+            if (i.name.includes('小型') && currentMode !== 'mini' && currentMode !== 'fav' && !isSearchMatched && currentMode !== 'all') return false;
             if (!isFaved && !isSearchMatched) {
                 if (i.market === '市' && !isShowTse) return false;
                 if (i.market === '櫃' && !isShowOtc) return false;
                 if (!isShowEtf && i.stockNum.startsWith('00')) return false;
             }
-
             if (currentPriceRange !== 'all' && !isSearchMatched) {
                 const p = parseFloat(i.price);
                 if (isNaN(p)) return false;
-
                 if (currentPriceRange === '1000' && p < 1000) return false;
                 if (currentPriceRange === '500' && (p < 500 || p >= 1000)) return false;
                 if (currentPriceRange === '100' && (p < 100 || p >= 500)) return false;
                 if (currentPriceRange === '0' && p >= 100) return false;
             }
-
-            if (searchQuery) return isSearchMatched;
-            return true;
+            return searchQuery ? isSearchMatched : true;
         });
     }
 
@@ -1012,30 +776,27 @@
         dom.favCountText.innerText = favList.length;
 
         const baseList = getFilteredList(searchQuery, isShowEtf, isShowTse, isShowOtc);
-        let finalDisplayList = [];
+        let list = [...baseList];
 
         const effectiveSortOrder = (currentMode === 'down' && sortKey === 'total') ? 'asc' : sortOrder;
 
         const sortFn = (a, b) => {
             if (sortKey === 'stockNum') {
-                return sortOrder === 'desc' ? b.stockNum.localeCompare(a.stockNum) : a.stockNum.localeCompare(b.stockNum);
+                return effectiveSortOrder === 'desc' ? b.stockNum.localeCompare(a.stockNum) : a.stockNum.localeCompare(b.stockNum);
             }
             if (sortKey === 'price') {
-                const valA = parseFloat(a.price) || -999;
-                const valB = parseFloat(b.price) || -999;
-                return sortOrder === 'desc' ? valB - valA : valA - valB;
+                const valA = parseFloat(a.price) || -999, valB = parseFloat(b.price) || -999;
+                return effectiveSortOrder === 'desc' ? valB - valA : valA - valB;
             } else if (sortKey === 'fut') {
-                const valA = parseFloat(a.futPrice) || -999;
-                const valB = parseFloat(b.futPrice) || -999;
-                return sortOrder === 'desc' ? valB - valA : valA - valB;
+                const valA = parseFloat(a.futPrice) || -999, valB = parseFloat(b.futPrice) || -999;
+                return effectiveSortOrder === 'desc' ? valB - valA : valA - valB;
             } else if (sortKey === 'vol') {
-                const valA = parseFloat(a.vol) || -999;
-                const valB = parseFloat(b.vol) || -999;
-                return sortOrder === 'desc' ? valB - valA : valA - valB;
+                const valA = parseFloat(a.vol) || -999, valB = parseFloat(b.vol) || -999;
+                return effectiveSortOrder === 'desc' ? valB - valA : valA - valB;
             } else if (sortKey === 'near') {
-                return sortOrder === 'desc' ? b.near - a.near : a.near - b.near;
+                return effectiveSortOrder === 'desc' ? b.near - a.near : a.near - b.near;
             } else if (sortKey === 'far') {
-                return sortOrder === 'desc' ? b.far - a.far : a.far - b.far;
+                return effectiveSortOrder === 'desc' ? b.far - a.far : a.far - b.far;
             } else {
                 return effectiveSortOrder === 'desc' ? b.total - a.total : a.total - b.total;
             }
@@ -1044,9 +805,8 @@
         if (currentMode === 'fav' && searchQuery) {
             let favPart = baseList.filter(i => favList.includes(i.id)).sort(sortFn);
             let otherPart = baseList.filter(i => !favList.includes(i.id)).sort(sortFn);
-            finalDisplayList = [...favPart, { isDivider: true, text: "搜尋結果 (未收藏)" }, ...otherPart];
+            list = [...favPart, { isDivider: true, text: "搜尋結果 (未收藏)" }, ...otherPart];
         } else {
-            let list = [...baseList];
             if (!searchQuery) {
                 if (currentMode === 'ai_long') list = list.filter(i => i.isLong);
                 else if (currentMode === 'limit_up') {
@@ -1073,26 +833,25 @@
                     });
                 }
                 else if (currentMode === 'strong_buy') list = list.filter(i => i.total >= 10 && i.near > 0);
-                else if (currentMode === 'mini') list = list.filter(i => i.name.includes('小型')); 
+                else if (currentMode === 'mini') list = list.filter(i => i.name.includes('小型'));
                 else if (currentMode === 'up') list = list.filter(i => i.total > 0);
                 else if (currentMode === 'down') list = list.filter(i => i.total < 0);
                 else if (currentMode === 'fav') list = list.filter(i => favList.includes(i.id));
             }
             list.sort(sortFn);
-            finalDisplayList = searchQuery ? list : list.slice(0, currentRankLimit);
+            list = searchQuery ? list : list.slice(0, currentRankLimit);
         }
 
         renderHeatmap(baseList);
-        renderTable(finalDisplayList, showVol);
-        
-        finalDisplayList.forEach(item => {
+        renderTable(list, showVol, showVol ? 9 : 8);
+        list.forEach(item => {
             if (!item.isDivider) {
                 const svgEl = document.getElementById(`stk-k-${item.id}`);
                 if (svgEl) fetchStockMicroCandle(item.stockNum, svgEl);
             }
         });
-        
-        const arrow = sortOrder === 'desc' ? '▼' : '▲';
+
+        const arrow = effectiveSortOrder === 'desc' ? '▼' : '▲';
         dom.thTotal.innerText = `總分`;
         dom.thName.innerText = `代號名稱`;
         dom.thChg.innerText = `現貨`;
@@ -1123,25 +882,24 @@
         } else {
             hmShowList = baseList.sort((a,b)=>b.total-a.total).slice(0, 20);
         }
-        
+
         dom.hmCount.innerText = `(${hmShowList.length} 標的)`;
         dom.hmGrid.innerHTML = hmShowList.map(item => {
             const intensity = Math.min(Math.abs(item.total) / 35, 1);
             const color = item.total >= 0 ? `255, 59, 48` : `52, 199, 89`;
-            return `<div class="hm-box" style="background: rgba(${color}, ${0.2 + intensity * 0.8}); ${item.isLong ? 'border: 2px solid var(--ai-gold);' : ''} ${currentMode==='mini' ? 'border: 1.5px solid var(--mini-orange);' : ''}" onclick="showAI('${item.stockNum}', '${item.name}')">
+            return `<div class="hm-box" style="background: rgba(${color}, ${0.2 + intensity * 0.8}); ${item.isLong ? 'border: 2px solid var(--ai-gold);' : ''} ${currentMode==='mini' ? 'border: 1.5px solid var(--mini-orange);' : ''}" onclick="showAI('${item.stockNum}', '${item.name}', '${item.id}')">
                 <div class="hm-name">${item.name.replace('期','').replace('小型','小')}</div>
                 <div class="hm-score">${Math.round(item.total)}</div>
             </div>`;
         }).join('');
     }
 
-    function renderTable(list, showVol) {
+    function renderTable(list, showVol, colSpanCount) {
         const currentMax = cachedData.length > 0 ? Math.max(...cachedData.map(i => Math.abs(i.total))) : 1;
-        const colSpanCount = showVol ? 9 : 8;
 
         dom.table.innerHTML = list.map(item => {
             if (item.isDivider) return `<tr><td colspan="${colSpanCount}" class="section-divider">${item.text}</td></tr>`;
-            
+
             const isFaved = favList.includes(item.id);
             const themeColor = item.total >= 0 ? 'var(--up-red)' : 'var(--down-green)';
 
@@ -1170,7 +928,7 @@
 
             const volFormatted = (typeof item.vol === 'number') ? item.vol.toLocaleString() : item.vol;
 
-            return `<tr data-id="${item.id}">
+            return `<tr>
                 <td class="name-col">
                     <div style="display:flex; align-items:center;">
                         <span class="fav-star-btn ${isFaved?'active':''}" onclick="toggleFav('${item.id}', event)">${isFaved?'★':'☆'}</span>
@@ -1181,21 +939,19 @@
                             </div>
                             <div class="name-bottom">
                                 <span class="mkt-tag ${item.market==='櫃'?'tag-otc':'tag-tse'}">${item.market}</span>
-                                <span class="stock-name" style="color:${item.isLong ? 'var(--aistock-gold)' : '#fff'}; font-weight:${item.isLong ? 'bold' : '500'};" onclick="showAI('${item.stockNum}', '${item.name}')">
+                                <span class="stock-name" style="color:${item.isLong ? 'var(--aistock-gold)' : '#fff'}; font-weight:${item.isLong ? 'bold' : '500'};" onclick="showAI('${item.stockNum}', '${item.name}', '${item.id}')">
                                     ${item.name}
                                 </span>
                             </div>
                         </div>
                     </div>
                 </td>
-                <!-- 獨立的 K 棒欄位 -->
                 <td class="k-cell">
                     <svg id="stk-k-${item.id}" width="12" height="24" viewBox="0 0 12 24" style="display: none; margin: 0 auto;">
                         <line class="wick" x1="6" y1="1" x2="6" y2="23" stroke-width="1.5" />
                         <rect class="body" x="2" width="8" rx="1" ry="1" />
                     </svg>
                 </td>
-                <!-- 現貨價格欄位 -->
                 <td>
                     <div class="price-cell-container">
                         <div class="price-val ${spotCssClass}" style="${!spotCssClass ? 'color:' + spotPriceColor : ''}">
@@ -1206,7 +962,6 @@
                         </div>
                     </div>
                 </td>
-                <!-- 股期價格欄位 -->
                 <td>
                     <div class="price-cell-container">
                         <div class="fut-price-val ${futCssClass}" style="${!futCssClass ? 'color:' + futPriceColor : ''}">
@@ -1217,7 +972,6 @@
                         </div>
                     </div>
                 </td>
-                <!-- 總量欄位 -->
                 <td style="display: ${showVol ? '' : 'none'};">
                     <span style="font-family: monospace; font-size: 11px; color: #fff;">${volFormatted}</span>
                 </td>
@@ -1259,28 +1013,51 @@
         render();
     }
 
-    // ================= 互動走勢與彈出面板控制邏輯 =================
-    function showAI(num, name) {
+    // ================= 互動走勢與彈出面板控制邏輯 (支援股期/現貨切換) =================
+    function showAI(num, name, id) {
+        modalStockNum = num;      // 現貨代號 (例如 2330)
+        modalFutSymbol = id;      // 股期代碼 (例如 CDF)
+        modalTargetType = 'spot'; // 預設顯示現貨
+
+        updateModalSwitcherUI();
+
         const pure = name.replace('期','').replace('小型','').trim();
         document.getElementById('ai-title').innerText = `🤖 ${pure} (${num})`;
         document.getElementById('link-news').href = `${API_CONFIG.googleSearch}?q=${num}+${pure}+題材+新聞`;
         document.getElementById('link-wantgoo').href = `${API_CONFIG.wantGooStock}/${num}`;
         
-        // 帶入母股代號並開啟彈窗與即時走勢圖抓取
-        activeModalSymbol = num;
         isModalDetailsView = false;
         document.getElementById('modalCanvasWrap').classList.remove('hidden');
         document.getElementById('modalDetailsView').classList.remove('active');
-
         document.getElementById('ai-modal').classList.add('active');
+
         fetchAndRenderModalData();
         if (modalFetchInterval) clearInterval(modalFetchInterval);
         modalFetchInterval = setInterval(fetchAndRenderModalData, 1000);
     }
 
+    function setModalTargetType(type) {
+        modalTargetType = type;
+        updateModalSwitcherUI();
+        fetchAndRenderModalData();
+    }
+
+    function updateModalSwitcherUI() {
+        const btnSpot = document.getElementById('btn-switch-spot');
+        const btnFut = document.getElementById('btn-switch-fut');
+        if (modalTargetType === 'spot') {
+            btnSpot.classList.add('active');
+            btnFut.classList.remove('active');
+        } else {
+            btnSpot.classList.remove('active');
+            btnFut.classList.add('active');
+        }
+    }
+
     function closeAI() { 
         document.getElementById('ai-modal').classList.remove('active');
-        activeModalSymbol = null;
+        modalStockNum = null;
+        modalFutSymbol = null;
         if (modalFetchInterval) {
             clearInterval(modalFetchInterval);
             modalFetchInterval = null;
@@ -1307,9 +1084,13 @@
     }
 
     async function fetchAndRenderModalData() {
-        if (!activeModalSymbol) return;
+        if (!modalStockNum || !modalFutSymbol) return;
+
+        // 依照切換開關決定要查詢現貨代號還是股期代號 (股期代號加上 -1)
+        const targetQuerySymbol = (modalTargetType === 'spot') ? modalStockNum : `${modalFutSymbol}-1`;
+
         try {
-            const url = `${API_CONFIG.tvApiHistory}?symbol=${activeModalSymbol}&resolution=1&ws=true&intraday=true`;
+            const url = `${API_CONFIG.tvApiHistory}?symbol=${targetQuerySymbol}&resolution=1&ws=true&intraday=true`;
             const response = await fetch(url, { cache: "no-cache" });
             if (!response.ok) return;
 
@@ -1339,7 +1120,6 @@
             const colorClass = isUp ? 'up' : 'down';
             const sign = changeVal > 0 ? '+' : '';
 
-            // 1. 更新標題統計數值
             document.getElementById('modal-current-val').innerText = fmtNum(currentVal);
             document.getElementById('modal-current-val').className = colorClass;
             document.getElementById('modal-change-val').innerText = `${sign}${fmtNum(changeVal)}`;
@@ -1347,7 +1127,6 @@
             document.getElementById('modal-pct-val').innerText = `${sign}${fmtNum(changePct)}%`;
             document.getElementById('modal-pct-val').className = colorClass;
 
-            // 2. 更新詳細矩陣數據
             document.getElementById('m-close').innerText = fmtNum(currentVal);
             document.getElementById('m-close').className = `grid-val ${colorClass}`;
             document.getElementById('m-change').innerText = `${sign}${fmtNum(changeVal)}`;
@@ -1365,7 +1144,6 @@
             document.getElementById('m-vol').innerText = totalVol > 0 ? totalVol.toLocaleString() : '0';
             document.getElementById('m-vol').className = 'grid-val neutral';
 
-            // 3. 微型 K 棒渲染
             renderModalMicroCandle(
                 document.getElementById('modal-wick'),
                 document.getElementById('modal-body'),
@@ -1373,7 +1151,6 @@
                 openPrice, highVal, lowVal, currentVal
             );
 
-            // 4. 繪製 Canvas 走勢圖
             if (!isModalDetailsView) {
                 const canvas = document.getElementById('modalCanvas');
                 const ctx = canvas.getContext('2d');
@@ -1401,7 +1178,6 @@
                 const graphHeight = height - paddingTop - paddingBottom;
                 const lineColor = isUp ? '#f23645' : '#089981';
 
-                // Y 軸格線
                 ctx.font = '10px monospace';
                 ctx.fillStyle = '#ffffff';
                 ctx.strokeStyle = '#2a2e39';
@@ -1419,7 +1195,6 @@
                     ctx.fillText(fmtNum(val), width - paddingRight + 8, y + 3);
                 }
 
-                // X 軸時間標籤
                 const startTimeMs = list[0].time ? list[0].time : Date.now();
                 const endTimeMs = list[list.length - 1].time ? list[list.length - 1].time : Date.now();
                 const totalDuration = endTimeMs - startTimeMs || 1;
@@ -1438,7 +1213,6 @@
                     ctx.fillText(timeStr, x, height - 8);
                 }
 
-                // 繪製走勢折線
                 const points = prices.map((val, idx) => {
                     const itemTime = list[idx].time ? list[idx].time : startTimeMs;
                     const ratio = totalDuration === 0 ? 0 : Math.max(0, Math.min(1, (itemTime - startTimeMs) / totalDuration));
@@ -1457,7 +1231,6 @@
                 });
                 ctx.stroke();
 
-                // 漸層填滿
                 const lastPt = points[points.length - 1];
                 ctx.lineTo(lastPt.x, paddingTop + graphHeight);
                 ctx.lineTo(points[0].x, paddingTop + graphHeight);
@@ -1468,19 +1241,18 @@
                 ctx.fillStyle = gradient;
                 ctx.fill();
 
-                // 最高點與最低點標記
                 const highPt = points[highIdx];
                 const lowPt = points[lowIdx];
                 ctx.font = 'bold 11px monospace';
 
-                ctx.fillStyle = '#f23645';
+                ctx.fillStyle = '#FFFFFF';
                 ctx.textAlign = 'left';
                 let highX = highPt.x + 6;
                 let highY = highPt.y - 4;
                 if (highX + 50 > width - paddingRight) highX = highPt.x - 55;
                 ctx.fillText(`▼ ${fmtNum(highVal)}`, highX, highY);
 
-                ctx.fillStyle = '#FFFFFF';  // 最低點顏色 (可依照需求調整)
+                ctx.fillStyle = '#FFFFFF';
                 ctx.textAlign = 'left';
                 let lowX = lowPt.x + 6;
                 let lowY = lowPt.y + 14;
@@ -1516,7 +1288,6 @@
 
         svgEl.style.display = 'block';
     }
-    // ==========================================================
 
     function toggleCustomPanel(e) {
         e.stopPropagation();
@@ -1557,7 +1328,6 @@
         if (refreshTimer >= REFRESH_INTERVAL) fetchData(); 
     }, 100);
 
-    // 初始執行計算與資料抓取
     updateStockCounts();
     fetchData();
 </script>
