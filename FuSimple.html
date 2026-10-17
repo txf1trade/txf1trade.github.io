@@ -402,8 +402,10 @@
         }
         .star-btn.active { color: var(--star-color); }
 
-        .symbol-code { font-weight: 700; color: #ffffff; }
-        .symbol-name { color: var(--text-sub); }
+        .symbol-code { font-weight: 700; color: #ffffff; cursor: pointer; }
+        .symbol-code:hover { color: #9b9ef5; text-decoration: underline; }
+        .symbol-name { color: var(--text-sub); cursor: pointer; }
+        .symbol-name:hover { color: #ffffff; text-decoration: underline; }
 
         .change-badge {
             display: inline-block;
@@ -449,6 +451,126 @@
 
         @keyframes flashGreen { 0% { background-color: rgba(38, 166, 154, 0.4); } 100% { background-color: transparent; } }
         @keyframes flashRed { 0% { background-color: rgba(255, 77, 90, 0.4); } 100% { background-color: transparent; } }
+
+        /* ================= VIX 風格走勢彈出面板樣式 ================= */
+        .vix-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        .vix-modal-overlay.active { display: flex; }
+
+        .vix-card {
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .vix-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            user-select: none;
+        }
+
+        .vix-title-clickable {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .vix-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .vix-stats-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        /* ✕ 關閉按鈕樣式 */
+        .vix-close-btn {
+            background: #2a2e39;
+            color: #b2b5be;
+            border: none;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, color 0.2s;
+            margin-left: 10px;
+        }
+        .vix-close-btn:hover {
+            background: #f23645;
+            color: #ffffff;
+        }
+
+        .vix-content-area {
+            width: 100%;
+            height: 180px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .vix-card canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .vix-details-view {
+            display: none;
+            width: 100%;
+            height: 100%;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 4px;
+            align-content: center;
+        }
+        .vix-details-view.active { display: grid; }
+
+        .vix-canvas-wrap { width: 100%; height: 100%; }
+        .vix-canvas-wrap.hidden { display: none; }
+
+        .grid-cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1px;
+            background: #131722;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: 1px solid #2a2e39;
+        }
+        .grid-label { font-size: 10px; color: #787b86; line-height: 1; }
+        .grid-val { font-size: 13px; font-family: monospace; font-weight: bold; line-height: 1.2; }
+
+        .up { color: #f23645; }
+        .down { color: #089981; }
+        .neutral { color: #e0e0e0; }
     </style>
 </head>
 <body class="hide-commodity-tab hide-fx-tab">
@@ -588,6 +710,50 @@
         <div id="ai-dialog-body" class="ai-dialog-body">讀取即時數據分析中...</div>
     </div>
 
+    <!-- ================= 商品 VIX 風格走勢彈出面板 ================= -->
+    <div class="vix-modal-overlay" id="symbolVixModal" onclick="handleModalOutsideClick(event)">
+        <div class="vix-card">
+            <div class="vix-card-header">
+                <!-- 點擊標題區塊可切換「走勢圖 / 詳細資料」 -->
+                <div class="vix-title-clickable" onclick="toggleModalVixView()" title="點擊切換圖表與詳細資訊">
+                    <div class="vix-title-group">
+                        <svg id="modal-mini-candle" width="14" height="28" viewBox="0 0 22 46" style="display:none;">
+                            <line id="modal-wick" x1="11" y1="2" x2="11" y2="44" stroke-width="2" />
+                            <rect id="modal-body" x="5" width="12" rx="1" ry="1" />
+                        </svg>
+                        <span id="modal-card-title-text">商品即時走勢</span>
+                    </div>
+                    <div class="vix-stats-group">
+                        <span id="modal-current-val" class="neutral">--</span>
+                        <span id="modal-change-val" class="neutral">--</span>
+                        <span id="modal-pct-val" class="neutral">--%</span>
+                    </div>
+                </div>
+                <!-- ✕ 打叉關閉按鈕 -->
+                <button class="vix-close-btn" onclick="closeSymbolModal()">✕ 關閉</button>
+            </div>
+
+            <div class="vix-content-area" onclick="toggleModalVixView()" title="點擊切換圖表與詳細資訊">
+                <!-- 圖表視圖 -->
+                <div class="vix-canvas-wrap" id="modalCanvasWrap">
+                    <canvas id="modalCanvas"></canvas>
+                </div>
+
+                <!-- 詳細數據視圖 -->
+                <div class="vix-details-view" id="modalDetailsView">
+                    <div class="grid-cell"><span class="grid-label">成交</span><span class="grid-val neutral" id="m-close">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">開盤</span><span class="grid-val neutral" id="m-open">--</span></div>    
+                    <div class="grid-cell"><span class="grid-label">漲跌</span><span class="grid-val neutral" id="m-change">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">昨收</span><span class="grid-val neutral" id="m-prevref">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">最高</span><span class="grid-val neutral" id="m-high">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">最低</span><span class="grid-val neutral" id="m-low">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">漲跌幅</span><span class="grid-val neutral" id="m-pct">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">成交量</span><span class="grid-val neutral" id="m-vol">--</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TWN-1,TAIWANVIX,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,BTCUSDT,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
 
@@ -645,6 +811,272 @@
         let currentSortField = "";
         let currentSortOrder = "desc";
 
+        // ================= 彈出面板與互動走勢邏輯 =================
+        let activeModalSymbol = null;
+        let isModalDetailsView = false;
+        let modalFetchInterval = null;
+
+        function openSymbolModal(symbol, event) {
+            if (event) event.stopPropagation();
+            activeModalSymbol = symbol;
+            isModalDetailsView = false;
+            
+            document.getElementById('modalCanvasWrap').classList.remove('hidden');
+            document.getElementById('modalDetailsView').classList.remove('active');
+            
+            const meta = SYMBOL_META[symbol] || { name: symbol };
+            document.getElementById('modal-card-title-text').innerText = `${meta.name} (${symbol})`;
+
+            document.getElementById('symbolVixModal').classList.add('active');
+            fetchAndRenderModalData();
+            if (modalFetchInterval) clearInterval(modalFetchInterval);
+            modalFetchInterval = setInterval(fetchAndRenderModalData, 1000);
+        }
+
+        function closeSymbolModal() {
+            document.getElementById('symbolVixModal').classList.remove('active');
+            activeModalSymbol = null;
+            if (modalFetchInterval) {
+                clearInterval(modalFetchInterval);
+                modalFetchInterval = null;
+            }
+        }
+
+        function handleModalOutsideClick(event) {
+            if (event.target.id === 'symbolVixModal') {
+                closeSymbolModal();
+            }
+        }
+
+        function toggleModalVixView() {
+            isModalDetailsView = !isModalDetailsView;
+            const canvasWrap = document.getElementById('modalCanvasWrap');
+            const detailsView = document.getElementById('modalDetailsView');
+            const meta = SYMBOL_META[activeModalSymbol] || { name: activeModalSymbol };
+
+            if (isModalDetailsView) {
+                canvasWrap.classList.add('hidden');
+                detailsView.classList.add('active');
+                document.getElementById('modal-card-title-text').innerText = `${meta.name} (${activeModalSymbol}) [詳細]`;
+            } else {
+                canvasWrap.classList.remove('hidden');
+                detailsView.classList.remove('active');
+                document.getElementById('modal-card-title-text').innerText = `${meta.name} (${activeModalSymbol})`;
+            }
+        }
+
+        function renderMicroCandle(wickEl, bodyEl, svgEl, open, high, low, close) {
+            const maxP = Math.max(open, high, low, close);
+            const minP = Math.min(open, high, low, close);
+            const range = (maxP - minP) || 1;
+
+            const svgHeight = 42; 
+            const paddingTop = 2;
+            const getY = (price) => paddingTop + (maxP - price) / range * svgHeight;
+
+            const isCandleUp = close >= open;
+            const colorHex = isCandleUp ? '#f23645' : '#089981';
+
+            wickEl.setAttribute('y1', getY(high));
+            wickEl.setAttribute('y2', getY(low));
+            wickEl.setAttribute('stroke', colorHex);
+
+            bodyEl.setAttribute('y', Math.min(getY(open), getY(close)));
+            bodyEl.setAttribute('height', Math.max(Math.abs(getY(close) - getY(open)), 3));
+            bodyEl.setAttribute('fill', colorHex);
+
+            svgEl.style.display = 'block';
+        }
+
+        async function fetchAndRenderModalData() {
+            if (!activeModalSymbol) return;
+            try {
+                const url = `https://tv-signalr.futures-op.com/history?symbol=${activeModalSymbol}&resolution=1&ws=true&intraday=true`;
+                const response = await fetch(url, { cache: "no-cache" });
+                if (!response.ok) return;
+
+                const json = await response.json();
+                const list = json && Array.isArray(json.bars) ? json.bars : (Array.isArray(json) ? json : []);
+                if (list.length === 0) return;
+
+                const prevRef = json.prevRef !== undefined ? json.prevRef : 
+                                (json.meta && json.meta.prevRef !== undefined ? json.meta.prevRef : (quotesData[activeModalSymbol]?.prevRef || list[0].open));
+                
+                const latest = list[list.length - 1];
+                const currentVal = latest.close;
+                const openPrice = list[0].open;
+                const totalVol = list.reduce((acc, item) => acc + (item.volume || 0), 0);
+
+                let highVal = -Infinity, lowVal = Infinity;
+                let highIdx = 0, lowIdx = 0;
+
+                list.forEach((item, idx) => {
+                    if (item.high > highVal) { highVal = item.high; highIdx = idx; }
+                    if (item.low < lowVal) { lowVal = item.low; lowIdx = idx; }
+                });
+
+                const changeVal = currentVal - prevRef;
+                const changePct = prevRef ? (changeVal / prevRef) * 100 : 0;
+                const isUp = changeVal >= 0;
+                const colorClass = isUp ? 'up' : 'down';
+                const sign = changeVal > 0 ? '+' : '';
+
+                // 1. 更新標題列統計數值
+                document.getElementById('modal-current-val').innerText = fmt(currentVal);
+                document.getElementById('modal-current-val').className = colorClass;
+                document.getElementById('modal-change-val').innerText = `${sign}${fmt(changeVal)}`;
+                document.getElementById('modal-change-val').className = colorClass;
+                document.getElementById('modal-pct-val').innerText = `${sign}${fmt(changePct)}%`;
+                document.getElementById('modal-pct-val').className = colorClass;
+
+                // 2. 更新詳細矩陣數據
+                document.getElementById('m-close').innerText = fmt(currentVal);
+                document.getElementById('m-close').className = `grid-val ${colorClass}`;
+                document.getElementById('m-change').innerText = `${sign}${fmt(changeVal)}`;
+                document.getElementById('m-change').className = `grid-val ${colorClass}`;
+                document.getElementById('m-open').innerText = fmt(openPrice);
+                document.getElementById('m-open').className = 'grid-val neutral';
+                document.getElementById('m-prevref').innerText = fmt(prevRef);
+                document.getElementById('m-prevref').className = 'grid-val neutral';
+                document.getElementById('m-high').innerText = fmt(highVal);
+                document.getElementById('m-high').className = 'grid-val up';
+                document.getElementById('m-low').innerText = fmt(lowVal);
+                document.getElementById('m-low').className = 'grid-val down';
+                document.getElementById('m-pct').innerText = `${sign}${fmt(changePct)}%`;
+                document.getElementById('m-pct').className = `grid-val ${colorClass}`;
+                document.getElementById('m-vol').innerText = totalVol > 0 ? totalVol.toLocaleString() : '0';
+                document.getElementById('m-vol').className = 'grid-val neutral';
+
+                // 3. 微型 K 棒
+                renderMicroCandle(
+                    document.getElementById('modal-wick'),
+                    document.getElementById('modal-body'),
+                    document.getElementById('modal-mini-candle'),
+                    openPrice, highVal, lowVal, currentVal
+                );
+
+                // 4. 繪製走勢圖 Canvas
+                if (!isModalDetailsView) {
+                    const canvas = document.getElementById('modalCanvas');
+                    const ctx = canvas.getContext('2d');
+                    const dpr = window.devicePixelRatio || 1;
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = rect.width * dpr;
+                    canvas.height = rect.height * dpr;
+                    ctx.scale(dpr, dpr);
+
+                    const width = rect.width;
+                    const height = rect.height;
+                    ctx.clearRect(0, 0, width, height);
+
+                    const prices = list.map(item => item.close);
+                    const minP = Math.min(...prices);
+                    const maxP = Math.max(...prices);
+                    const range = (maxP - minP) || 1;
+
+                    const paddingLeft = 35;
+                    const paddingRight = 55;
+                    const paddingTop = 20;
+                    const paddingBottom = 30;
+
+                    const graphWidth = width - paddingLeft - paddingRight;
+                    const graphHeight = height - paddingTop - paddingBottom;
+                    const lineColor = isUp ? '#f23645' : '#089981';
+
+                    // Y 軸格線
+                    ctx.font = '10px monospace';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#2a2e39';
+                    ctx.lineWidth = 1;
+
+                    const ySteps = 4;
+                    for (let i = 0; i <= ySteps; i++) {
+                        const val = minP + (range * (ySteps - i) / ySteps);
+                        const y = paddingTop + (graphHeight / ySteps) * i;
+                        ctx.beginPath();
+                        ctx.moveTo(paddingLeft, y);
+                        ctx.lineTo(width - paddingRight, y);
+                        ctx.stroke();
+                        ctx.textAlign = 'left';
+                        ctx.fillText(fmt(val), width - paddingRight + 8, y + 3);
+                    }
+
+                    // X 軸時間標籤
+                    const startTimeMs = list[0].time ? list[0].time : Date.now();
+                    const endTimeMs = list[list.length - 1].time ? list[list.length - 1].time : Date.now();
+                    const totalDuration = endTimeMs - startTimeMs || 1;
+
+                    const xSteps = 4;
+                    for (let i = 0; i <= xSteps; i++) {
+                        const targetTimeMs = startTimeMs + (totalDuration * (i / xSteps));
+                        const targetDate = new Date(targetTimeMs);
+                        const timeStr = targetDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+                        const x = paddingLeft + (graphWidth / xSteps) * i;
+                        ctx.beginPath();
+                        ctx.moveTo(x, paddingTop);
+                        ctx.lineTo(x, paddingTop + graphHeight);
+                        ctx.stroke();
+                        ctx.textAlign = 'center';
+                        ctx.fillText(timeStr, x, height - 8);
+                    }
+
+                    // 繪製座標與折線
+                    const points = prices.map((val, idx) => {
+                        const itemTime = list[idx].time ? list[idx].time : startTimeMs;
+                        const ratio = totalDuration === 0 ? 0 : Math.max(0, Math.min(1, (itemTime - startTimeMs) / totalDuration));
+                        return {
+                            x: paddingLeft + ratio * graphWidth,
+                            y: paddingTop + graphHeight - ((val - minP) / range) * graphHeight
+                        };
+                    });
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = lineColor;
+                    ctx.lineWidth = 2;
+                    points.forEach((pt, idx) => {
+                        if (idx === 0) ctx.moveTo(pt.x, pt.y);
+                        else ctx.lineTo(pt.x, pt.y);
+                    });
+                    ctx.stroke();
+
+                    // 填滿漸層
+                    const lastPt = points[points.length - 1];
+                    ctx.lineTo(lastPt.x, paddingTop + graphHeight);
+                    ctx.lineTo(points[0].x, paddingTop + graphHeight);
+                    ctx.closePath();
+                    const gradient = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
+                    gradient.addColorStop(0, isUp ? 'rgba(242, 54, 69, 0.2)' : 'rgba(8, 153, 129, 0.2)');
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+
+                    // 極值標記
+                    const highPt = points[highIdx];
+                    const lowPt = points[lowIdx];
+                    ctx.font = 'bold 11px monospace';
+
+                    ctx.fillStyle = '#f23645';
+                    ctx.textAlign = 'left';
+                    let highX = highPt.x + 6;
+                    let highY = highPt.y - 4;
+                    if (highX + 50 > width - paddingRight) highX = highPt.x - 55;
+                    ctx.fillText(`▼ ${fmt(highVal)}`, highX, highY);
+
+                    // ctx.fillStyle = '#089981';
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.textAlign = 'left';
+                    let lowX = lowPt.x + 6;
+                    let lowY = lowPt.y + 14;
+                    if (lowX + 50 > width - paddingRight) lowX = lowPt.x - 55;
+                    if (lowY > paddingTop + graphHeight - 10) lowY = lowPt.y - 6;
+                    ctx.fillText(`▲ ${fmt(lowVal)}`, lowX, lowY);
+                }
+            } catch (e) {
+                console.error("modal fetch error:", e);
+            }
+        }
+        // ==========================================================
+
         function handleSort(field) {
             if (currentSortField === field) {
                 currentSortOrder = currentSortOrder === "asc" ? "desc" : "asc";
@@ -656,9 +1088,7 @@
         }
 
         function updateSortIndicators() {
-            document.querySelectorAll("th").forEach(th => {
-                th.classList.remove("sort-active");
-            });
+            document.querySelectorAll("th").forEach(th => th.classList.remove("sort-active"));
             ["symbol", "name", "close", "change", "changePct", "bid", "ask", "high", "low", "prevRef", "qty", "volume", "datetime"].forEach(f => {
                 const el = document.getElementById(`sort-${f}`);
                 if (el) el.innerText = "";
@@ -699,7 +1129,6 @@
             return Number(n).toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
         }
 
-        // 將 API 的更新時間自動轉為台灣當地時間顯示
         function fmtTime(iso) {
             if (!iso) return "-";
             const date = new Date(iso);
@@ -735,10 +1164,7 @@
             const dialog = document.getElementById("ai-dialog");
             const isShow = typeof forceState === "boolean" ? forceState : !dialog.classList.contains("show");
             dialog.classList.toggle("show", isShow);
-
-            if (isShow) {
-                runAIAnalysis();
-            }
+            if (isShow) runAIAnalysis();
         }
 
         function runAIAnalysis() {
@@ -766,48 +1192,36 @@
             const tsm = getSymbolInfo("TSM");
             const nvda = getSymbolInfo("NVDA");
 
-            let statusTag = "";
-            let riskAssessment = "";
-            let actionSuggestion = "";
+            let statusTag = "", riskAssessment = "", actionSuggestion = "";
 
             if (oil.pct > 1.5 || gold.pct > 1.0) {
                 statusTag = "⚠️ 地緣升溫 / 避險需求抬頭";
-                riskAssessment = `紐約原油目前報 ${fmt(oil.close)}，高於昨收基準 ${fmt(oil.prevRef)}。地緣政治情緒推升能源與黃金避險買盤。`;
+                riskAssessment = `紐約原油目前報 ${fmt(oil.close)}，高於昨收基準 ${fmt(oil.prevRef)}。`;
             } else if (oil.pct < -1.2) {
                 statusTag = "📉 恐慌釋放 / 能源溢價回落";
-                riskAssessment = `原油走弱至 ${fmt(oil.close)}（昨收 ${fmt(oil.prevRef)}），地緣政治利空對市場衝擊邊際遞減。`;
+                riskAssessment = `原油走弱至 ${fmt(oil.close)}（昨收 ${fmt(oil.prevRef)}）。`;
             } else {
                 statusTag = "⚖️ 總經橫盤 / 避險資產狹幅震盪";
-                riskAssessment = `紐約原油維持在昨收 ${fmt(oil.prevRef)} 附近整理，整體避險情緒持平。`;
+                riskAssessment = `紐約原油維持在昨收 ${fmt(oil.prevRef)} 附近整理。`;
             }
 
             if (isNightSession) {
                 if (tsm.pct >= 0 || nq.pct >= 0) {
-                    actionSuggestion = `台積電 ADR (昨收 ${fmt(tsm.prevRef)}) 與納指期 (昨收 ${fmt(nq.prevRef)}) 展現強勁防禦力。若油價不再創高，夜盤台指期容易開啟利空出盡型強烈反彈。`;
+                    actionSuggestion = `台積電 ADR 與納指期展現強韌防禦力，夜盤台指期容易開啟反彈。`;
                 } else {
-                    actionSuggestion = `海外科技股偏弱，夜盤操作宜密切關注台指期昨收線 ${fmt(tx.prevRef)} 附近的支撐韌性。`;
+                    actionSuggestion = `海外科技股偏弱，密切關注台指期昨收線 ${fmt(tx.prevRef)} 支撐。`;
                 }
             } else {
-                if (nq.pct > 0.3) {
-                    actionSuggestion = `國際期貨電子盤氛圍偏多，日盤台指期可隨跨市場資金回流尋求反彈點。`;
-                } else {
-                    actionSuggestion = `日盤持續觀察原油與黃金昨收防線，等待短線情緒賣壓消化後的轉折訊號。`;
-                }
+                actionSuggestion = `日盤持續觀察原油與黃金防線，等待短線情緒消化。`;
             }
 
-            let content = `📌 【關鍵昨收價格基準】\n` +
-                `• 紐約原油 (CL-1)：${fmt(oil.prevRef)}\n` +
+            let content = `📌 【關鍵價格基準】\n` +
+                `• 原油 (CL-1)：${fmt(oil.prevRef)}\n` +
                 `• 黃金 (GC-1)：${fmt(gold.prevRef)}\n` +
-                `• 納指期 (NQ-1)：${fmt(nq.prevRef)}\n`;
-
-            if (isNightSession) {
-                content += `• 台積電 ADR (TSM)：${fmt(tsm.prevRef)}\n` +
-                           `• 輝達 (NVDA)：${fmt(nvda.prevRef)}\n`;
-            }
-
-            content += `• 台指期 (TX-1)：${fmt(tx.prevRef)}\n\n` +
-                `📊 【市場狀態評估】\n${statusTag}\n${riskAssessment}\n\n` +
-                `💡 【跨市場轉折判斷】\n${actionSuggestion}`;
+                `• 納指 (NQ-1)：${fmt(nq.prevRef)}\n` +
+                `• 台指 (TX-1)：${fmt(tx.prevRef)}\n\n` +
+                `📊 【市場狀態】\n${statusTag}\n${riskAssessment}\n\n` +
+                `💡 【策略建議】\n${actionSuggestion}`;
 
             bodyEl.innerText = content;
         }
@@ -817,7 +1231,6 @@
             const panel = document.getElementById("drawer-panel");
             const overlay = document.getElementById("drawer-overlay");
             const isShow = panel.classList.contains("show");
-            
             if (isShow) {
                 closeDrawer();
             } else {
@@ -839,10 +1252,7 @@
                 full: keys
             };
             const activeKeys = configs[type] || [];
-
-            keys.forEach(k => {
-                document.getElementById(`chk-${k}`).checked = activeKeys.includes(k);
-            });
+            keys.forEach(k => { document.getElementById(`chk-${k}`).checked = activeKeys.includes(k); });
             updateColumnVisibility();
         }
 
@@ -900,17 +1310,10 @@
             if (currentSortField) {
                 items.sort((a, b) => {
                     let valA, valB;
-
                     switch (currentSortField) {
-                        case "symbol":
-                            valA = a.symbol; valB = b.symbol;
-                            break;
-                        case "name":
-                            valA = a.meta.name; valB = b.meta.name;
-                            break;
-                        case "close":
-                            valA = a.q.close ?? 0; valB = b.q.close ?? 0;
-                            break;
+                        case "symbol": valA = a.symbol; valB = b.symbol; break;
+                        case "name": valA = a.meta.name; valB = b.meta.name; break;
+                        case "close": valA = a.q.close ?? 0; valB = b.q.close ?? 0; break;
                         case "change":
                             valA = (a.q.close ?? 0) - (a.q.prevRef ?? 0);
                             valB = (b.q.close ?? 0) - (b.q.prevRef ?? 0);
@@ -921,34 +1324,16 @@
                             valA = a.q.prevRef ? (diffA / a.q.prevRef) * 100 : 0;
                             valB = b.q.prevRef ? (diffB / b.q.prevRef) * 100 : 0;
                             break;
-                        case "bid":
-                            valA = a.q.bid ?? 0; valB = b.q.bid ?? 0;
-                            break;
-                        case "ask":
-                            valA = a.q.ask ?? 0; valB = b.q.ask ?? 0;
-                            break;
-                        case "high":
-                            valA = a.q.high ?? 0; valB = b.q.high ?? 0;
-                            break;
-                        case "low":
-                            valA = a.q.low ?? 0; valB = b.q.low ?? 0;
-                            break;
-                        case "prevRef":
-                            valA = a.q.prevRef ?? 0; valB = b.q.prevRef ?? 0;
-                            break;
-                        case "qty":
-                            valA = a.q.qty ?? 0; valB = b.q.qty ?? 0;
-                            break;
-                        case "volume":
-                            valA = a.q.volume ?? 0; valB = b.q.volume ?? 0;
-                            break;
-                        case "datetime":
-                            valA = a.q.datetime || ""; valB = b.q.datetime || "";
-                            break;
-                        default:
-                            return 0;
+                        case "bid": valA = a.q.bid ?? 0; valB = b.q.bid ?? 0; break;
+                        case "ask": valA = a.q.ask ?? 0; valB = b.q.ask ?? 0; break;
+                        case "high": valA = a.q.high ?? 0; valB = b.q.high ?? 0; break;
+                        case "low": valA = a.q.low ?? 0; valB = b.q.low ?? 0; break;
+                        case "prevRef": valA = a.q.prevRef ?? 0; valB = b.q.prevRef ?? 0; break;
+                        case "qty": valA = a.q.qty ?? 0; valB = b.q.qty ?? 0; break;
+                        case "volume": valA = a.q.volume ?? 0; valB = b.q.volume ?? 0; break;
+                        case "datetime": valA = a.q.datetime || ""; valB = b.q.datetime || ""; break;
+                        default: return 0;
                     }
-
                     if (typeof valA === "string") {
                         return currentSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
                     } else {
@@ -968,8 +1353,8 @@
                 tr.id = `row-${symbol}`;
                 tr.innerHTML = `
                     <td style="text-align: center;"><span class="star-btn ${isStarred ? 'active' : ''}" onclick="toggleWatchlist('${symbol}', event)">${isStarred ? '★' : '☆'}</span></td>
-                    <td><span class="symbol-code">${q.symbol}</span></td>
-                    <td><span class="symbol-name">${meta.name}</span></td>
+                    <td><span class="symbol-code" onclick="openSymbolModal('${symbol}', event)" title="點擊檢視即時走勢">${q.symbol}</span></td>
+                    <td><span class="symbol-name" onclick="openSymbolModal('${symbol}', event)" title="點擊檢視即時走勢">${meta.name}</span></td>
                     <td class="${cls}" style="font-weight: 700;">${fmt(q.close)}</td>
                     <td class="col-change ${cls}">${sign}${fmt(diff)}</td>
                     <td class="col-changePct"><span class="change-badge ${bgCls}">${sign}${fmt(pct)}%</span></td>
