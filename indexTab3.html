@@ -33,6 +33,50 @@
             padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
         }
 
+        /* 頁頭頂部工具列（新增標題與一鍵更新按鈕） */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 4px 4px 4px;
+            margin-bottom: 4px;
+        }
+        .page-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #f0f6fc;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .refresh-btn {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--blue);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .refresh-btn:active {
+            background: #21262d;
+            transform: scale(0.95);
+        }
+        .refresh-btn.spinning .icon {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         /* 大盤指數卡片 */
         .index-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; margin-top: 5px; }
         .index-card { background: var(--card); padding: 8px 2px; border-radius: 6px; border: 1px solid var(--border); text-align: center; transition: all 0.3s ease; }
@@ -172,6 +216,15 @@
 <body>
 
 <div class="container">
+    <!-- 頁頭頂部區塊 (含標題與一鍵更新小按鈕) -->
+    <div class="top-header">
+        <div class="page-title">⚔️ 主力戰情室</div>
+        <button id="quickRefreshBtn" class="refresh-btn" onclick="triggerFullRefresh()">
+            <span class="icon">🔄</span>
+            <span id="refreshBtnText">一鍵更新</span>
+        </button>
+    </div>
+
     <!-- 指數區塊 -->
     <div class="index-grid">
         <div class="index-card" id="card-tsec" style="border-top: 3px solid var(--red);">
@@ -332,12 +385,43 @@
     window.addEventListener('resize', updateHeight);
     updateHeight();
     
-    const apiUrl = 'https://script.google.com/macros/s/AKfycbxIeAXP4C0VilvWhVqo1owFO0akDEqvZq_OIzL9Tp8w0XBQUNMXs_GmHrw_mvhXzJQ/exec';
+    const apiUrl = 'https://script.google.com/macros/s/AKfycbxMRVhrmDXBbK4O0oWx7qhwpgDubif71chXJxLc1WPFvT8obX9Bv00svhZjxVTXvgU3/exec';
     
     let globalSpot = { foreign: 0, trust: 0, dealer: 0, total: 0 };
     let globalTX = { fTX: 0, retailMTX: 0, retailMicro: 0 };
     let globalOpt = { dc: 0, dp: 0, fc: 0, fp: 0, dAmtC: 0, dAmtP: 0, fAmtC: 0, fAmtP: 0 };
     let curTSEC = 0, curFITX = 0;
+
+    /* 一鍵刷新全頁公式與資料邏輯 */
+    /* 一鍵刷新全頁公式與資料邏輯（已修正防阻擋） */
+    async function triggerFullRefresh() {
+        const btn = document.getElementById('quickRefreshBtn');
+        const btnText = document.getElementById('refreshBtnText');
+        
+        if (btn.classList.contains('spinning')) return; // 避免重複點擊
+        
+        btn.classList.add('spinning');
+        if (btnText) btnText.innerText = "刷新中...";
+        
+        try {
+            // 發送更新請求（加上 no-cors 或忽略跨域回傳，確保請求能送達後台）
+            await fetch(`${apiUrl}?type=opt&refresh=true`, { mode: 'no-cors' });
+        } catch(e) {
+            console.log("重新整理請求已送出");
+        }
+
+        // 稍微等待 1.5 秒讓 Google 試算表有時間重跑爬蟲公式
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // 重新讀取頁面上的所有籌碼資料並更新畫面
+        await fetchAllData();
+        
+        if (btnText) btnText.innerText = "已更新";
+        setTimeout(() => {
+            btn.classList.remove('spinning');
+            if (btnText) btnText.innerText = "一鍵更新";
+        }, 1500);
+    }
 
     async function fetchPrices() {
         const basisBox = document.getElementById('basis-container');
@@ -572,7 +656,6 @@
     }
 
     function renderNightTX(data) {
-        // 夜盤對應表頭：身份、大台、小台、成本 (資料結構順序: [name, tx, cost, mtx] 確保正確對應小台與成本)
         let html = `<table><thead><tr><th>身份</th><th>大台</th><th>小台</th><th>成本</th></tr></thead><tbody>`;
         
         if (!data || data.length <= 1) {
