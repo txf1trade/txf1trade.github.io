@@ -392,8 +392,7 @@
     let globalOpt = { dc: 0, dp: 0, fc: 0, fp: 0, dAmtC: 0, dAmtP: 0, fAmtC: 0, fAmtP: 0 };
     let curTSEC = 0, curFITX = 0;
 
-    /* 一鍵刷新全頁公式與資料邏輯 */
-    /* 一鍵刷新全頁公式與資料邏輯（已修正防阻擋） */
+    /* 一鍵更新後自動重整網頁邏輯 */
     async function triggerFullRefresh() {
         const btn = document.getElementById('quickRefreshBtn');
         const btnText = document.getElementById('refreshBtnText');
@@ -401,25 +400,18 @@
         if (btn.classList.contains('spinning')) return; // 避免重複點擊
         
         btn.classList.add('spinning');
-        if (btnText) btnText.innerText = "刷新中...";
+        if (btnText) btnText.innerText = "重新整理中...";
         
         try {
-            // 發送更新請求（加上 no-cors 或忽略跨域回傳，確保請求能送達後台）
+            // 發送更新請求通知後台重跑公式
             await fetch(`${apiUrl}?type=opt&refresh=true`, { mode: 'no-cors' });
         } catch(e) {
             console.log("重新整理請求已送出");
         }
 
-        // 稍微等待 1.5 秒讓 Google 試算表有時間重跑爬蟲公式
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // 重新讀取頁面上的所有籌碼資料並更新畫面
-        await fetchAllData();
-        
-        if (btnText) btnText.innerText = "已更新";
+        // 等待 1.5 秒讓 Google 試算表公式完成運算，隨後直接重整網頁
         setTimeout(() => {
-            btn.classList.remove('spinning');
-            if (btnText) btnText.innerText = "一鍵更新";
+            window.location.reload();
         }, 1500);
     }
 
