@@ -33,7 +33,7 @@
             padding-bottom: calc(100px + env(safe-area-inset-bottom)); 
         }
 
-        /* 頁頭頂部工具列（新增標題與一鍵更新按鈕） */
+        /* 頁頭頂部工具列 */
         .top-header {
             display: flex;
             justify-content: space-between;
@@ -49,6 +49,8 @@
             align-items: center;
             gap: 6px;
         }
+        
+        /* 一鍵更新按鈕與 SVG 箭頭樣式 */
         .refresh-btn {
             background: var(--card);
             border: 1px solid var(--border);
@@ -59,7 +61,7 @@
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
             transition: all 0.2s ease;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
@@ -68,8 +70,18 @@
             background: #21262d;
             transform: scale(0.95);
         }
-        .refresh-btn.spinning .icon {
+        
+        /* SVG 向量箭頭圖示 */
+        .icon-svg {
+            width: 13px;
+            height: 13px;
+            fill: currentColor;
             display: inline-block;
+            vertical-align: middle;
+            transition: transform 0.3s ease;
+        }
+
+        .refresh-btn.spinning .icon-svg {
             animation: spin 1s linear infinite;
         }
         @keyframes spin {
@@ -216,11 +228,13 @@
 <body>
 
 <div class="container">
-    <!-- 頁頭頂部區塊 (含標題與一鍵更新小按鈕) -->
+    <!-- 頁頭頂部區塊 (使用 SVG 旋轉箭頭) -->
     <div class="top-header">
-        <div class="page-title">⚔️ 主力戰情室</div>
+        <div class="page-title">⚔️主力盤後籌碼</div>
         <button id="quickRefreshBtn" class="refresh-btn" onclick="triggerFullRefresh()">
-            <span class="icon">🔄</span>
+            <svg class="icon-svg" viewBox="0 0 24 24">
+                <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+            </svg>
             <span id="refreshBtnText">一鍵更新</span>
         </button>
     </div>
@@ -400,19 +414,17 @@
         if (btn.classList.contains('spinning')) return; // 避免重複點擊
         
         btn.classList.add('spinning');
-        if (btnText) btnText.innerText = "重新整理中...";
+        if (btnText) btnText.innerText = "更新數據...";
         
         try {
-            // 發送更新請求通知後台重跑公式
             await fetch(`${apiUrl}?type=opt&refresh=true`, { mode: 'no-cors' });
         } catch(e) {
             console.log("重新整理請求已送出");
         }
 
-        // 等待 1.5 秒讓 Google 試算表公式完成運算，隨後直接重整網頁
         setTimeout(() => {
             window.location.reload();
-        }, 1500);
+        }, 10000);
     }
 
     async function fetchPrices() {
