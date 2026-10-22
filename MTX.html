@@ -2,8 +2,8 @@
 <html lang="zh-TW" class="h-full dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>微台 / 小台期貨風險控管與權益計算儀表板</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>微台/小台期風險%試算</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -23,8 +23,8 @@
                             border: '#2a3447',
                             accent: '#2563eb'
                         },
-                        twBull: '#ff4d4f', // Red for profit in TW
-                        twBear: '#00c076', // Green for loss in TW
+                        twBull: '#ff4d4f',
+                        twBear: '#00c076',
                     },
                     fontFamily: {
                         sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
@@ -44,8 +44,8 @@
             -moz-appearance: textfield;
         }
         .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
             background: #181e2a;
@@ -54,231 +54,180 @@
             background: #334155;
             border-radius: 3px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+        button, select, input {
+            touch-action: manipulation;
         }
     </style>
 </head>
-<body class="bg-[#0f131a] text-slate-100 min-h-full font-sans transition-colors duration-200 antialiased">
+<body class="bg-[#0f131a] text-slate-100 min-h-full font-sans antialiased text-xs">
 
     <div class="min-h-screen flex flex-col">
-        <!-- Header Bar -->
+        <!-- 導覽列 -->
         <header class="bg-[#181e2a] border-b border-slate-800 sticky top-0 z-30 shadow-md">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-3">
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20">
-                        <i class="fa-solid fa-calculator text-xl"></i>
+            <div class="max-w-7xl mx-auto px-3 py-2.5 flex flex-wrap justify-between items-center gap-2">
+                <div class="flex items-center space-x-2">
+                    <div class="p-2 bg-blue-600 text-white rounded-lg shadow-md shadow-blue-500/20">
+                        <i class="fa-solid fa-calculator text-sm"></i>
                     </div>
                     <div>
-                        <h1 class="text-base sm:text-lg font-bold tracking-tight text-white leading-tight flex items-center gap-2">
-                            微台 / 小台期貨風險控管與權益計算器
-                            <span class="text-[10px] bg-blue-900/60 text-blue-300 border border-blue-700/50 px-2 py-0.5 rounded-full font-semibold">即時行情連線版</span>
+                        <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight flex items-center gap-1.5">
+                            微台 / 小台期風險%試算
                         </h1>
-                        <p class="text-xs text-slate-400">依據台灣期貨交易所 (TAIFEX) 保證金規範精算</p>
                     </div>
                 </div>
 
-                <!-- Live Price Source & Sync Toolbar -->
-                <div class="flex items-center space-x-2 flex-wrap gap-y-2">
-                    <!-- Symbol Selector for Auto Sync -->
+                <!-- 報價來源與同步工具列 -->
+                <div class="flex items-center space-x-2 flex-wrap">
                     <div class="flex items-center bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1 space-x-1">
-                        <span class="text-[11px] text-slate-400 font-medium">報價源:</span>
+                        <span class="text-[10px] text-slate-400">報價:</span>
                         <select id="apiSymbolSelect" onchange="changeApiSymbol(this.value)" class="bg-transparent text-xs font-bold font-mono text-amber-300 focus:outline-none">
-                            <option value="TX-1" class="bg-[#181e2a] text-white">TX-1 (台指近一)</option>
-                            <option value="MTX-1" class="bg-[#181e2a] text-white">MTX-1 (小台/微台近一)</option>
+                            <option value="TX-1" class="bg-[#181e2a] text-white">TX-1 (台指)</option>
+                            <option value="MTX-1" class="bg-[#181e2a] text-white">MTX-1 (小台)</option>
                         </select>
                     </div>
 
-                    <!-- Auto Sync Toggle Switch -->
-                    <label class="inline-flex items-center cursor-pointer bg-[#0f131a] border border-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium space-x-2 hover:border-slate-600 transition">
+                    <label class="inline-flex items-center cursor-pointer bg-[#0f131a] border border-slate-700 px-2.5 py-1 rounded-lg text-xs space-x-1.5">
                         <input type="checkbox" id="autoSyncToggle" checked onchange="toggleAutoSync(this.checked)" class="sr-only peer">
-                        <div class="relative w-7 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
-                        <span class="text-xs font-semibold text-slate-300">自動同步市價</span>
+                        <div class="relative w-7 h-3.5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:start-[1px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                        <span class="text-[11px] font-medium text-slate-300">自動同步</span>
                     </label>
 
-                    <!-- Connection Status Indicator -->
-                    <div id="syncStatusBadge" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center space-x-1.5">
+                    <div id="syncStatusBadge" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center space-x-1">
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span id="syncStatusText">🟢 連線同步中</span>
+                        <span id="syncStatusText">🟢 連線中</span>
                     </div>
 
-                    <!-- Color Mode Switcher -->
-                    <button id="colorModeBtn" title="切換漲跌顏色習慣" class="p-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition flex items-center space-x-1 active:scale-95">
-                        <i class="fa-solid fa-palette text-amber-400"></i>
-                        <span id="colorModeLabel" class="hidden sm:inline">台股習慣</span>
+                    <button id="colorModeBtn" title="切換漲跌顏色習慣" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
+                        <span id="colorModeLabel">台股</span>
                     </button>
                 </div>
             </div>
         </header>
 
-        <!-- Main Content Area -->
-        <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <!-- 主要內容區 -->
+        <main class="flex-grow max-w-7xl w-full mx-auto px-3 py-3 space-y-3">
 
-            <!-- Presets & Dynamic Dynamic Scenario Toolbar -->
-            <div class="bg-[#181e2a] rounded-2xl p-4 shadow-sm border border-slate-800 space-y-3">
-                <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center">
-                        <i class="fa-solid fa-bolt text-amber-400 mr-2"></i>快捷動態情境推算 (根據部位均價與方向自動計算目標點數)：
+            <!-- 全域收合與預設情境工具列 -->
+            <div class="bg-[#181e2a] rounded-xl p-3 shadow-sm border border-slate-800 space-y-2">
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-2 flex-wrap gap-2">
+                    <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-bolt text-amber-400 mr-1.5"></i>快捷情境與控制：
                     </span>
-                    <button onclick="loadScreenshotPreset()" class="text-[11px] text-slate-400 hover:text-slate-200 transition">
-                        <i class="fa-solid fa-rotate-right mr-1"></i>重置帳務數據
-                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="toggleAllCards(true)" class="px-2.5 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg">全部收合</button>
+                        <button onclick="toggleAllCards(false)" class="px-2.5 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg">全部展開</button>
+                        <button onclick="loadScreenshotPreset()" class="px-2.5 py-1 text-[11px] text-slate-400 hover:text-slate-200"><i class="fa-solid fa-rotate-right mr-1"></i>重置</button>
+                    </div>
                 </div>
 
-                <!-- Scenario Dynamic Buttons Grid -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2" id="presetButtonsGroup">
-                    <!-- Safe 200% -->
-                    <button onclick="applyPresetScenario('safe200')" id="btnPresetSafe200" class="p-2.5 rounded-xl border bg-emerald-950/40 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/60 transition text-left flex flex-col justify-between group active:scale-95">
-                        <div class="text-[11px] font-bold flex items-center justify-between">
-                            <span>🟢 安全水位 (200%)</span>
-                            <i class="fa-solid fa-shield-halved text-emerald-400 opacity-80 group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div class="text-xs font-mono font-bold mt-1 text-emerald-200" id="presetSafe200Val">-- 點</div>
-                        <div class="text-[10px] text-emerald-400/70" id="presetSafe200Dist">-- 點</div>
+                <!-- 情境按鈕網格 -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="presetButtonsGroup">
+                    <button onclick="applyPresetScenario('safe200')" class="p-2 rounded-lg border bg-emerald-950/40 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/60 text-left">
+                        <div class="text-[10px] font-bold"><span>🟢 安全(200%)</span></div>
+                        <div class="text-xs font-mono font-bold text-emerald-200 mt-0.5" id="presetSafe200Val">-- 點</div>
                     </button>
-
-                    <!-- Safe 150% -->
-                    <button onclick="applyPresetScenario('safe150')" id="btnPresetSafe150" class="p-2.5 rounded-xl border bg-blue-950/40 border-blue-800/60 text-blue-300 hover:bg-blue-900/60 transition text-left flex flex-col justify-between group active:scale-95">
-                        <div class="text-[11px] font-bold flex items-center justify-between">
-                            <span>🟡 注意水位 (150%)</span>
-                            <i class="fa-solid fa-circle-info text-blue-400 opacity-80 group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div class="text-xs font-mono font-bold mt-1 text-blue-200" id="presetSafe150Val">-- 點</div>
-                        <div class="text-[10px] text-blue-400/70" id="presetSafe150Dist">-- 點</div>
+                    <button onclick="applyPresetScenario('safe150')" class="p-2 rounded-lg border bg-blue-950/40 border-blue-800/60 text-blue-300 hover:bg-blue-900/60 text-left">
+                        <div class="text-[10px] font-bold"><span>🟡 注意(150%)</span></div>
+                        <div class="text-xs font-mono font-bold text-blue-200 mt-0.5" id="presetSafe150Val">-- 點</div>
                     </button>
-
-                    <!-- Warning 100% -->
-                    <button onclick="applyPresetScenario('warning100')" id="btnPresetWarning100" class="p-2.5 rounded-xl border bg-amber-950/40 border-amber-800/60 text-amber-300 hover:bg-amber-900/60 transition text-left flex flex-col justify-between group active:scale-95">
-                        <div class="text-[11px] font-bold flex items-center justify-between">
-                            <span>⚠️ 追繳警告 (100%)</span>
-                            <i class="fa-solid fa-triangle-exclamation text-amber-400 opacity-80 group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div class="text-xs font-mono font-bold mt-1 text-amber-200" id="presetWarning100Val">-- 點</div>
-                        <div class="text-[10px] text-amber-400/70" id="presetWarning100Dist">-- 點</div>
+                    <button onclick="applyPresetScenario('warning100')" class="p-2 rounded-lg border bg-amber-950/40 border-amber-800/60 text-amber-300 hover:bg-amber-900/60 text-left">
+                        <div class="text-[10px] font-bold"><span>⚠️ 警告(100%)</span></div>
+                        <div class="text-xs font-mono font-bold text-amber-200 mt-0.5" id="presetWarning100Val">-- 點</div>
                     </button>
-
-                    <!-- Margin Call (Maint Margin) -->
-                    <button onclick="applyPresetScenario('maintCall')" id="btnPresetMaintCall" class="p-2.5 rounded-xl border bg-orange-950/40 border-orange-800/60 text-orange-300 hover:bg-orange-900/60 transition text-left flex flex-col justify-between group active:scale-95">
-                        <div class="text-[11px] font-bold flex items-center justify-between">
-                            <span>🚨 盤後追繳 (維持率)</span>
-                            <i class="fa-solid fa-bell text-orange-400 opacity-80 group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div class="text-xs font-mono font-bold mt-1 text-orange-200" id="presetMaintCallVal">-- 點</div>
-                        <div class="text-[10px] text-orange-400/70" id="presetMaintCallDist">-- 點</div>
+                    <button onclick="applyPresetScenario('maintCall')" class="p-2 rounded-lg border bg-orange-950/40 border-orange-800/60 text-orange-300 hover:bg-orange-900/60 text-left">
+                        <div class="text-[10px] font-bold"><span>🚨 追繳(維持率)</span></div>
+                        <div class="text-xs font-mono font-bold text-orange-200 mt-0.5" id="presetMaintCallVal">-- 點</div>
                     </button>
-
-                    <!-- Danger Liquidation 25% -->
-                    <button onclick="applyPresetScenario('danger25')" id="btnPresetDanger25" class="p-2.5 rounded-xl border bg-rose-950/40 border-rose-800/60 text-rose-300 hover:bg-rose-900/60 transition text-left flex flex-col justify-between group active:scale-95">
-                        <div class="text-[11px] font-bold flex items-center justify-between">
-                            <span>💣 高危斷頭 (25%)</span>
-                            <i class="fa-solid fa-skull-crossbones text-rose-400 opacity-80 group-hover:scale-110 transition-transform"></i>
-                        </div>
-                        <div class="text-xs font-mono font-bold mt-1 text-rose-200" id="presetDanger25Val">-- 點</div>
-                        <div class="text-[10px] text-rose-400/70" id="presetDanger25Dist">-- 點</div>
+                    <button onclick="applyPresetScenario('danger25')" class="p-2 rounded-lg border bg-rose-950/40 border-rose-800/60 text-rose-300 hover:bg-rose-900/60 text-left col-span-2 sm:col-span-1">
+                        <div class="text-[10px] font-bold"><span>💣 斷頭(25%)</span></div>
+                        <div class="text-xs font-mono font-bold text-rose-200 mt-0.5" id="presetDanger25Val">-- 點</div>
                     </button>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
 
-                <!-- Left Column: Inputs & Position Management (5 Cols) -->
-                <div class="lg:col-span-5 space-y-6">
+                <!-- 左側欄位：輸入與部位管理 (5 欄) -->
+                <div class="lg:col-span-5 space-y-3">
 
-                    <!-- Cash & Account Balance Section -->
-                    <div class="bg-[#181e2a] rounded-2xl p-5 border border-slate-800 space-y-4 shadow-sm">
-                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                            <h2 class="font-bold text-base flex items-center text-white">
+                    <!-- 帳戶金流區塊 -->
+                    <div id="card-cash" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
+                        <div onclick="toggleSection('cash')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
+                            <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
+                                <i id="icon-cash" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
                                 <i class="fa-solid fa-wallet text-blue-500 mr-2"></i>帳戶金流與基幣餘額
                             </h2>
-                            <span class="text-xs text-slate-400 font-mono">幣別: TWD</span>
+                            <span class="text-xs text-slate-400 font-mono">TWD</span>
                         </div>
-
-                        <div class="grid grid-cols-1 gap-3">
+                        <div id="body-cash" class="p-3.5 space-y-2.5">
                             <div>
-                                <label for="todayBalance" class="block text-xs font-medium text-slate-400 mb-1">
-                                    本日餘額 / 前日平倉帳單餘額
-                                </label>
+                                <label for="todayBalance" class="block text-xs font-medium text-slate-400 mb-1">本日餘額 / 前日平倉帳單餘額</label>
                                 <div class="relative">
                                     <span class="absolute left-3 top-2.5 text-xs font-bold text-slate-500">NT$</span>
-                                    <input type="number" id="todayBalance" value="1029498" step="1000" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full pl-11 pr-3 py-2 bg-[#0f131a] border border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none font-mono font-bold text-lg text-white transition">
+                                    <input type="number" id="todayBalance" value="1029498" step="1000" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full pl-11 pr-3 py-2 bg-[#0f131a] border border-slate-700 rounded-lg font-mono font-bold text-base text-white focus:outline-none">
                                 </div>
                             </div>
-
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-2 gap-2.5">
                                 <div>
-                                    <label for="closedPnL" class="block text-xs font-medium text-slate-400 mb-1">
-                                        當日已平倉損益
-                                    </label>
-                                    <input type="number" id="closedPnL" value="0" step="10" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full px-3 py-1.5 bg-[#0f131a] border border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm text-slate-200">
+                                    <label for="closedPnL" class="block text-xs font-medium text-slate-400 mb-1">當日已平倉損益</label>
+                                    <input type="number" id="closedPnL" value="0" step="10" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full px-3 py-2 bg-[#0f131a] border border-slate-700 rounded-lg font-mono text-sm text-slate-200 focus:outline-none">
                                 </div>
                                 <div>
-                                    <label for="feesAndTaxes" class="block text-xs font-medium text-slate-400 mb-1">
-                                        估算手續費 + 交易稅
-                                    </label>
-                                    <input type="number" id="feesAndTaxes" value="0" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full px-3 py-1.5 bg-[#0f131a] border border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm text-slate-200">
+                                    <label for="feesAndTaxes" class="block text-xs font-medium text-slate-400 mb-1">估算手續費+稅</label>
+                                    <input type="number" id="feesAndTaxes" value="0" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full px-3 py-2 bg-[#0f131a] border border-slate-700 rounded-lg font-mono text-sm text-slate-200 focus:outline-none">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Positions Manager -->
-                    <div class="bg-[#181e2a] rounded-2xl p-5 border border-slate-800 space-y-4 shadow-sm">
-                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                            <h2 class="font-bold text-base flex items-center text-white">
-                                <i class="fa-solid fa-list-check text-blue-500 mr-2"></i>部位清單 (微台 / 小台)
-                            </h2>
-                            <button onclick="addPositionRow()" class="px-2.5 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition flex items-center gap-1 shadow-sm active:scale-95">
-                                <i class="fa-solid fa-plus"></i> 新增部位
-                            </button>
-                        </div>
+                    <!-- 部位管理區塊 -->
+                    <div id="card-positions" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
+                        <div class="p-3 flex items-center justify-between border-b border-slate-800 bg-[#181e2a]/90">
+                            <div onclick="toggleSection('positions')" class="flex items-center cursor-pointer select-none flex-grow">
+                                <i id="icon-positions" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                                <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
+                                    <i class="fa-solid fa-list-check text-blue-500 mr-2"></i>部位清單 (支援分批)
+                                </h2>
+                            </div>
 
-                        <!-- Positions Container -->
-                        <div id="positionsContainer" class="space-y-3 custom-scrollbar max-h-[460px] overflow-y-auto pr-1">
-                            <!-- Rows injected by JavaScript -->
+                            <div class="flex items-center space-x-2.5">
+                                <div class="text-right">
+                                    <span class="text-[10px] text-slate-400 block leading-none">合計損益</span>
+                                    <span id="totalPositionsPnLHeader" class="font-mono font-bold text-xs sm:text-sm">0 TWD</span>
+                                </div>
+
+                                <button onclick="addPositionRow()" class="px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center gap-1 shadow">
+                                    <i class="fa-solid fa-plus"></i> 新增
+                                </button>
+                            </div>
+                        </div>
+                        <div id="body-positions" class="p-3 space-y-2.5">
+                            <div id="positionsContainer" class="space-y-2.5 custom-scrollbar max-h-[400px] overflow-y-auto pr-0.5">
+                                <!-- 動態注入部位 -->
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Futures Spec Rules Settings (Editable) -->
-                    <div class="bg-[#181e2a] rounded-2xl p-5 border border-slate-800 space-y-3 shadow-sm">
-                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <!-- 保證金規格設定 -->
+                    <div id="card-specs" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
+                        <div onclick="toggleSection('specs')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
                             <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center">
-                                <i class="fa-solid fa-sliders text-slate-400 mr-2"></i>期交所保證金規格標準
+                                <i id="icon-specs" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                                <i class="fa-solid fa-sliders text-slate-400 mr-2"></i>期交所保證金規格
                             </h3>
-                            <button onclick="resetSpecsToOfficial()" class="text-[11px] text-blue-400 hover:underline">
-                                恢復預設值
-                            </button>
+                            <button onclick="event.stopPropagation(); resetSpecsToOfficial();" class="text-xs text-blue-400 hover:underline">恢復預設</button>
                         </div>
-
-                        <div class="grid grid-cols-2 gap-3 text-xs">
-                            <!-- Micro Futures Specs -->
-                            <div class="bg-[#0f131a] p-3 rounded-xl border border-slate-800 space-y-2">
-                                <div class="font-bold text-blue-400 flex items-center justify-between">
-                                    <span>微型臺指 (微台)</span>
-                                    <span class="text-[10px] text-slate-400">1點 = $10</span>
+                        <div id="body-specs" class="p-3">
+                            <div class="grid grid-cols-2 gap-2.5 text-xs">
+                                <div class="bg-[#0f131a] p-2.5 rounded-lg border border-slate-800 space-y-1.5">
+                                    <div class="font-bold text-blue-400 flex justify-between"><span>微台 ($10)</span></div>
+                                    <div><span class="text-slate-400 text-[10px]">原始</span><input type="number" id="microInitial" value="35050" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-white text-xs"></div>
+                                    <div><span class="text-slate-400 text-[10px]">維持</span><input type="number" id="microMaint" value="26900" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-slate-300 text-xs"></div>
                                 </div>
-                                <div>
-                                    <span class="text-slate-400 block text-[10px]">原始保證金</span>
-                                    <input type="number" id="microInitial" value="35050" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded px-2 py-1 font-mono font-semibold text-white">
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 block text-[10px]">維持保證金</span>
-                                    <input type="number" id="microMaint" value="26900" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded px-2 py-1 font-mono text-slate-300">
-                                </div>
-                            </div>
-
-                            <!-- Mini Futures Specs -->
-                            <div class="bg-[#0f131a] p-3 rounded-xl border border-slate-800 space-y-2">
-                                <div class="font-bold text-amber-400 flex items-center justify-between">
-                                    <span>小型臺指 (小台)</span>
-                                    <span class="text-[10px] text-slate-400">1點 = $50</span>
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 block text-[10px]">原始保證金</span>
-                                    <input type="number" id="miniInitial" value="175250" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded px-2 py-1 font-mono font-semibold text-white">
-                                </div>
-                                <div>
-                                    <span class="text-slate-400 block text-[10px]">維持保證金</span>
-                                    <input type="number" id="miniMaint" value="134500" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded px-2 py-1 font-mono text-slate-300">
+                                <div class="bg-[#0f131a] p-2.5 rounded-lg border border-slate-800 space-y-1.5">
+                                    <div class="font-bold text-amber-400 flex justify-between"><span>小台 ($50)</span></div>
+                                    <div><span class="text-slate-400 text-[10px]">原始</span><input type="number" id="miniInitial" value="175250" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-white text-xs"></div>
+                                    <div><span class="text-slate-400 text-[10px]">維持</span><input type="number" id="miniMaint" value="134500" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-slate-300 text-xs"></div>
                                 </div>
                             </div>
                         </div>
@@ -286,224 +235,135 @@
 
                 </div>
 
-                <!-- Right Column: Visual Dashboard & Core Output Matrix (7 Cols) -->
-                <div class="lg:col-span-7 space-y-6">
+                <!-- 右側欄位：視覺化儀表板與核心矩陣總表 (7 欄) -->
+                <div class="lg:col-span-7 space-y-3">
 
-                    <!-- Main Risk Status Header Card -->
-                    <div id="riskStatusCard" class="bg-[#181e2a] rounded-2xl p-6 border border-slate-800 relative overflow-hidden shadow-xl">
+                    <!-- 風險狀態摘要卡片 -->
+                    <div id="card-risk" class="bg-[#181e2a] rounded-xl border border-slate-800 relative overflow-hidden shadow-md">
                         <div id="statusAccentBar" class="absolute top-0 left-0 right-0 h-2 bg-emerald-500"></div>
+                        <div onclick="toggleSection('risk')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
+                            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center">
+                                <i id="icon-risk" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                                <i class="fa-solid fa-gauge-high text-amber-400 mr-2"></i>即時風險指標摘要
+                            </span>
+                            <span id="riskBadgeHeader" class="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">安全</span>
+                        </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                            
-                            <!-- Risk Index Gauge -->
-                            <div class="md:col-span-7 text-center md:text-left space-y-2">
-                                <div class="flex items-center justify-center md:justify-start space-x-2">
-                                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">風險指標 (%)</span>
-                                    <span id="riskBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                                        權益充足 (安全)
-                                    </span>
+                        <div id="body-risk" class="p-3.5">
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-center">
+                                <div class="md:col-span-7 space-y-1.5">
+                                    <div class="flex items-baseline space-x-2">
+                                        <span id="riskIndexValue" class="text-3xl sm:text-4xl font-black font-mono text-white">142.7%</span>
+                                        <span class="text-xs text-slate-400">(總權益 / 原始保證金)</span>
+                                    </div>
+                                    <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden relative border border-slate-800">
+                                        <div id="riskProgressBar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 71.35%;"></div>
+                                        <div class="absolute top-0 bottom-0 left-[12.5%] w-0.5 bg-rose-500 z-10"></div>
+                                        <div class="absolute top-0 bottom-0 left-[50%] w-0.5 bg-amber-400 z-10"></div>
+                                    </div>
+                                    <div class="flex justify-between text-[10px] text-slate-400">
+                                        <span>0%</span><span class="text-rose-400">25%斷頭線</span><span>100%原始</span><span>200%+安全</span>
+                                    </div>
                                 </div>
-                                <div class="flex items-baseline justify-center md:justify-start space-x-2">
-                                    <span id="riskIndexValue" class="text-4xl sm:text-5xl font-black tracking-tight font-mono text-white">
-                                        142.7%
-                                    </span>
-                                    <span class="text-xs text-slate-400">(權益總值 / 原始保證金)</span>
-                                </div>
-
-                                <!-- Progress Gauge Bar -->
-                                <div class="w-full bg-slate-900 h-3.5 rounded-full overflow-hidden mt-3 relative border border-slate-800">
-                                    <div id="riskProgressBar" class="h-full bg-emerald-500 transition-all duration-500" style="width: 71.35%;"></div>
-                                    <div class="absolute top-0 bottom-0 left-[12.5%] w-0.5 bg-rose-500 z-10 opacity-80" title="25% 斷頭沖銷線"></div>
-                                    <div class="absolute top-0 bottom-0 left-[50%] w-0.5 bg-amber-400 z-10 opacity-80" title="100% 原始保證金線"></div>
-                                </div>
-                                <div class="flex justify-between text-[10px] font-semibold text-slate-400 pt-1">
-                                    <span>0%</span>
-                                    <span class="text-rose-400">25% 強制砍倉線</span>
-                                    <span>100% 原始保證金</span>
-                                    <span>200%+ 安全</span>
+                                <div class="md:col-span-5 bg-[#0f131a] rounded-xl p-3 border border-slate-800 text-center">
+                                    <div id="stopLossBox" class="py-2 px-2.5 rounded-lg font-bold text-xs flex items-center justify-center space-x-1.5 border">
+                                        <i id="stopLossIcon" class="fa-solid fa-shield-cat"></i>
+                                        <span id="stopLossText">風險正常 (&gt; 100%)</span>
+                                    </div>
+                                    <p id="riskAlertMsg" class="text-xs mt-1.5 text-slate-400">帳戶風險指標良好。</p>
                                 </div>
                             </div>
-
-                            <!-- Critical Risk Warning Box -->
-                            <div class="md:col-span-5 bg-[#0f131a] rounded-xl p-4 border border-slate-800 text-center flex flex-col justify-center items-center">
-                                <div id="stopLossBox" class="w-full py-2.5 px-3 rounded-lg font-bold text-sm flex items-center justify-center space-x-2 border transition-colors">
-                                    <i id="stopLossIcon" class="fa-solid fa-shield-cat"></i>
-                                    <span id="stopLossText">風險指標正常 (&gt; 100%)</span>
-                                </div>
-                                <p id="riskAlertMsg" class="text-xs mt-2 text-slate-400">
-                                    帳戶風險指標維持在 100% 以上，部位安全性良好。
-                                </p>
-                            </div>
-
                         </div>
                     </div>
 
-                    <!-- Core Broker Account Matrix Table -->
-                    <div class="bg-[#181e2a] rounded-2xl p-5 border border-slate-800 shadow-md">
-                        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-                            <h3 class="font-bold text-base text-white flex items-center">
-                                <i class="fa-solid fa-table-cells-large text-blue-500 mr-2"></i>帳戶權益與保證金精算總表
+                    <!-- 帳戶權益與合約損益總表 -->
+                    <div id="card-matrix" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-md overflow-hidden">
+                        <div onclick="toggleSection('matrix')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
+                            <h3 class="font-bold text-xs sm:text-sm text-white flex items-center">
+                                <i id="icon-matrix" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                                <i class="fa-solid fa-table-cells-large text-blue-500 mr-2"></i>帳戶權益與合約損益總表
                             </h3>
-                            <span class="text-xs text-slate-400">核對模式: 券商盤後/一般交易</span>
+                            <span class="text-xs text-slate-400">券商盤後對照</span>
                         </div>
 
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                        <th class="py-2.5 px-3">項目名稱 (Field)</th>
-                                        <th class="py-2.5 px-3 text-right">試算金額 / 指標</th>
-                                        <th class="py-2.5 px-3 text-right hidden sm:table-cell">公式 / 說明</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-800/60 text-sm font-medium">
-                                    
-                                    <!-- 本日餘額 -->
-                                    <tr class="hover:bg-slate-800/30 transition">
-                                        <td class="py-2.5 px-3 text-slate-300 flex items-center">
-                                            <i class="fa-solid fa-wallet text-slate-500 mr-2.5 w-4"></i>
-                                            本日餘額
-                                        </td>
-                                        <td id="outTodayBalance" class="py-2.5 px-3 text-right font-bold text-white font-mono">
-                                            NT$ 1,029,498
-                                        </td>
-                                        <td class="py-2.5 px-3 text-right text-xs text-slate-400 hidden sm:table-cell">
-                                            前日餘額 + 當日存提扣款
-                                        </td>
-                                    </tr>
-
-                                    <!-- 未沖銷期貨浮動損益 -->
-                                    <tr class="hover:bg-slate-800/30 transition">
-                                        <td class="py-2.5 px-3 text-slate-300 flex items-center">
-                                            <i class="fa-solid fa-chart-line text-slate-500 mr-2.5 w-4"></i>
-                                            未沖銷期貨浮動損益
-                                        </td>
-                                        <td id="outUnrealizedPnL" class="py-2.5 px-3 text-right font-bold font-mono text-base">
-                                            -NT$ 28,930
-                                        </td>
-                                        <td id="outPnLPointsNote" class="py-2.5 px-3 text-right text-xs text-slate-400 hidden sm:table-cell">
-                                            各部位即時浮動盈虧加總
-                                        </td>
-                                    </tr>
-
-                                    <!-- 權益總值 / 權益數 -->
-                                    <tr class="bg-blue-950/30 hover:bg-blue-900/40 transition border-y border-blue-900/50">
-                                        <td class="py-3 px-3 text-white font-bold flex items-center">
-                                            <i class="fa-solid fa-vault text-blue-400 mr-2.5 w-4"></i>
-                                            權益總值 / 權益數
-                                        </td>
-                                        <td id="outTotalEquity" class="py-3 px-3 text-right font-black text-lg text-blue-400 font-mono">
-                                            NT$ 1,000,568
-                                        </td>
-                                        <td class="py-3 px-3 text-right text-xs text-blue-300/80 hidden sm:table-cell font-semibold">
-                                            本日餘額 + 未沖銷損益
-                                        </td>
-                                    </tr>
-
-                                    <!-- 未沖銷原始保證金 -->
-                                    <tr class="hover:bg-slate-800/30 transition">
-                                        <td class="py-2.5 px-3 text-slate-300 flex items-center">
-                                            <i class="fa-solid fa-lock text-slate-500 mr-2.5 w-4"></i>
-                                            未沖銷原始保證金
-                                        </td>
-                                        <td id="outReqInitialMargin" class="py-2.5 px-3 text-right font-bold text-slate-200 font-mono">
-                                            NT$ 701,000
-                                        </td>
-                                        <td id="outInitialNote" class="py-2.5 px-3 text-right text-xs text-slate-400 hidden sm:table-cell">
-                                            微台 $35,050 / 小台 $175,250
-                                        </td>
-                                    </tr>
-
-                                    <!-- 維持保證金 -->
-                                    <tr class="hover:bg-slate-800/30 transition">
-                                        <td class="py-2.5 px-3 text-slate-300 flex items-center">
-                                            <i class="fa-solid fa-shield text-slate-500 mr-2.5 w-4"></i>
-                                            維持保證金
-                                        </td>
-                                        <td id="outReqMaintMargin" class="py-2.5 px-3 text-right font-bold text-slate-200 font-mono">
-                                            NT$ 538,000
-                                        </td>
-                                        <td id="outMaintNote" class="py-2.5 px-3 text-right text-xs text-slate-400 hidden sm:table-cell">
-                                            微台 $26,900 / 小台 $134,500
-                                        </td>
-                                    </tr>
-
-                                    <!-- 可用餘額 / 現金可用 -->
-                                    <tr class="hover:bg-slate-800/30 transition">
-                                        <td class="py-2.5 px-3 text-slate-300 flex items-center">
-                                            <i class="fa-solid fa-hand-holding-dollar text-slate-500 mr-2.5 w-4"></i>
-                                            可用餘額 / 現金可用
-                                        </td>
-                                        <td id="outAvailableCash" class="py-2.5 px-3 text-right font-bold font-mono text-emerald-400">
-                                            NT$ 299,568
-                                        </td>
-                                        <td class="py-2.5 px-3 text-right text-xs text-slate-400 hidden sm:table-cell">
-                                            權益總值 - 原始保證金
-                                        </td>
-                                    </tr>
-
-                                    <!-- 總值維持率 (%) -->
-                                    <tr class="hover:bg-slate-800/30 transition">
-                                        <td class="py-2.5 px-3 text-slate-300 flex items-center">
-                                            <i class="fa-solid fa-percent text-slate-500 mr-2.5 w-4"></i>
-                                            總值維持率 (%)
-                                        </td>
-                                        <td id="outTotalMaintRatio" class="py-2.5 px-3 text-right font-bold font-mono text-slate-200">
-                                            186.0%
-                                        </td>
-                                        <td class="py-2.5 px-3 text-right text-xs text-slate-400 hidden sm:table-cell">
-                                            權益數 ÷ 維持保證金
-                                        </td>
-                                    </tr>
-
-                                    <!-- 風險指標 (%) -->
-                                    <tr class="bg-slate-800/50 font-bold">
-                                        <td class="py-3 px-3 text-white flex items-center">
-                                            <i class="fa-solid fa-gauge-high text-amber-400 mr-2.5 w-4"></i>
-                                            風險指標 (%)
-                                        </td>
-                                        <td id="outRiskIndexTable" class="py-3 px-3 text-right font-black text-lg font-mono text-emerald-400">
-                                            142.7%
-                                        </td>
-                                        <td class="py-3 px-3 text-right text-xs text-slate-400 hidden sm:table-cell font-normal">
-                                            權益總值 ÷ 原始保證金
-                                        </td>
-                                    </tr>
-
-                                </tbody>
-                            </table>
+                        <div id="body-matrix" class="p-3.5">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                            <th class="py-2 px-2.5">項目名稱</th>
+                                            <th class="py-2 px-2.5 text-right">試算金額 / 總計</th>
+                                            <th class="py-2 px-2.5 text-right hidden sm:table-cell">公式說明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-800/60 text-xs sm:text-sm font-medium">
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">本日餘額</td>
+                                            <td id="outTodayBalance" class="py-2 px-2.5 text-right font-bold font-mono text-white">NT$ 1,029,498</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">前日餘額+存提款</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30 bg-slate-900/40">
+                                            <td class="py-2 px-2.5 text-slate-200 font-semibold flex items-center">
+                                                <i class="fa-solid fa-chart-line text-blue-400 mr-2"></i>未沖銷期貨浮動總損益 (合計)
+                                            </td>
+                                            <td id="outUnrealizedPnL" class="py-2 px-2.5 text-right font-bold font-mono text-sm sm:text-base">-NT$ 28,930</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">所有分批部位損益加總</td>
+                                        </tr>
+                                        <tr class="bg-blue-950/30 border-y border-blue-900/50">
+                                            <td class="py-2.5 px-2.5 text-white font-bold">權益總值 / 權益數</td>
+                                            <td id="outTotalEquity" class="py-2.5 px-2.5 text-right font-black text-sm sm:text-base text-blue-400 font-mono">NT$ 1,000,568</td>
+                                            <td class="py-2.5 px-2.5 text-right text-xs text-blue-300/80 hidden sm:table-cell font-semibold">本日餘額 + 總未沖銷損益</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">未沖銷原始保證金</td>
+                                            <td id="outReqInitialMargin" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">NT$ 701,000</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">微台/小台原始總計</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">維持保證金</td>
+                                            <td id="outReqMaintMargin" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">NT$ 538,000</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">維持保證金總計</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">可用餘額 / 現金可用</td>
+                                            <td id="outAvailableCash" class="py-2 px-2.5 text-right font-bold font-mono text-emerald-400">NT$ 299,568</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">權益總值 - 原始保證金</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">總值維持率 (%)</td>
+                                            <td id="outTotalMaintRatio" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">186.0%</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">權益數 ÷ 維持保證金</td>
+                                        </tr>
+                                        <tr class="bg-slate-800/50 font-bold">
+                                            <td class="py-2.5 px-2.5 text-white">風險指標 (%)</td>
+                                            <td id="outRiskIndexTable" class="py-2.5 px-2.5 text-right font-black text-sm sm:text-base font-mono text-emerald-400">142.7%</td>
+                                            <td class="py-2.5 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell font-normal">權益總值 ÷ 原始保證金</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Critical Trigger Prices Calculator -->
-                    <div class="bg-[#181e2a] rounded-2xl p-5 border border-slate-800 space-y-3 shadow-md">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
-                            <i class="fa-solid fa-crosshairs text-rose-500 mr-2"></i>追繳與 25% 代為沖銷 (斷頭) 關鍵點位測算
-                        </h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div class="p-3.5 bg-amber-950/30 border border-amber-800/50 rounded-xl space-y-1">
-                                <div class="text-xs text-amber-300 font-semibold flex items-center justify-between">
-                                    <span>盤後追繳發送門檻</span>
-                                    <span class="text-[10px] text-amber-400/80">權益數 &lt; 維持保證金</span>
+                    <!-- 追繳與斷頭關鍵點位測算 -->
+                    <div id="card-triggers" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-md overflow-hidden">
+                        <div onclick="toggleSection('triggers')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
+                                <i id="icon-triggers" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                                <i class="fa-solid fa-crosshairs text-rose-500 mr-2"></i>追繳與 25% 斷頭關鍵點位測算
+                            </h4>
+                        </div>
+                        <div id="body-triggers" class="p-3.5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="p-3 bg-amber-950/30 border border-amber-800/50 rounded-xl space-y-1">
+                                    <div class="text-xs text-amber-300 font-semibold flex justify-between"><span>盤後追繳門檻</span></div>
+                                    <div id="marginCallPrice" class="text-lg font-bold text-amber-200 font-mono">-- 點</div>
+                                    <div id="marginCallDist" class="text-xs text-amber-400/90">距離現價：-- 點</div>
                                 </div>
-                                <div id="marginCallPrice" class="text-xl font-bold text-amber-200 font-mono">
-                                    -- 點
-                                </div>
-                                <div id="marginCallDist" class="text-[11px] text-amber-400/90">
-                                    距離現價：-- 點
-                                </div>
-                            </div>
-
-                            <div class="p-3.5 bg-rose-950/30 border border-rose-800/50 rounded-xl space-y-1">
-                                <div class="text-xs text-rose-300 font-semibold flex items-center justify-between">
-                                    <span>25% 盤中強制砍倉線</span>
-                                    <span class="text-[10px] text-rose-400/80">風險指標 &lt; 25%</span>
-                                </div>
-                                <div id="liquidationPrice" class="text-xl font-bold text-rose-200 font-mono">
-                                    -- 點
-                                </div>
-                                <div id="liquidationDist" class="text-[11px] text-rose-400/90">
-                                    距離現價：-- 點
+                                <div class="p-3 bg-rose-950/30 border border-rose-800/50 rounded-xl space-y-1">
+                                    <div class="text-xs text-rose-300 font-semibold flex justify-between"><span>25% 強制砍倉線</span></div>
+                                    <div id="liquidationPrice" class="text-lg font-bold text-rose-200 font-mono">-- 點</div>
+                                    <div id="liquidationDist" class="text-xs text-rose-400/90">距離現價：-- 點</div>
                                 </div>
                             </div>
                         </div>
@@ -515,38 +375,30 @@
 
         </main>
 
-        <!-- Footer -->
-        <footer class="bg-[#181e2a] border-t border-slate-800 py-4 text-center text-xs text-slate-500 mt-auto">
-            <div class="max-w-7xl mx-auto px-4">
-                <p>微型臺指（1點=10元）與小型臺指（1點=50元）。本工具試算結果僅供風險預測參考，實際盤中斷頭與追繳標準請以各大期貨商及台灣期貨交易所 (TAIFEX) 公告為準。</p>
+        <!-- 頁尾 -->
+        <footer class="bg-[#181e2a] border-t border-slate-800 py-3 text-center text-xs text-slate-500 mt-auto">
+            <div class="max-w-7xl mx-auto px-3">
+                <p>微型臺指（1點=10元）與小型臺指（1點=50元）風險試算參考，請以期交所公告為準。</p>
             </div>
         </footer>
     </div>
 
-    <!-- JavaScript Application Logic -->
+    <!-- JavaScript 應用邏輯 -->
     <script>
-        // Global State
         const state = {
-            twColorMode: true, // true: Red profit / Green loss (Taiwan standard)
+            twColorMode: true,
             autoSyncMarketPrice: true,
             apiSymbol: 'TX-1',
             latestLivePrice: null,
             pollTimer: null,
-            collapsedCards: {}, // store position card collapse states
+            collapsedCards: {},
+            collapsedSections: { cash: false, positions: false, specs: false, risk: false, matrix: false, triggers: false },
             positions: [
-                { id: 1, symbol: 'MICRO', side: 'SHORT', qty: 20, costPrice: 47340.35, currentPrice: 47500 }
+                { id: 1, symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: 47340.35, currentPrice: 47500 }
             ],
-            // Calculated scenario targets
-            scenarioTargets: {
-                safe200: null,
-                safe150: null,
-                warning100: null,
-                maintCall: null,
-                danger25: null
-            }
+            scenarioTargets: { safe200: null, safe150: null, warning100: null, maintCall: null, danger25: null }
         };
 
-        // DOM Element Refs
         const positionsContainer = document.getElementById('positionsContainer');
         const todayBalanceInput = document.getElementById('todayBalance');
         const closedPnLInput = document.getElementById('closedPnL');
@@ -557,7 +409,6 @@
         const miniInitialInput = document.getElementById('miniInitial');
         const miniMaintInput = document.getElementById('miniMaint');
 
-        // Fast UX: Enter key moves focus or submits
         function handleEnterKey(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -572,7 +423,6 @@
             }
         }
 
-        // Formatting Helpers
         function formatNTD(num) {
             const isNeg = num < 0;
             const formatted = Math.abs(Math.round(num)).toLocaleString('zh-TW');
@@ -588,20 +438,48 @@
             }
         }
 
-        // Realtime Market Price Fetching & Synchronization
+        function toggleSection(key) {
+            state.collapsedSections[key] = !state.collapsedSections[key];
+            const bodyEl = document.getElementById(`body-${key}`);
+            const iconEl = document.getElementById(`icon-${key}`);
+            if (bodyEl && iconEl) {
+                if (state.collapsedSections[key]) {
+                    bodyEl.classList.add('hidden');
+                    iconEl.className = 'fa-solid fa-chevron-right text-slate-500 text-xs mr-2';
+                } else {
+                    bodyEl.classList.remove('hidden');
+                    iconEl.className = 'fa-solid fa-chevron-down text-slate-500 text-xs mr-2';
+                }
+            }
+        }
+
+        function toggleAllCards(collapse) {
+            ['cash', 'positions', 'specs', 'risk', 'matrix', 'triggers'].forEach(key => {
+                state.collapsedSections[key] = collapse;
+                const bodyEl = document.getElementById(`body-${key}`);
+                const iconEl = document.getElementById(`icon-${key}`);
+                if (bodyEl && iconEl) {
+                    if (collapse) {
+                        bodyEl.classList.add('hidden');
+                        iconEl.className = 'fa-solid fa-chevron-right text-slate-500 text-xs mr-2';
+                    } else {
+                        bodyEl.classList.remove('hidden');
+                        iconEl.className = 'fa-solid fa-chevron-down text-slate-500 text-xs mr-2';
+                    }
+                }
+            });
+            state.positions.forEach(pos => { state.collapsedCards[pos.id] = collapse; });
+            renderPositions();
+        }
+
         async function fetchLiveMarketPrice() {
             if (!state.autoSyncMarketPrice) return;
-
             const endpoint = `https://tvapi.futures-op.com/history?symbol=${encodeURIComponent(state.apiSymbol)}&resolution=1&ws=true&intraday=true`;
-            
             try {
                 const response = await fetch(endpoint, { cache: 'no-store' });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
                 const data = await response.json();
                 let latestPrice = null;
-
-                // Handle standard TradingView history structure { c: [prices], ... } or array structure
                 if (data && Array.isArray(data.c) && data.c.length > 0) {
                     latestPrice = parseFloat(data.c[data.c.length - 1]);
                 } else if (Array.isArray(data) && data.length > 0) {
@@ -615,9 +493,7 @@
 
                 if (latestPrice && !isNaN(latestPrice)) {
                     state.latestLivePrice = latestPrice;
-                    updateSyncBadge('success', `🟢 連線同步中 (${latestPrice.toLocaleString()} 點)`);
-
-                    // Automatically sync all position market prices when auto-sync is active
+                    updateSyncBadge('success', `🟢 連線 (${latestPrice.toLocaleString()})`);
                     let priceChanged = false;
                     state.positions.forEach(pos => {
                         if (pos.currentPrice !== latestPrice) {
@@ -625,33 +501,32 @@
                             priceChanged = true;
                         }
                     });
-
                     if (priceChanged) {
-                        renderPositions();
+                        state.positions.forEach(pos => {
+                            const priceInput = document.getElementById(`pos-current-${pos.id}`);
+                            if (priceInput && document.activeElement !== priceInput) {
+                                priceInput.value = latestPrice;
+                            }
+                        });
                         calculate();
                     }
                 } else {
-                    updateSyncBadge('warning', '🟡 報價解析中');
+                    updateSyncBadge('warning', '🟡 解析中');
                 }
             } catch (err) {
-                console.warn('Realtime price fetch error:', err);
-                updateSyncBadge('error', '🔴 連線失敗');
+                updateSyncBadge('error', '🔴 失敗');
             }
         }
 
         function updateSyncBadge(type, text) {
             const badge = document.getElementById('syncStatusBadge');
-            const textEl = document.getElementById('syncStatusText');
-            textEl.innerText = text;
-
+            document.getElementById('syncStatusText').innerText = text;
             if (type === 'success') {
-                badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center space-x-1.5';
+                badge.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center space-x-1';
             } else if (type === 'manual') {
-                badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 text-slate-300 border border-slate-700 flex items-center space-x-1.5';
-            } else if (type === 'warning') {
-                badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-950 text-amber-300 border border-amber-800 flex items-center space-x-1.5';
+                badge.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300 border border-slate-700 flex items-center space-x-1';
             } else {
-                badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-lg bg-rose-950 text-rose-300 border border-rose-800 flex items-center space-x-1.5';
+                badge.className = 'px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-rose-950 text-rose-300 border border-rose-800 flex items-center space-x-1';
             }
         }
 
@@ -662,43 +537,36 @@
                 startPolling();
             } else {
                 stopPolling();
-                updateSyncBadge('manual', '🟡 手動輸入模式');
+                updateSyncBadge('manual', '🟡 手動模式');
             }
+            renderPositions();
         }
 
         function changeApiSymbol(symbol) {
             state.apiSymbol = symbol;
-            if (state.autoSyncMarketPrice) {
-                fetchLiveMarketPrice();
-            }
+            if (state.autoSyncMarketPrice) fetchLiveMarketPrice();
         }
 
         function startPolling() {
             stopPolling();
-            state.pollTimer = setInterval(fetchLiveMarketPrice, 3000); // Poll every 3s
+            state.pollTimer = setInterval(fetchLiveMarketPrice, 3000);
         }
 
         function stopPolling() {
-            if (state.pollTimer) {
-                clearInterval(state.pollTimer);
-                state.pollTimer = null;
-            }
+            if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; }
         }
 
-        // Preset directly matching user's screenshots
         function loadScreenshotPreset() {
             state.positions = [
-                { id: Date.now(), symbol: 'MICRO', side: 'SHORT', qty: 20, costPrice: 47340.35, currentPrice: state.latestLivePrice || 47500 }
+                { id: Date.now(), symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: 47340.35, currentPrice: state.latestLivePrice || 47500 }
             ];
             todayBalanceInput.value = 1029498;
             closedPnLInput.value = 0;
             feesAndTaxesInput.value = 0;
-            
             microInitialInput.value = 35050;
             microMaintInput.value = 26900;
             miniInitialInput.value = 175250;
             miniMaintInput.value = 134500;
-
             renderPositions();
             calculate();
         }
@@ -711,172 +579,137 @@
             calculate();
         }
 
-        // Toggle card collapse state
         function toggleCard(id, e) {
-            if (e && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON' || e.target.closest('button'))) {
-                return; // don't toggle when clicking inputs/buttons
-            }
+            if (e && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON' || e.target.closest('button'))) return;
             state.collapsedCards[id] = !state.collapsedCards[id];
-            renderPositions();
+            const bodyEl = document.getElementById(`pos-body-${id}`);
+            const iconEl = document.getElementById(`pos-icon-${id}`);
+            if (bodyEl && iconEl) {
+                if (state.collapsedCards[id]) {
+                    bodyEl.classList.add('hidden');
+                    iconEl.className = 'fa-solid fa-chevron-right text-slate-500 text-xs';
+                } else {
+                    bodyEl.classList.remove('hidden');
+                    iconEl.className = 'fa-solid fa-chevron-down text-slate-500 text-xs';
+                }
+            }
         }
 
-        // Step adjustments for quick price/quantity tweaks
         function stepAdjust(id, field, delta) {
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
-            
             let val = parseFloat(pos[field]) || 0;
             if (field === 'qty') {
-                // If modifying quantity with steppers, adjust magnitude
-                const sign = pos.side === 'LONG' ? 1 : -1;
                 let magnitude = Math.abs(val) + delta;
-                if (magnitude <= 0) magnitude = 1;
+                if (magnitude < 0) magnitude = 0;
                 pos.qty = magnitude;
+                const qtyInput = document.getElementById(`pos-qty-${id}`);
+                if (qtyInput) qtyInput.value = pos.side === 'SHORT' ? -pos.qty : pos.qty;
             } else if (field === 'costPrice' || field === 'currentPrice') {
+                if (field === 'currentPrice' && state.autoSyncMarketPrice) return;
                 val = Math.max(0, val + delta);
                 pos[field] = Math.round(val * 100) / 100;
+                const inputEl = document.getElementById(field === 'costPrice' ? `pos-cost-${id}` : `pos-current-${id}`);
+                if (inputEl) inputEl.value = pos[field];
             }
-            renderPositions();
             calculate();
         }
 
-        // Apply dynamic scenario preset target price
         function applyPresetScenario(type) {
             if (state.positions.length === 0) {
-                state.positions = [
-                    { id: Date.now(), symbol: 'MICRO', side: 'SHORT', qty: 20, costPrice: 47340.35, currentPrice: 47500 }
-                ];
+                state.positions = [{ id: Date.now(), symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: 47340.35, currentPrice: 47500 }];
                 renderPositions();
-                calculate();
             }
-
             const targetPrice = state.scenarioTargets[type];
             if (targetPrice !== null && !isNaN(targetPrice)) {
-                // Turn off auto-sync temporarily when user tests a scenario
                 if (state.autoSyncMarketPrice) {
                     document.getElementById('autoSyncToggle').checked = false;
                     toggleAutoSync(false);
                 }
-
                 state.positions.forEach(p => {
                     p.currentPrice = targetPrice;
+                    const curInput = document.getElementById(`pos-current-${p.id}`);
+                    if (curInput) curInput.value = targetPrice;
                 });
-                renderPositions();
                 calculate();
             }
         }
 
-        // Render position items
         function renderPositions() {
             positionsContainer.innerHTML = '';
-            
             if (state.positions.length === 0) {
-                positionsContainer.innerHTML = `<div class="text-center py-8 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">目前無未平倉部位，點擊右上方按鈕新增部位</div>`;
+                positionsContainer.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">目前無未平倉部位</div>`;
                 return;
             }
 
             state.positions.forEach((pos) => {
                 const row = document.createElement('div');
-                row.className = 'bg-[#0f131a] rounded-xl border border-slate-800 text-xs overflow-hidden shadow-sm hover:border-slate-700 transition';
-                
-                const ptVal = pos.symbol === 'MICRO' ? 10 : 50;
-                const pnlPts = pos.side === 'LONG' ? (pos.currentPrice - pos.costPrice) : (pos.costPrice - pos.currentPrice);
-                const posPnL = pnlPts * pos.qty * ptVal;
+                row.className = 'bg-[#0f131a] rounded-xl border border-slate-800 text-xs overflow-hidden shadow-sm';
                 const isCollapsed = !!state.collapsedCards[pos.id];
+                const isLocked = state.autoSyncMarketPrice;
 
-                // Header with realtime position P&L
                 const headerHtml = `
-                    <div onclick="toggleCard(${pos.id}, event)" class="p-3 bg-[#181e2a]/80 cursor-pointer select-none flex items-center justify-between border-b border-slate-800 hover:bg-[#181e2a] transition">
+                    <div onclick="toggleCard(${pos.id}, event)" class="p-3 bg-[#181e2a]/80 cursor-pointer select-none flex items-center justify-between border-b border-slate-800">
                         <div class="flex items-center space-x-2">
-                            <i class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'} text-slate-500 text-[10px]"></i>
-                            <span class="font-bold text-slate-200">${pos.symbol === 'MICRO' ? '微台' : '小台'}</span>
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}">
+                            <i id="pos-icon-${pos.id}" class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'} text-slate-500 text-xs"></i>
+                            <span id="pos-label-symbol-${pos.id}" class="font-bold text-slate-200 text-sm">${pos.symbol === 'MICRO' ? '微台' : '小台'}</span>
+                            <span id="pos-label-side-${pos.id}" class="px-2 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}">
                                 ${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口
                             </span>
                         </div>
-
-                        <div class="flex items-center space-x-2">
-                            <!-- Realtime P&L direct display in Header -->
+                        <div class="flex items-center space-x-2.5">
                             <div class="text-right">
-                                <span class="font-mono font-bold text-xs ${getPnLColorClass(posPnL)}">
-                                    未平倉損益: ${posPnL >= 0 ? '+' : ''}${Math.round(posPnL).toLocaleString()} TWD
-                                </span>
-                                <span class="text-[10px] text-slate-400 block font-mono">
-                                    (${pnlPts >= 0 ? '+' : ''}${pnlPts.toFixed(1)}點)
-                                </span>
+                                <span id="pos-pnl-val-${pos.id}" class="font-mono font-bold text-xs">損益: 0</span>
+                                <span id="pos-pnl-pts-${pos.id}" class="text-[10px] text-slate-400 block font-mono">(0點)</span>
                             </div>
-
-                            <button onclick="removePosition(${pos.id})" class="text-slate-500 hover:text-rose-400 p-1 transition" title="刪除部位">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
+                            <button onclick="removePosition(${pos.id})" class="text-slate-400 hover:text-rose-400 p-2 text-sm" title="刪除"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                     </div>
                 `;
 
-                // Collapsible Card Body
                 const bodyHtml = `
-                    <div class="${isCollapsed ? 'hidden' : 'p-3'} space-y-2.5">
-                        <div class="flex items-center space-x-2 pb-1">
-                            <select onchange="updatePos(${pos.id}, 'symbol', this.value)" class="bg-[#181e2a] text-white border border-slate-700 rounded-lg px-2 py-1 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs">
+                    <div id="pos-body-${pos.id}" class="${isCollapsed ? 'hidden' : 'p-3.5'} space-y-3">
+                        <div class="flex items-center space-x-2.5">
+                            <select onchange="updatePosSelect(${pos.id}, 'symbol', this.value)" class="bg-[#181e2a] text-white border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none flex-1">
                                 <option value="MICRO" ${pos.symbol === 'MICRO' ? 'selected' : ''}>微台 ($10/點)</option>
                                 <option value="MINI" ${pos.symbol === 'MINI' ? 'selected' : ''}>小台 ($50/點)</option>
                             </select>
-
-                            <select onchange="updatePos(${pos.id}, 'side', this.value)" class="bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs ${pos.side === 'LONG' ? 'text-rose-400' : 'text-emerald-400'}">
+                            <select id="pos-side-select-${pos.id}" onchange="updatePosSelect(${pos.id}, 'side', this.value)" class="bg-[#181e2a] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none flex-1 ${pos.side === 'LONG' ? 'text-rose-400' : 'text-emerald-400'}">
                                 <option value="LONG" ${pos.side === 'LONG' ? 'selected' : ''}>買進 (多單)</option>
                                 <option value="SHORT" ${pos.side === 'SHORT' ? 'selected' : ''}>賣出 (空單)</option>
                             </select>
                         </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                            <!-- 口數 Input + Steppers (Supports Negative for Short) -->
+                        <div class="grid grid-cols-3 gap-2">
                             <div>
-                                <div class="flex justify-between items-center mb-0.5">
-                                    <span class="text-slate-400 text-[10px]">口數 (正多/負空)</span>
-                                    <div class="flex space-x-1 text-[9px]">
-                                        <button onclick="stepAdjust(${pos.id}, 'qty', -1)" class="px-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded">-1</button>
-                                        <button onclick="stepAdjust(${pos.id}, 'qty', 1)" class="px-1.5 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded">+1</button>
-                                    </div>
+                                <div class="flex justify-between items-center mb-1 text-[10px] text-slate-400">
+                                    <span>口數</span>
+                                    <div class="space-x-1"><button onclick="stepAdjust(${pos.id}, 'qty', -1)" class="px-2 py-0.5 bg-slate-800 rounded font-bold text-slate-300">-1</button><button onclick="stepAdjust(${pos.id}, 'qty', 1)" class="px-2 py-0.5 bg-slate-800 rounded font-bold text-slate-300">+1</button></div>
                                 </div>
-                                <input type="number" value="${pos.side === 'SHORT' ? -pos.qty : pos.qty}" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosQtyWithSign(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1 font-mono font-bold text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="number" id="pos-qty-${pos.id}" value="${pos.side === 'SHORT' ? -pos.qty : pos.qty}" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosQtyWithSign(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-white text-sm font-bold">
                             </div>
-
-                            <!-- 成交均價 Input -->
                             <div>
-                                <span class="text-slate-400 block text-[10px] mb-0.5">成交均價</span>
-                                <input type="number" value="${pos.costPrice}" step="0.01" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePos(${pos.id}, 'costPrice', this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1 font-mono text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <span class="text-[10px] text-slate-400 block mb-1">成交均價</span>
+                                <input type="number" id="pos-cost-${pos.id}" value="${pos.costPrice}" step="0.01" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosInput(${pos.id}, 'costPrice', this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-white text-sm font-bold">
                             </div>
-
-                            <!-- 現價 / 市價 Input + Steppers -->
                             <div>
-                                <div class="flex justify-between items-center mb-0.5">
-                                    <span class="text-slate-400 text-[10px]">現價 / 市價</span>
-                                    <div class="flex space-x-1 text-[9px]">
-                                        <button onclick="stepAdjust(${pos.id}, 'currentPrice', -50)" class="px-1 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded">-50</button>
-                                        <button onclick="stepAdjust(${pos.id}, 'currentPrice', 50)" class="px-1 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded">+50</button>
-                                    </div>
+                                <div class="flex justify-between items-center mb-1 text-[10px] text-slate-400">
+                                    <span>現價</span>
+                                    <div class="space-x-1"><button onclick="stepAdjust(${pos.id}, 'currentPrice', -50)" class="px-1.5 py-0.5 bg-slate-800 rounded font-bold text-slate-300" ${isLocked ? 'disabled opacity-50' : ''}>-50</button><button onclick="stepAdjust(${pos.id}, 'currentPrice', 50)" class="px-1.5 py-0.5 bg-slate-800 rounded font-bold text-slate-300" ${isLocked ? 'disabled opacity-50' : ''}>+50</button></div>
                                 </div>
-                                <input type="number" value="${pos.currentPrice}" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosPriceManual(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1 font-mono font-bold text-amber-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <input type="number" id="pos-current-${pos.id}" value="${pos.currentPrice}" step="1" ${isLocked ? 'readonly' : ''} onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosPriceManual(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-sm font-bold ${isLocked ? 'text-slate-400 bg-slate-900/50' : 'text-amber-300'}">
                             </div>
                         </div>
                     </div>
                 `;
-
                 row.innerHTML = headerHtml + bodyHtml;
                 positionsContainer.appendChild(row);
             });
+            calculate();
         }
 
         function addPositionRow() {
             const defaultPrice = state.latestLivePrice || 22000;
-            state.positions.push({
-                id: Date.now(),
-                symbol: 'MICRO',
-                side: 'SHORT',
-                qty: 1,
-                costPrice: defaultPrice,
-                currentPrice: defaultPrice
-            });
+            state.positions.push({ id: Date.now(), symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: defaultPrice, currentPrice: defaultPrice });
             renderPositions();
             calculate();
         }
@@ -891,44 +724,39 @@
         function updatePosQtyWithSign(id, valStr) {
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
-
-            const val = parseFloat(valStr) || 0;
-            if (val < 0) {
-                pos.side = 'SHORT';
-                pos.qty = Math.abs(val);
-            } else if (val > 0) {
-                pos.side = 'LONG';
-                pos.qty = Math.abs(val);
-            } else {
-                pos.qty = 0;
+            const val = parseFloat(valStr);
+            if (isNaN(val)) { pos.qty = 0; }
+            else if (val < 0) { pos.side = 'SHORT'; pos.qty = Math.abs(val); }
+            else if (val > 0) { pos.side = 'LONG'; pos.qty = Math.abs(val); }
+            else { pos.qty = 0; }
+            const sideSelect = document.getElementById(`pos-side-select-${id}`);
+            if (sideSelect) {
+                sideSelect.value = pos.side;
+                sideSelect.className = `bg-[#181e2a] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none flex-1 ${pos.side === 'LONG' ? 'text-rose-400' : 'text-emerald-400'}`;
             }
             calculate();
-            renderPositions(); // Update header side badge
         }
 
         function updatePosPriceManual(id, value) {
-            // Turning off auto-sync when user manually edits current price
-            if (state.autoSyncMarketPrice) {
-                document.getElementById('autoSyncToggle').checked = false;
-                toggleAutoSync(false);
-            }
-            updatePos(id, 'currentPrice', value);
+            if (state.autoSyncMarketPrice) return;
+            updatePosInput(id, 'currentPrice', value);
         }
 
-        function updatePos(id, field, value) {
+        function updatePosInput(id, field, value) {
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
-            
-            if (field === 'symbol' || field === 'side') {
-                pos[field] = value;
-            } else {
-                pos[field] = parseFloat(value) || 0;
-            }
+            pos[field] = parseFloat(value) || 0;
             calculate();
-            renderPositions();
         }
 
-        // Core Calculation Matrix
+        function updatePosSelect(id, field, value) {
+            const pos = state.positions.find(p => p.id === id);
+            if (!pos) return;
+            pos[field] = value;
+            renderPositions();
+            calculate();
+        }
+
         function calculate() {
             const todayBalance = parseFloat(todayBalanceInput.value) || 0;
             const closedPnL = parseFloat(closedPnLInput.value) || 0;
@@ -939,10 +767,8 @@
             const miniInitial = parseFloat(miniInitialInput.value) || 175250;
             const miniMaint = parseFloat(miniMaintInput.value) || 134500;
 
-            // Adjusted Base Cash Balance including closed PnL and fees
             const adjustedTodayBalance = todayBalance + closedPnL - feesAndTaxes;
 
-            // 1. Unreleased P&L & Margins
             let totalUnrealizedPnL = 0;
             let totalReqInitialMargin = 0;
             let totalReqMaintMargin = 0;
@@ -962,26 +788,44 @@
 
                 const dir = pos.side === 'LONG' ? 1 : -1;
                 totalWeightedMultiplier += dir * pos.qty * ptVal;
+
+                const labelSym = document.getElementById(`pos-label-symbol-${pos.id}`);
+                if (labelSym) labelSym.innerText = pos.symbol === 'MICRO' ? '微台' : '小台';
+
+                const labelSide = document.getElementById(`pos-label-side-${pos.id}`);
+                if (labelSide) {
+                    labelSide.innerText = `${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口`;
+                    labelSide.className = `px-2 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`;
+                }
+
+                const pnlValEl = document.getElementById(`pos-pnl-val-${pos.id}`);
+                if (pnlValEl) {
+                    pnlValEl.innerText = `損益: ${posPnL >= 0 ? '+' : ''}${Math.round(posPnL).toLocaleString()}`;
+                    pnlValEl.className = `font-mono font-bold text-xs ${getPnLColorClass(posPnL)}`;
+                }
+
+                const pnlPtsEl = document.getElementById(`pos-pnl-pts-${pos.id}`);
+                if (pnlPtsEl) {
+                    pnlPtsEl.innerText = `(${diffPts >= 0 ? '+' : ''}${diffPts.toFixed(1)}點)`;
+                }
             });
 
-            // 2. Total Equity (權益總值)
+            const totalPnLHeaderEl = document.getElementById('totalPositionsPnLHeader');
+            if (totalPnLHeaderEl) {
+                totalPnLHeaderEl.innerText = `${totalUnrealizedPnL >= 0 ? '+' : ''}${Math.round(totalUnrealizedPnL).toLocaleString()} TWD`;
+                totalPnLHeaderEl.className = `font-mono font-bold text-xs sm:text-sm ${getPnLColorClass(totalUnrealizedPnL)}`;
+            }
+
             const totalEquity = adjustedTodayBalance + totalUnrealizedPnL;
-
-            // 3. Available Cash (可用餘額)
             const availableCash = totalEquity - totalReqInitialMargin;
-
-            // 4. Total Maintenance Ratio %
             const totalMaintRatio = totalReqMaintMargin > 0 ? (totalEquity / totalReqMaintMargin) * 100 : 999.9;
-
-            // 5. Risk Indicator %
             const riskIndex = totalReqInitialMargin > 0 ? (totalEquity / totalReqInitialMargin) * 100 : 999.9;
 
-            // Populate Table UI
             document.getElementById('outTodayBalance').innerText = formatNTD(todayBalance);
             
             const pnlEl = document.getElementById('outUnrealizedPnL');
             pnlEl.innerText = formatNTD(totalUnrealizedPnL);
-            pnlEl.className = `py-2.5 px-3 text-right font-bold font-mono text-base ${getPnLColorClass(totalUnrealizedPnL)}`;
+            pnlEl.className = `py-2 px-2.5 text-right font-bold font-mono text-sm sm:text-base ${getPnLColorClass(totalUnrealizedPnL)}`;
 
             document.getElementById('outTotalEquity').innerText = formatNTD(totalEquity);
             document.getElementById('outReqInitialMargin').innerText = formatNTD(totalReqInitialMargin);
@@ -989,7 +833,7 @@
 
             const availEl = document.getElementById('outAvailableCash');
             availEl.innerText = formatNTD(availableCash);
-            availEl.className = `py-2.5 px-3 text-right font-bold font-mono ${availableCash >= 0 ? 'text-emerald-400' : 'text-rose-500'}`;
+            availEl.className = `py-2 px-2.5 text-right font-bold font-mono ${availableCash >= 0 ? 'text-emerald-400' : 'text-rose-500'}`;
 
             document.getElementById('outTotalMaintRatio').innerText = totalMaintRatio > 900 ? '> 999%' : `${totalMaintRatio.toFixed(1)}%`;
 
@@ -997,9 +841,8 @@
             document.getElementById('outRiskIndexTable').innerText = riskText;
             document.getElementById('riskIndexValue').innerText = riskText;
 
-            // Visual Status Gauge Styling
             const riskProgressBar = document.getElementById('riskProgressBar');
-            const riskBadge = document.getElementById('riskBadge');
+            const riskBadge = document.getElementById('riskBadgeHeader');
             const statusAccentBar = document.getElementById('statusAccentBar');
             const stopLossBox = document.getElementById('stopLossBox');
             const stopLossIcon = document.getElementById('stopLossIcon');
@@ -1010,57 +853,52 @@
             riskProgressBar.style.width = `${barWidthPercent}%`;
 
             if (totalReqInitialMargin === 0) {
-                riskBadge.innerText = '未開倉部位';
-                riskBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700';
+                riskBadge.innerText = '未開倉';
+                riskBadge.className = 'px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700';
                 statusAccentBar.className = 'absolute top-0 left-0 right-0 h-2 bg-slate-500';
-                riskProgressBar.className = 'h-full bg-slate-500 transition-all duration-500';
-                stopLossBox.className = 'w-full py-2.5 px-3 rounded-lg font-bold text-sm bg-slate-800 text-slate-300 border border-slate-700';
+                riskProgressBar.className = 'h-full bg-slate-500 transition-all duration-300';
+                stopLossBox.className = 'py-2 px-2.5 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center space-x-1.5';
                 stopLossIcon.className = 'fa-solid fa-circle-info';
                 stopLossText.innerText = '無部位風險';
-                riskAlertMsg.innerText = '目前無未平倉部位，帳戶資金安全性高。';
+                riskAlertMsg.innerText = '目前無未平倉部位。';
             } else if (riskIndex >= 100) {
-                riskBadge.innerText = '權益充足 (安全)';
-                riskBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800';
+                riskBadge.innerText = '安全';
+                riskBadge.className = 'px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800';
                 statusAccentBar.className = 'absolute top-0 left-0 right-0 h-2 bg-emerald-500';
-                riskProgressBar.className = 'h-full bg-emerald-500 transition-all duration-500';
-
-                stopLossBox.className = 'w-full py-2.5 px-3 rounded-lg font-bold text-sm bg-emerald-950/80 text-emerald-300 border border-emerald-700';
+                riskProgressBar.className = 'h-full bg-emerald-500 transition-all duration-300';
+                stopLossBox.className = 'py-2 px-2.5 rounded-lg font-bold text-xs bg-emerald-950/80 text-emerald-300 border border-emerald-700 flex items-center justify-center space-x-1.5';
                 stopLossIcon.className = 'fa-solid fa-circle-check';
-                stopLossText.innerText = '風險指標正常 (> 100%)';
-                riskAlertMsg.innerText = '帳戶權益數高於原始保證金，維持率健康。';
+                stopLossText.innerText = '風險正常 (> 100%)';
+                riskAlertMsg.innerText = '權益數高於原始保證金。';
             } else if (riskIndex >= 50 && riskIndex < 100) {
-                riskBadge.innerText = '追繳預警 (低於原始保證金)';
-                riskBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-950 text-amber-300 border border-amber-800';
+                riskBadge.innerText = '追繳預警';
+                riskBadge.className = 'px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-950 text-amber-300 border border-amber-800';
                 statusAccentBar.className = 'absolute top-0 left-0 right-0 h-2 bg-amber-500';
-                riskProgressBar.className = 'h-full bg-amber-500 transition-all duration-500';
-
-                stopLossBox.className = 'w-full py-2.5 px-3 rounded-lg font-bold text-sm bg-amber-950/80 text-amber-300 border border-amber-700';
+                riskProgressBar.className = 'h-full bg-amber-500 transition-all duration-300';
+                stopLossBox.className = 'py-2 px-2.5 rounded-lg font-bold text-xs bg-amber-950/80 text-amber-300 border border-amber-700 flex items-center justify-center space-x-1.5';
                 stopLossIcon.className = 'fa-solid fa-triangle-exclamation';
                 stopLossText.innerText = '追繳預警區 (< 100%)';
-                riskAlertMsg.innerText = '權益數已低於原始保證金！若收盤低於維持保證金將發送盤後追繳通知。';
+                riskAlertMsg.innerText = '權益數低於原始保證金！';
             } else if (riskIndex >= 25 && riskIndex < 50) {
-                riskBadge.innerText = '高風險 (接近 25% 砍倉線)';
-                riskBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-950 text-orange-300 border border-orange-800';
+                riskBadge.innerText = '高風險';
+                riskBadge.className = 'px-2.5 py-0.5 rounded-lg text-xs font-bold bg-orange-950 text-orange-300 border border-orange-800';
                 statusAccentBar.className = 'absolute top-0 left-0 right-0 h-2 bg-orange-500';
-                riskProgressBar.className = 'h-full bg-orange-500 transition-all duration-500';
-
-                stopLossBox.className = 'w-full py-2.5 px-3 rounded-lg font-bold text-sm bg-orange-600 text-white animate-pulse shadow-lg';
+                riskProgressBar.className = 'h-full bg-orange-500 transition-all duration-300';
+                stopLossBox.className = 'py-2 px-2.5 rounded-lg font-bold text-xs bg-orange-600 text-white animate-pulse';
                 stopLossIcon.className = 'fa-solid fa-bell';
-                stopLossText.innerText = '警告：瀕臨 25% 強制砍倉';
-                riskAlertMsg.innerText = '風險指標劇烈下降，請立即平倉止損或補充保證金。';
+                stopLossText.innerText = '警告：瀕臨 25% 砍倉';
+                riskAlertMsg.innerText = '風險指標劇烈下降！';
             } else {
-                riskBadge.innerText = '極度危險 (觸發代為沖銷)';
-                riskBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-600 text-white';
+                riskBadge.innerText = '危險斷頭';
+                riskBadge.className = 'px-2.5 py-0.5 rounded-lg text-xs font-bold bg-rose-600 text-white';
                 statusAccentBar.className = 'absolute top-0 left-0 right-0 h-2 bg-rose-600';
-                riskProgressBar.className = 'h-full bg-rose-600 transition-all duration-500';
-
-                stopLossBox.className = 'w-full py-2.5 px-3 rounded-lg font-bold text-sm bg-rose-600 text-white animate-bounce shadow-xl flex items-center justify-center space-x-2';
-                stopLossIcon.className = 'fa-solid fa-circle-radiation text-lg';
-                stopLossText.innerText = '建議止損 < 25% (斷頭沖銷)';
-                riskAlertMsg.innerText = '【斷頭警告】風險指標低於 25%！期貨商風控部門將執行盤中代為沖銷！';
+                riskProgressBar.className = 'h-full bg-rose-600 transition-all duration-300';
+                stopLossBox.className = 'py-2 px-2.5 rounded-lg font-bold text-xs bg-rose-600 text-white animate-bounce';
+                stopLossIcon.className = 'fa-solid fa-circle-radiation';
+                stopLossText.innerText = '觸發斷頭沖銷！';
+                riskAlertMsg.innerText = '風險指標低於 25%！';
             }
 
-            // Calculate Trigger Prices & Upper Quick Scenarios
             calculateTriggerPricesAndScenarios(adjustedTodayBalance, totalReqMaintMargin, totalReqInitialMargin, totalWeightedMultiplier);
         }
 
@@ -1071,54 +909,41 @@
             const liqDistEl = document.getElementById('liquidationDist');
 
             if (state.positions.length === 0 || totalWeightedMultiplier === 0) {
-                mcEl.innerText = '-- 點';
-                mcDistEl.innerText = '無部位';
-                liqEl.innerText = '-- 點';
-                liqDistEl.innerText = '無部位';
-
-                // Reset preset displays
+                mcEl.innerText = '-- 點'; mcDistEl.innerText = '無部位';
+                liqEl.innerText = '-- 點'; liqDistEl.innerText = '無部位';
                 ['Safe200', 'Safe150', 'Warning100', 'MaintCall', 'Danger25'].forEach(key => {
                     document.getElementById(`preset${key}Val`).innerText = '-- 點';
-                    document.getElementById(`preset${key}Dist`).innerText = '無部位';
                 });
                 return;
             }
 
             const refPrice = state.positions[0].currentPrice;
-
-            // Base Entry Profit/Loss without market price change
             const baseEquityAtEntry = adjustedTodayBalance + state.positions.reduce((acc, pos) => {
                 const ptVal = pos.symbol === 'MICRO' ? 10 : 50;
                 const dir = pos.side === 'LONG' ? 1 : -1;
                 return acc + (-pos.costPrice * dir * pos.qty * ptVal);
             }, 0);
 
-            // Function to compute target market price for any target equity
             function getTargetPriceForEquity(targetEquity) {
                 return Math.round((targetEquity - baseEquityAtEntry) / totalWeightedMultiplier);
             }
 
-            // Target Equity levels
             const targetSafe200Price = getTargetPriceForEquity(2.0 * totalReqInitialMargin);
             const targetSafe150Price = getTargetPriceForEquity(1.5 * totalReqInitialMargin);
             const targetWarning100Price = getTargetPriceForEquity(1.0 * totalReqInitialMargin);
             const targetMaintCallPrice = getTargetPriceForEquity(1.0 * totalReqMaintMargin);
             const targetDanger25Price = getTargetPriceForEquity(0.25 * totalReqInitialMargin);
 
-            // Store scenario targets in global state
             state.scenarioTargets.safe200 = targetSafe200Price;
             state.scenarioTargets.safe150 = targetSafe150Price;
             state.scenarioTargets.warning100 = targetWarning100Price;
             state.scenarioTargets.maintCall = targetMaintCallPrice;
             state.scenarioTargets.danger25 = targetDanger25Price;
 
-            // Update Preset Button Dynamic Labels
             function updatePresetButtonUI(key, targetPrice) {
                 const distPts = targetPrice - refPrice;
-                const distText = distPts === 0 ? '即為現價' : `${distPts > 0 ? '漲 +' : '跌 '}${distPts.toLocaleString()} 點`;
-                
+                const distText = distPts === 0 ? '現價' : `${distPts > 0 ? '+' : ''}${distPts.toLocaleString()}點`;
                 document.getElementById(`preset${key}Val`).innerText = `${targetPrice.toLocaleString()} 點`;
-                document.getElementById(`preset${key}Dist`).innerText = `距離現價 ${distText}`;
             }
 
             updatePresetButtonUI('Safe200', targetSafe200Price);
@@ -1127,25 +952,21 @@
             updatePresetButtonUI('MaintCall', targetMaintCallPrice);
             updatePresetButtonUI('Danger25', targetDanger25Price);
 
-            // Update Critical Trigger Matrix Box
             mcEl.innerText = `${targetMaintCallPrice.toLocaleString()} 點`;
             const mcPts = Math.abs(targetMaintCallPrice - refPrice);
-            mcDistEl.innerText = `指數再${totalWeightedMultiplier < 0 ? '上漲' : '下跌'} ${mcPts.toLocaleString()} 點觸發`;
+            mcDistEl.innerText = `再${totalWeightedMultiplier < 0 ? '漲' : '跌'} ${mcPts.toLocaleString()} 點`;
 
             liqEl.innerText = `${targetDanger25Price.toLocaleString()} 點`;
             const liqPts = Math.abs(targetDanger25Price - refPrice);
-            liqDistEl.innerText = `指數再${totalWeightedMultiplier < 0 ? '上漲' : '下跌'} ${liqPts.toLocaleString()} 點觸發`;
+            liqDistEl.innerText = `再${totalWeightedMultiplier < 0 ? '漲' : '跌'} ${liqPts.toLocaleString()} 點`;
         }
 
-        // Color Mode Switching
         document.getElementById('colorModeBtn').addEventListener('click', () => {
             state.twColorMode = !state.twColorMode;
-            document.getElementById('colorModeLabel').innerText = state.twColorMode ? '台股習慣' : '美股習慣';
-            renderPositions();
+            document.getElementById('colorModeLabel').innerText = state.twColorMode ? '台股' : '美股';
             calculate();
         });
 
-        // Initialize Page
         window.onload = function() {
             loadScreenshotPreset();
             if (state.autoSyncMarketPrice) {
