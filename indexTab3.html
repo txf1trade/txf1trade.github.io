@@ -715,11 +715,16 @@
             if(isSell) tagClass = "tag-sell-exposure";
             let exposureTxt = isSell ? "<span class='exposure-text'>(曝險)</span>" : "";
 
+            // 新增平均點數計算: (金額 * 1000) / (口數OI * 50)
+            let pts = (oiV !== 0) ? (amtV * 1000 / (oiV * 50)) : 0;
+            let ptsStr = (oiV !== 0) ? pts.toFixed(2) : '--';
+
             let rowStr = `<tr>
                 <td style="color:${isC ? 'var(--red)' : 'var(--green)'}">${t.replace('臺指選擇權','')}</td>
                 <td class="num-cell ${parseFloat(diff)>=0?'pos':'neg'}">${diff}</td>
                 <td class="num-cell ${oiV>=0?'pos':'neg'}">${oi}</td>
                 <td class="num-cell ${amtV>=0?'pos':'neg'}">${amtV.toLocaleString()}</td>
+                <td class="num-cell ${pts>=0?'pos':'neg'}">${ptsStr}</td>
                 <td><span class="ai-tag ${tagClass}">${actType}</span>${exposureTxt}</td>`;
 
             if(id === "自營商") {
@@ -773,14 +778,14 @@
             }
 
             tableEl.innerHTML = `<table>
-                <thead><tr><th>權別</th><th>差額</th><th>OI</th><th>金額(千)</th><th>狀態</th><th>大戶</th></tr></thead>
+                <thead><tr><th>權別</th><th>差額</th><th>OI</th><th>金額(千)</th><th>點數</th><th>狀態</th><th>大戶</th></tr></thead>
                 <tbody>
                     <tr>
-                        <td colspan="6" class="sub-header">🟣 自營商 (周選短線/避險指標)</td>
+                        <td colspan="7" class="sub-header">🟣 自營商 (周選短線/避險指標)</td>
                     </tr>
                     ${finalDealerRows}
                     <tr>
-                        <td colspan="6" class="sub-header">🔵 外資 (月選中長線主導)</td>
+                        <td colspan="7" class="sub-header">🔵 外資 (月選中長線主導)</td>
                     </tr>
                     ${finalForeignRows}
                 </tbody>
