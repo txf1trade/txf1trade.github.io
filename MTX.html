@@ -71,13 +71,21 @@
                     </div>
                     <div>
                         <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight flex items-center gap-1.5">
-                            微台/小台期風險%試算
+                            微台 / 小台期風險%試算
                         </h1>
                     </div>
                 </div>
 
                 <!-- 報價來源與同步工具列 -->
                 <div class="flex items-center space-x-2 flex-wrap">
+                    <!-- JSON 檔案存取與狀態 -->
+                    <div class="flex items-center space-x-1.5 bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1">
+                        <button onclick="bindFileHandle()" title="點擊綁定本機 JSON 檔，之後所有改動將會自動背景存檔與載入" class="text-slate-300 hover:text-blue-400 px-1 text-[11px] font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-floppy-disk text-amber-400"></i> 儲存/選擇設定檔 (.json)
+                        </button>
+                        <span id="fileAutoSyncStatus" class="text-[10px] text-slate-500 font-mono">⚪ 未連結本機檔</span>
+                    </div>
+
                     <div class="flex items-center bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1 space-x-1">
                         <span class="text-[10px] text-slate-400">報價:</span>
                         <select id="apiSymbolSelect" onchange="changeApiSymbol(this.value)" class="bg-transparent text-xs font-bold font-mono text-amber-300 focus:outline-none">
@@ -116,7 +124,7 @@
                     <div class="flex items-center space-x-2">
                         <button onclick="toggleAllCards(true)" class="px-2.5 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg">全部收合</button>
                         <button onclick="toggleAllCards(false)" class="px-2.5 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg">全部展開</button>
-                        <button onclick="loadScreenshotPreset()" class="px-2.5 py-1 text-[11px] text-slate-400 hover:text-slate-200"><i class="fa-solid fa-rotate-right mr-1"></i>重置</button>
+                        <button onclick="loadScreenshotPreset()" class="px-2.5 py-1 text-[11px] text-slate-400 hover:text-slate-200"><i class="fa-solid fa-rotate-right mr-1"></i>預設範例重置</button>
                     </div>
                 </div>
 
@@ -155,22 +163,22 @@
                         <div onclick="toggleSection('cash')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
                             <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
                                 <i id="icon-cash" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
-                                <i class="fa-solid fa-wallet text-blue-500 mr-2"></i>帳戶金流與基幣餘額
+                                <i class="fa-solid fa-wallet text-blue-500 mr-2"></i>帳戶金流與預設權益數
                             </h2>
                             <span class="text-xs text-slate-400 font-mono">TWD</span>
                         </div>
                         <div id="body-cash" class="p-3.5 space-y-2.5">
                             <div>
-                                <label for="todayBalance" class="block text-xs font-medium text-slate-400 mb-1">本日餘額 / 前日平倉帳單餘額</label>
+                                <label for="defaultEquity" class="block text-xs font-medium text-slate-400 mb-1">預設權益數 (平倉時自動加回損益)</label>
                                 <div class="relative">
                                     <span class="absolute left-3 top-2.5 text-xs font-bold text-slate-500">NT$</span>
-                                    <input type="number" id="todayBalance" value="1029498" step="1000" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full pl-11 pr-3 py-2 bg-[#0f131a] border border-slate-700 rounded-lg font-mono font-bold text-base text-white focus:outline-none">
+                                    <input type="number" id="defaultEquity" value="1000000" step="10000" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full pl-11 pr-3 py-2 bg-[#0f131a] border border-blue-500/50 rounded-lg font-mono font-bold text-base text-blue-300 focus:outline-none">
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2.5">
                                 <div>
-                                    <label for="closedPnL" class="block text-xs font-medium text-slate-400 mb-1">當日已平倉損益</label>
-                                    <input type="number" id="closedPnL" value="0" step="10" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full px-3 py-2 bg-[#0f131a] border border-slate-700 rounded-lg font-mono text-sm text-slate-200 focus:outline-none">
+                                    <label for="closedPnL" class="block text-xs font-medium text-slate-400 mb-1">當日已平倉損益 (自動累加)</label>
+                                    <input type="number" id="closedPnL" value="0" step="100" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full px-3 py-2 bg-[#0f131a] border border-slate-700 rounded-lg font-mono text-sm font-bold text-emerald-400 focus:outline-none">
                                 </div>
                                 <div>
                                     <label for="feesAndTaxes" class="block text-xs font-medium text-slate-400 mb-1">估算手續費+稅</label>
@@ -192,7 +200,7 @@
 
                             <div class="flex items-center space-x-2.5">
                                 <div class="text-right">
-                                    <span class="text-[10px] text-slate-400 block leading-none">合計損益</span>
+                                    <span class="text-[10px] text-slate-400 block leading-none">合計浮動損益</span>
                                     <span id="totalPositionsPnLHeader" class="font-mono font-bold text-xs sm:text-sm">0 TWD</span>
                                 </div>
 
@@ -204,6 +212,22 @@
                         <div id="body-positions" class="p-3 space-y-2.5">
                             <div id="positionsContainer" class="space-y-2.5 custom-scrollbar max-h-[400px] overflow-y-auto pr-0.5">
                                 <!-- 動態注入部位 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 已平倉明細區塊 -->
+                    <div id="card-closed-history" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
+                        <div onclick="toggleSection('closed-history')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
+                            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center">
+                                <i id="icon-closed-history" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                                <i class="fa-solid fa-clock-rotate-left text-blue-400 mr-2"></i>已平倉明細記錄 (<span id="closedCount">0</span>)
+                            </h3>
+                            <button onclick="event.stopPropagation(); clearClosedHistory();" class="text-xs text-slate-400 hover:text-rose-400">清空紀錄</button>
+                        </div>
+                        <div id="body-closed-history" class="p-3">
+                            <div id="closedHistoryContainer" class="space-y-2 custom-scrollbar max-h-[220px] overflow-y-auto pr-0.5 text-xs">
+                                <div class="text-center py-4 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">尚無平倉明細紀錄</div>
                             </div>
                         </div>
                     </div>
@@ -221,13 +245,13 @@
                             <div class="grid grid-cols-2 gap-2.5 text-xs">
                                 <div class="bg-[#0f131a] p-2.5 rounded-lg border border-slate-800 space-y-1.5">
                                     <div class="font-bold text-blue-400 flex justify-between"><span>微台 ($10)</span></div>
-                                    <div><span class="text-slate-400 text-[10px]">原始</span><input type="number" id="microInitial" value="35050" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-white text-xs"></div>
-                                    <div><span class="text-slate-400 text-[10px]">維持</span><input type="number" id="microMaint" value="26900" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-slate-300 text-xs"></div>
+                                    <div><span class="text-slate-400 text-[10px]">原始</span><input type="number" id="microInitial" value="35050" oninput="calculate()" class="w-full bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-white text-xs"></div>
+                                    <div><span class="text-slate-400 text-[10px]">維持</span><input type="number" id="microMaint" value="26900" oninput="calculate()" class="w-full bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-slate-300 text-xs"></div>
                                 </div>
                                 <div class="bg-[#0f131a] p-2.5 rounded-lg border border-slate-800 space-y-1.5">
                                     <div class="font-bold text-amber-400 flex justify-between"><span>小台 ($50)</span></div>
-                                    <div><span class="text-slate-400 text-[10px]">原始</span><input type="number" id="miniInitial" value="175250" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-white text-xs"></div>
-                                    <div><span class="text-slate-400 text-[10px]">維持</span><input type="number" id="miniMaint" value="134500" oninput="calculate()" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-slate-300 text-xs"></div>
+                                    <div><span class="text-slate-400 text-[10px]">原始</span><input type="number" id="miniInitial" value="175250" oninput="calculate()" class="w-full bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-white text-xs"></div>
+                                    <div><span class="text-slate-400 text-[10px]">維持</span><input type="number" id="miniMaint" value="134500" oninput="calculate()" class="w-full bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-slate-300 text-xs"></div>
                                 </div>
                             </div>
                         </div>
@@ -298,45 +322,55 @@
                                     </thead>
                                     <tbody class="divide-y divide-slate-800/60 text-xs sm:text-sm font-medium">
                                         <tr class="hover:bg-slate-800/30">
-                                            <td class="py-2 px-2.5 text-slate-300">本日餘額</td>
-                                            <td id="outTodayBalance" class="py-2 px-2.5 text-right font-bold font-mono text-white">NT$ 1,029,498</td>
-                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">前日餘額+存提款</td>
+                                            <td class="py-2 px-2.5 text-slate-300">原始預設權益數</td>
+                                            <td id="outDefaultEquity" class="py-2 px-2.5 text-right font-bold font-mono text-slate-300">NT$ 1,000,000</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">初始基準權益數</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">已平倉實現損益 (自動累加)</td>
+                                            <td id="outClosedPnLTable" class="py-2 px-2.5 text-right font-bold font-mono text-emerald-400">NT$ 0</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">當日所有平倉損益加總</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">本日餘額 (基幣餘額)</td>
+                                            <td id="outTodayBalance" class="py-2 px-2.5 text-right font-bold font-mono text-white">NT$ 1,000,000</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">預設權益 + 已平倉損益 - 手續費/稅</td>
                                         </tr>
                                         <tr class="hover:bg-slate-800/30 bg-slate-900/40">
                                             <td class="py-2 px-2.5 text-slate-200 font-semibold flex items-center">
-                                                <i class="fa-solid fa-chart-line text-blue-400 mr-2"></i>未沖銷期貨浮動總損益 (合計)
+                                                <i class="fa-solid fa-chart-line text-blue-400 mr-2"></i>未沖銷期貨浮動總損益
                                             </td>
-                                            <td id="outUnrealizedPnL" class="py-2 px-2.5 text-right font-bold font-mono text-sm sm:text-base">-NT$ 28,930</td>
-                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">所有分批部位損益加總</td>
+                                            <td id="outUnrealizedPnL" class="py-2 px-2.5 text-right font-bold font-mono text-sm sm:text-base">NT$ 0</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">所有未平倉部位損益加總</td>
                                         </tr>
                                         <tr class="bg-blue-950/30 border-y border-blue-900/50">
                                             <td class="py-2.5 px-2.5 text-white font-bold">權益總值 / 權益數</td>
-                                            <td id="outTotalEquity" class="py-2.5 px-2.5 text-right font-black text-sm sm:text-base text-blue-400 font-mono">NT$ 1,000,568</td>
-                                            <td class="py-2.5 px-2.5 text-right text-xs text-blue-300/80 hidden sm:table-cell font-semibold">本日餘額 + 總未沖銷損益</td>
+                                            <td id="outTotalEquity" class="py-2.5 px-2.5 text-right font-black text-sm sm:text-base text-blue-400 font-mono">NT$ 1,000,000</td>
+                                            <td class="py-2.5 px-2.5 text-right text-xs text-blue-300/80 hidden sm:table-cell font-semibold">本日餘額 + 未沖銷浮動損益</td>
                                         </tr>
                                         <tr class="hover:bg-slate-800/30">
                                             <td class="py-2 px-2.5 text-slate-300">未沖銷原始保證金</td>
-                                            <td id="outReqInitialMargin" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">NT$ 701,000</td>
+                                            <td id="outReqInitialMargin" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">NT$ 0</td>
                                             <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">微台/小台原始總計</td>
                                         </tr>
                                         <tr class="hover:bg-slate-800/30">
                                             <td class="py-2 px-2.5 text-slate-300">維持保證金</td>
-                                            <td id="outReqMaintMargin" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">NT$ 538,000</td>
+                                            <td id="outReqMaintMargin" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">NT$ 0</td>
                                             <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">維持保證金總計</td>
                                         </tr>
                                         <tr class="hover:bg-slate-800/30">
                                             <td class="py-2 px-2.5 text-slate-300">可用餘額 / 現金可用</td>
-                                            <td id="outAvailableCash" class="py-2 px-2.5 text-right font-bold font-mono text-emerald-400">NT$ 299,568</td>
+                                            <td id="outAvailableCash" class="py-2 px-2.5 text-right font-bold font-mono text-emerald-400">NT$ 1,000,000</td>
                                             <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">權益總值 - 原始保證金</td>
                                         </tr>
                                         <tr class="hover:bg-slate-800/30">
                                             <td class="py-2 px-2.5 text-slate-300">總值維持率 (%)</td>
-                                            <td id="outTotalMaintRatio" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">186.0%</td>
+                                            <td id="outTotalMaintRatio" class="py-2 px-2.5 text-right font-bold font-mono text-slate-200">> 999%</td>
                                             <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">權益數 ÷ 維持保證金</td>
                                         </tr>
                                         <tr class="bg-slate-800/50 font-bold">
                                             <td class="py-2.5 px-2.5 text-white">風險指標 (%)</td>
-                                            <td id="outRiskIndexTable" class="py-2.5 px-2.5 text-right font-black text-sm sm:text-base font-mono text-emerald-400">142.7%</td>
+                                            <td id="outRiskIndexTable" class="py-2.5 px-2.5 text-right font-black text-sm sm:text-base font-mono text-emerald-400">> 999%</td>
                                             <td class="py-2.5 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell font-normal">權益總值 ÷ 原始保證金</td>
                                         </tr>
                                     </tbody>
@@ -385,6 +419,9 @@
 
     <!-- JavaScript 應用邏輯 -->
     <script>
+        const STORAGE_KEY = 'micro_futures_risk_calc_config_v1';
+        let fileHandle = null;
+
         const state = {
             twColorMode: true,
             autoSyncMarketPrice: true,
@@ -392,15 +429,16 @@
             latestLivePrice: null,
             pollTimer: null,
             collapsedCards: {},
-            collapsedSections: { cash: false, positions: false, specs: false, risk: false, matrix: false, triggers: false },
+            collapsedSections: { cash: false, positions: false, 'closed-history': false, specs: false, risk: false, matrix: false, triggers: false },
             positions: [
                 { id: 1, symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: 47340.35, currentPrice: 47500 }
             ],
+            closedHistory: [],
             scenarioTargets: { safe200: null, safe150: null, warning100: null, maintCall: null, danger25: null }
         };
 
         const positionsContainer = document.getElementById('positionsContainer');
-        const todayBalanceInput = document.getElementById('todayBalance');
+        const defaultEquityInput = document.getElementById('defaultEquity');
         const closedPnLInput = document.getElementById('closedPnL');
         const feesAndTaxesInput = document.getElementById('feesAndTaxes');
 
@@ -408,6 +446,109 @@
         const microMaintInput = document.getElementById('microMaint');
         const miniInitialInput = document.getElementById('miniInitial');
         const miniMaintInput = document.getElementById('miniMaint');
+
+        function applyConfigObject(config) {
+            if (config.defaultEquity !== undefined) defaultEquityInput.value = config.defaultEquity;
+            if (config.closedPnL !== undefined) closedPnLInput.value = config.closedPnL;
+            if (config.feesAndTaxes !== undefined) feesAndTaxesInput.value = config.feesAndTaxes;
+            if (config.microInitial !== undefined) microInitialInput.value = config.microInitial;
+            if (config.microMaint !== undefined) microMaintInput.value = config.microMaint;
+            if (config.miniInitial !== undefined) miniInitialInput.value = config.miniInitial;
+            if (config.miniMaint !== undefined) miniMaintInput.value = config.miniMaint;
+            if (config.apiSymbol !== undefined) {
+                state.apiSymbol = config.apiSymbol;
+                document.getElementById('apiSymbolSelect').value = config.apiSymbol;
+            }
+            if (Array.isArray(config.positions)) {
+                state.positions = config.positions;
+            }
+            if (Array.isArray(config.closedHistory)) {
+                state.closedHistory = config.closedHistory;
+            }
+        }
+
+        function loadConfigFromStorage() {
+            try {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                if (savedData) {
+                    const config = JSON.parse(savedData);
+                    applyConfigObject(config);
+                }
+            } catch (e) {
+                console.error('讀取本機 LocalStorage 設定失敗', e);
+            }
+        }
+
+        async function saveConfigToStorage() {
+            const config = {
+                defaultEquity: parseFloat(defaultEquityInput.value) || 0,
+                closedPnL: parseFloat(closedPnLInput.value) || 0,
+                feesAndTaxes: parseFloat(feesAndTaxesInput.value) || 0,
+                microInitial: parseFloat(microInitialInput.value) || 35050,
+                microMaint: parseFloat(microMaintInput.value) || 26900,
+                miniInitial: parseFloat(miniInitialInput.value) || 175250,
+                miniMaint: parseFloat(miniMaintInput.value) || 134500,
+                apiSymbol: state.apiSymbol,
+                positions: state.positions,
+                closedHistory: state.closedHistory
+            };
+            const jsonStr = JSON.stringify(config, null, 2);
+            localStorage.setItem(STORAGE_KEY, jsonStr);
+
+            if (fileHandle) {
+                try {
+                    const writableStream = await fileHandle.createWritable();
+                    await writableStream.write(jsonStr);
+                    await writableStream.close();
+                } catch (err) {
+                    console.error('自動背景寫入本機 JSON 檔失敗:', err);
+                }
+            }
+        }
+
+        async function bindFileHandle() {
+            try {
+                if (window.showSaveFilePicker) {
+                    const options = {
+                        suggestedName: `futures_risk_config.json`,
+                        types: [{
+                            description: 'JSON Files',
+                            accept: { 'application/json': ['.json'] },
+                        }],
+                    };
+                    fileHandle = await window.showSaveFilePicker(options);
+
+                    try {
+                        const file = await fileHandle.getFile();
+                        const text = await file.text();
+                        if (text && text.trim().length > 0) {
+                            const config = JSON.parse(text);
+                            applyConfigObject(config);
+                            renderPositions();
+                            renderClosedHistory();
+                            calculate();
+                        }
+                    } catch (readErr) {
+                        console.log('現有 JSON 檔案為空或讀取失敗');
+                    }
+
+                    saveConfigToStorage();
+                    
+                    const statusEl = document.getElementById('fileAutoSyncStatus');
+                    if (statusEl) {
+                        statusEl.innerText = `🟢 JSON檔連線中 (${fileHandle.name})`;
+                        statusEl.className = 'text-[10px] text-emerald-400 font-mono font-bold';
+                    }
+                    //alert(`已成功連結本機設定檔「${fileHandle.name}」！\n之後所有操作與平倉將自動背景存檔。`);
+                } else {
+                    alert('您的瀏覽器不支援本機檔案直接讀寫，將使用 LocalStorage 自動記憶。');
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('選擇檔案失敗:', err);
+                }
+            }
+        }
 
         function handleEnterKey(e) {
             if (e.key === 'Enter') {
@@ -454,7 +595,7 @@
         }
 
         function toggleAllCards(collapse) {
-            ['cash', 'positions', 'specs', 'risk', 'matrix', 'triggers'].forEach(key => {
+            ['cash', 'positions', 'closed-history', 'specs', 'risk', 'matrix', 'triggers'].forEach(key => {
                 state.collapsedSections[key] = collapse;
                 const bodyEl = document.getElementById(`body-${key}`);
                 const iconEl = document.getElementById(`icon-${key}`);
@@ -493,7 +634,7 @@
 
                 if (latestPrice && !isNaN(latestPrice)) {
                     state.latestLivePrice = latestPrice;
-                    updateSyncBadge('success', `🟢 連線 (${latestPrice.toLocaleString()})`);
+                    updateSyncBadge('success', ` 市價 (${latestPrice.toLocaleString()})`);
                     let priceChanged = false;
                     state.positions.forEach(pos => {
                         if (pos.currentPrice !== latestPrice) {
@@ -545,6 +686,7 @@
         function changeApiSymbol(symbol) {
             state.apiSymbol = symbol;
             if (state.autoSyncMarketPrice) fetchLiveMarketPrice();
+            saveConfigToStorage();
         }
 
         function startPolling() {
@@ -560,7 +702,8 @@
             state.positions = [
                 { id: Date.now(), symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: 47340.35, currentPrice: state.latestLivePrice || 47500 }
             ];
-            todayBalanceInput.value = 1029498;
+            state.closedHistory = [];
+            defaultEquityInput.value = 1000000;
             closedPnLInput.value = 0;
             feesAndTaxesInput.value = 0;
             microInitialInput.value = 35050;
@@ -568,6 +711,7 @@
             miniInitialInput.value = 175250;
             miniMaintInput.value = 134500;
             renderPositions();
+            renderClosedHistory();
             calculate();
         }
 
@@ -598,33 +742,15 @@
         function stepAdjust(id, field, delta) {
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
-
+            let val = parseFloat(pos[field]) || 0;
             if (field === 'qty') {
-                // 代數加減邏輯：多單為正(+qty)，空單為負(-qty)
-                let currentSignedQty = pos.side === 'SHORT' ? -pos.qty : pos.qty;
-                let newSignedQty = currentSignedQty + delta;
-
-                if (newSignedQty < 0) {
-                    pos.side = 'SHORT';
-                    pos.qty = Math.abs(newSignedQty);
-                } else if (newSignedQty > 0) {
-                    pos.side = 'LONG';
-                    pos.qty = newSignedQty;
-                } else {
-                    pos.qty = 0; // 平倉
-                }
-
+                let magnitude = Math.abs(val) + delta;
+                if (magnitude < 0) magnitude = 0;
+                pos.qty = magnitude;
                 const qtyInput = document.getElementById(`pos-qty-${id}`);
-                if (qtyInput) qtyInput.value = newSignedQty;
-
-                const sideSelect = document.getElementById(`pos-side-select-${id}`);
-                if (sideSelect) {
-                    sideSelect.value = pos.side;
-                    sideSelect.className = `bg-[#181e2a] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none flex-1 ${pos.side === 'LONG' ? 'text-rose-400' : 'text-emerald-400'}`;
-                }
+                if (qtyInput) qtyInput.value = pos.side === 'SHORT' ? -pos.qty : pos.qty;
             } else if (field === 'costPrice' || field === 'currentPrice') {
                 if (field === 'currentPrice' && state.autoSyncMarketPrice) return;
-                let val = parseFloat(pos[field]) || 0;
                 val = Math.max(0, val + delta);
                 pos[field] = Math.round(val * 100) / 100;
                 const inputEl = document.getElementById(field === 'costPrice' ? `pos-cost-${id}` : `pos-current-${id}`);
@@ -671,16 +797,21 @@
                         <div class="flex items-center space-x-2">
                             <i id="pos-icon-${pos.id}" class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'} text-slate-500 text-xs"></i>
                             <span id="pos-label-symbol-${pos.id}" class="font-bold text-slate-200 text-sm">${pos.symbol === 'MICRO' ? '微台' : '小台'}</span>
-                            <span id="pos-label-side-${pos.id}" class="px-2 py-0.5 rounded text-[10px] font-bold ${pos.qty === 0 ? 'bg-slate-800 text-slate-400 border border-slate-700' : (pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800')}">
-                                ${pos.qty === 0 ? '平倉 (0口)' : `${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口`}
+                            <span id="pos-label-side-${pos.id}" class="px-2 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}">
+                                ${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口
                             </span>
                         </div>
-                        <div class="flex items-center space-x-2.5">
+                        <div class="flex items-center space-x-2">
                             <div class="text-right">
                                 <span id="pos-pnl-val-${pos.id}" class="font-mono font-bold text-xs">損益: 0</span>
                                 <span id="pos-pnl-pts-${pos.id}" class="text-[10px] text-slate-400 block font-mono">(0點)</span>
                             </div>
-                            <button onclick="removePosition(${pos.id})" class="text-slate-400 hover:text-rose-400 p-2 text-sm" title="刪除"><i class="fa-solid fa-trash-can"></i></button>
+                            <button onclick="closeAndRemovePosition(${pos.id})" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-bold shadow flex items-center gap-1" title="平倉並加回預設權益數與已平倉損益">
+                                <i class="fa-solid fa-check-double"></i>平倉
+                            </button>
+                            <button onclick="deletePosition(${pos.id})" class="px-2 py-1 bg-slate-800 hover:bg-rose-900 text-slate-300 hover:text-rose-200 rounded text-[10px] border border-slate-700 hover:border-rose-700 transition" title="刪除此部位（不計入平倉損益）">
+                                <i class="fa-solid fa-trash-can text-rose-400"></i>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -700,7 +831,7 @@
                         <div class="grid grid-cols-3 gap-2">
                             <div>
                                 <div class="flex justify-between items-center mb-1 text-[10px] text-slate-400">
-                                    <span>口數 (代數)</span>
+                                    <span>口數</span>
                                     <div class="space-x-1"><button onclick="stepAdjust(${pos.id}, 'qty', -1)" class="px-2 py-0.5 bg-slate-800 rounded font-bold text-slate-300">-1</button><button onclick="stepAdjust(${pos.id}, 'qty', 1)" class="px-2 py-0.5 bg-slate-800 rounded font-bold text-slate-300">+1</button></div>
                                 </div>
                                 <input type="number" id="pos-qty-${pos.id}" value="${pos.side === 'SHORT' ? -pos.qty : pos.qty}" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosQtyWithSign(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-white text-sm font-bold">
@@ -732,26 +863,95 @@
             calculate();
         }
 
-        function removePosition(id) {
+        /* 刪除部位（垃圾桶按鈕）：僅移除部位，不計入平倉損益 */
+        function deletePosition(id) {
             state.positions = state.positions.filter(p => p.id !== id);
             delete state.collapsedCards[id];
             renderPositions();
             calculate();
         }
 
+        function closeAndRemovePosition(id) {
+            const pos = state.positions.find(p => p.id === id);
+            if (pos) {
+                const ptVal = pos.symbol === 'MICRO' ? 10 : 50;
+                const diffPts = pos.side === 'LONG' ? (pos.currentPrice - pos.costPrice) : (pos.costPrice - pos.currentPrice);
+                const posPnL = Math.round(diffPts * pos.qty * ptVal);
+
+                const currentDefaultEquity = parseFloat(defaultEquityInput.value) || 0;
+                defaultEquityInput.value = currentDefaultEquity + posPnL;
+
+                const currentClosedPnL = parseFloat(closedPnLInput.value) || 0;
+                closedPnLInput.value = currentClosedPnL + posPnL;
+
+                const nowStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+                state.closedHistory.unshift({
+                    time: nowStr,
+                    symbolName: pos.symbol === 'MICRO' ? '微台' : '小台',
+                    sideName: pos.side === 'LONG' ? '多' : '空',
+                    qty: pos.qty,
+                    costPrice: pos.costPrice,
+                    closePrice: pos.currentPrice,
+                    pnl: posPnL,
+                    pts: diffPts
+                });
+
+                state.positions = state.positions.filter(p => p.id !== id);
+                delete state.collapsedCards[pos.id];
+            }
+            renderPositions();
+            renderClosedHistory();
+            calculate();
+        }
+
+        function renderClosedHistory() {
+            const container = document.getElementById('closedHistoryContainer');
+            document.getElementById('closedCount').innerText = state.closedHistory.length;
+            
+            if (state.closedHistory.length === 0) {
+                container.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">尚無平倉明細紀錄</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            state.closedHistory.forEach((item, idx) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'bg-[#0f131a] p-2.5 rounded-lg border border-slate-800 flex items-center justify-between gap-2';
+                const pnlColor = getPnLColorClass(item.pnl);
+                
+                itemEl.innerHTML = `
+                    <div class="space-y-0.5">
+                        <div class="flex items-center gap-1.5 font-bold">
+                            <span class="text-slate-400 text-[10px]">${item.time}</span>
+                            <span class="text-white">${item.symbolName}</span>
+                            <span class="px-1.5 py-0.2 rounded text-[9px] ${item.sideName === '多' ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${item.sideName} ${item.qty}口</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 font-mono">
+                            均價 ${item.costPrice.toLocaleString()} ➔ 平倉 ${item.closePrice.toLocaleString()} (${item.pts >= 0 ? '+' : ''}${item.pts.toFixed(1)}點)
+                        </div>
+                    </div>
+                    <div class="text-right font-mono font-bold ${pnlColor} text-xs">
+                        ${item.pnl >= 0 ? '+' : ''}${item.pnl.toLocaleString()}
+                    </div>
+                `;
+                container.appendChild(itemEl);
+            });
+        }
+
+        function clearClosedHistory() {
+            state.closedHistory = [];
+            renderClosedHistory();
+            saveConfigToStorage();
+        }
+
         function updatePosQtyWithSign(id, valStr) {
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
             const val = parseFloat(valStr);
-            if (isNaN(val) || val === 0) {
-                pos.qty = 0;
-            } else if (val < 0) {
-                pos.side = 'SHORT';
-                pos.qty = Math.abs(val);
-            } else {
-                pos.side = 'LONG';
-                pos.qty = val;
-            }
+            if (isNaN(val)) { pos.qty = 0; }
+            else if (val < 0) { pos.side = 'SHORT'; pos.qty = Math.abs(val); }
+            else if (val > 0) { pos.side = 'LONG'; pos.qty = Math.abs(val); }
+            else { pos.qty = 0; }
             const sideSelect = document.getElementById(`pos-side-select-${id}`);
             if (sideSelect) {
                 sideSelect.value = pos.side;
@@ -776,17 +976,12 @@
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
             pos[field] = value;
-            // 當在下拉選單切換多/空時，自動更新數值欄位的正負號顯示
-            const qtyInput = document.getElementById(`pos-qty-${id}`);
-            if (qtyInput && pos.qty !== 0) {
-                qtyInput.value = pos.side === 'SHORT' ? -pos.qty : pos.qty;
-            }
             renderPositions();
             calculate();
         }
 
         function calculate() {
-            const todayBalance = parseFloat(todayBalanceInput.value) || 0;
+            const defaultEquity = parseFloat(defaultEquityInput.value) || 0;
             const closedPnL = parseFloat(closedPnLInput.value) || 0;
             const feesAndTaxes = parseFloat(feesAndTaxesInput.value) || 0;
 
@@ -795,7 +990,7 @@
             const miniInitial = parseFloat(miniInitialInput.value) || 175250;
             const miniMaint = parseFloat(miniMaintInput.value) || 134500;
 
-            const adjustedTodayBalance = todayBalance + closedPnL - feesAndTaxes;
+            const todayBalance = defaultEquity - feesAndTaxes;
 
             let totalUnrealizedPnL = 0;
             let totalReqInitialMargin = 0;
@@ -822,13 +1017,8 @@
 
                 const labelSide = document.getElementById(`pos-label-side-${pos.id}`);
                 if (labelSide) {
-                    if (pos.qty === 0) {
-                        labelSide.innerText = '平倉 (0口)';
-                        labelSide.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700';
-                    } else {
-                        labelSide.innerText = `${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口`;
-                        labelSide.className = `px-2 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`;
-                    }
+                    labelSide.innerText = `${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口`;
+                    labelSide.className = `px-2 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`;
                 }
 
                 const pnlValEl = document.getElementById(`pos-pnl-val-${pos.id}`);
@@ -849,10 +1039,17 @@
                 totalPnLHeaderEl.className = `font-mono font-bold text-xs sm:text-sm ${getPnLColorClass(totalUnrealizedPnL)}`;
             }
 
-            const totalEquity = adjustedTodayBalance + totalUnrealizedPnL;
+            const totalEquity = todayBalance + totalUnrealizedPnL;
             const availableCash = totalEquity - totalReqInitialMargin;
             const totalMaintRatio = totalReqMaintMargin > 0 ? (totalEquity / totalReqMaintMargin) * 100 : 999.9;
             const riskIndex = totalReqInitialMargin > 0 ? (totalEquity / totalReqInitialMargin) * 100 : 999.9;
+
+            const baseInitialEquity = defaultEquity - closedPnL;
+            document.getElementById('outDefaultEquity').innerText = formatNTD(baseInitialEquity);
+
+            const closedPnLTableEl = document.getElementById('outClosedPnLTable');
+            closedPnLTableEl.innerText = formatNTD(closedPnL);
+            closedPnLTableEl.className = `py-2 px-2.5 text-right font-bold font-mono ${getPnLColorClass(closedPnL)}`;
 
             document.getElementById('outTodayBalance').innerText = formatNTD(todayBalance);
             
@@ -932,10 +1129,11 @@
                 riskAlertMsg.innerText = '風險指標低於 25%！';
             }
 
-            calculateTriggerPricesAndScenarios(adjustedTodayBalance, totalReqMaintMargin, totalReqInitialMargin, totalWeightedMultiplier);
+            calculateTriggerPricesAndScenarios(todayBalance, totalReqMaintMargin, totalReqInitialMargin, totalWeightedMultiplier);
+            saveConfigToStorage();
         }
 
-        function calculateTriggerPricesAndScenarios(adjustedTodayBalance, totalReqMaintMargin, totalReqInitialMargin, totalWeightedMultiplier) {
+        function calculateTriggerPricesAndScenarios(todayBalance, totalReqMaintMargin, totalReqInitialMargin, totalWeightedMultiplier) {
             const mcEl = document.getElementById('marginCallPrice');
             const mcDistEl = document.getElementById('marginCallDist');
             const liqEl = document.getElementById('liquidationPrice');
@@ -951,7 +1149,7 @@
             }
 
             const refPrice = state.positions[0].currentPrice;
-            const baseEquityAtEntry = adjustedTodayBalance + state.positions.reduce((acc, pos) => {
+            const baseEquityAtEntry = todayBalance + state.positions.reduce((acc, pos) => {
                 const ptVal = pos.symbol === 'MICRO' ? 10 : 50;
                 const dir = pos.side === 'LONG' ? 1 : -1;
                 return acc + (-pos.costPrice * dir * pos.qty * ptVal);
@@ -974,8 +1172,6 @@
             state.scenarioTargets.danger25 = targetDanger25Price;
 
             function updatePresetButtonUI(key, targetPrice) {
-                const distPts = targetPrice - refPrice;
-                const distText = distPts === 0 ? '現價' : `${distPts > 0 ? '+' : ''}${distPts.toLocaleString()}點`;
                 document.getElementById(`preset${key}Val`).innerText = `${targetPrice.toLocaleString()} 點`;
             }
 
@@ -1001,7 +1197,10 @@
         });
 
         window.onload = function() {
-            loadScreenshotPreset();
+            loadConfigFromStorage();
+            renderPositions();
+            renderClosedHistory();
+            calculate();
             if (state.autoSyncMarketPrice) {
                 fetchLiveMarketPrice();
                 startPolling();
