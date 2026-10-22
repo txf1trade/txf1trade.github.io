@@ -71,7 +71,7 @@
                     </div>
                     <div>
                         <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight flex items-center gap-1.5">
-                            微台 / 小台期風險%試算
+                            微台/小台期風險%試算
                         </h1>
                     </div>
                 </div>
@@ -598,15 +598,33 @@
         function stepAdjust(id, field, delta) {
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
-            let val = parseFloat(pos[field]) || 0;
+
             if (field === 'qty') {
-                let magnitude = Math.abs(val) + delta;
-                if (magnitude < 0) magnitude = 0;
-                pos.qty = magnitude;
+                // 代數加減邏輯：多單為正(+qty)，空單為負(-qty)
+                let currentSignedQty = pos.side === 'SHORT' ? -pos.qty : pos.qty;
+                let newSignedQty = currentSignedQty + delta;
+
+                if (newSignedQty < 0) {
+                    pos.side = 'SHORT';
+                    pos.qty = Math.abs(newSignedQty);
+                } else if (newSignedQty > 0) {
+                    pos.side = 'LONG';
+                    pos.qty = newSignedQty;
+                } else {
+                    pos.qty = 0; // 平倉
+                }
+
                 const qtyInput = document.getElementById(`pos-qty-${id}`);
-                if (qtyInput) qtyInput.value = pos.side === 'SHORT' ? -pos.qty : pos.qty;
+                if (qtyInput) qtyInput.value = newSignedQty;
+
+                const sideSelect = document.getElementById(`pos-side-select-${id}`);
+                if (sideSelect) {
+                    sideSelect.value = pos.side;
+                    sideSelect.className = `bg-[#181e2a] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none flex-1 ${pos.side === 'LONG' ? 'text-rose-400' : 'text-emerald-400'}`;
+                }
             } else if (field === 'costPrice' || field === 'currentPrice') {
                 if (field === 'currentPrice' && state.autoSyncMarketPrice) return;
+                let val = parseFloat(pos[field]) || 0;
                 val = Math.max(0, val + delta);
                 pos[field] = Math.round(val * 100) / 100;
                 const inputEl = document.getElementById(field === 'costPrice' ? `pos-cost-${id}` : `pos-current-${id}`);
@@ -653,8 +671,8 @@
                         <div class="flex items-center space-x-2">
                             <i id="pos-icon-${pos.id}" class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'} text-slate-500 text-xs"></i>
                             <span id="pos-label-symbol-${pos.id}" class="font-bold text-slate-200 text-sm">${pos.symbol === 'MICRO' ? '微台' : '小台'}</span>
-                            <span id="pos-label-side-${pos.id}" class="px-2 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}">
-                                ${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口
+                            <span id="pos-label-side-${pos.id}" class="px-2 py-0.5 rounded text-[10px] font-bold ${pos.qty === 0 ? 'bg-slate-800 text-slate-400 border border-slate-700' : (pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800')}">
+                                ${pos.qty === 0 ? '平倉 (0口)' : `${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口`}
                             </span>
                         </div>
                         <div class="flex items-center space-x-2.5">
@@ -682,7 +700,7 @@
                         <div class="grid grid-cols-3 gap-2">
                             <div>
                                 <div class="flex justify-between items-center mb-1 text-[10px] text-slate-400">
-                                    <span>口數</span>
+                                    <span>口數 (代數)</span>
                                     <div class="space-x-1"><button onclick="stepAdjust(${pos.id}, 'qty', -1)" class="px-2 py-0.5 bg-slate-800 rounded font-bold text-slate-300">-1</button><button onclick="stepAdjust(${pos.id}, 'qty', 1)" class="px-2 py-0.5 bg-slate-800 rounded font-bold text-slate-300">+1</button></div>
                                 </div>
                                 <input type="number" id="pos-qty-${pos.id}" value="${pos.side === 'SHORT' ? -pos.qty : pos.qty}" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosQtyWithSign(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-white text-sm font-bold">
@@ -725,10 +743,15 @@
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
             const val = parseFloat(valStr);
-            if (isNaN(val)) { pos.qty = 0; }
-            else if (val < 0) { pos.side = 'SHORT'; pos.qty = Math.abs(val); }
-            else if (val > 0) { pos.side = 'LONG'; pos.qty = Math.abs(val); }
-            else { pos.qty = 0; }
+            if (isNaN(val) || val === 0) {
+                pos.qty = 0;
+            } else if (val < 0) {
+                pos.side = 'SHORT';
+                pos.qty = Math.abs(val);
+            } else {
+                pos.side = 'LONG';
+                pos.qty = val;
+            }
             const sideSelect = document.getElementById(`pos-side-select-${id}`);
             if (sideSelect) {
                 sideSelect.value = pos.side;
@@ -753,6 +776,11 @@
             const pos = state.positions.find(p => p.id === id);
             if (!pos) return;
             pos[field] = value;
+            // 當在下拉選單切換多/空時，自動更新數值欄位的正負號顯示
+            const qtyInput = document.getElementById(`pos-qty-${id}`);
+            if (qtyInput && pos.qty !== 0) {
+                qtyInput.value = pos.side === 'SHORT' ? -pos.qty : pos.qty;
+            }
             renderPositions();
             calculate();
         }
@@ -794,8 +822,13 @@
 
                 const labelSide = document.getElementById(`pos-label-side-${pos.id}`);
                 if (labelSide) {
-                    labelSide.innerText = `${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口`;
-                    labelSide.className = `px-2 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`;
+                    if (pos.qty === 0) {
+                        labelSide.innerText = '平倉 (0口)';
+                        labelSide.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700';
+                    } else {
+                        labelSide.innerText = `${pos.side === 'LONG' ? '多' : '空'} ${pos.qty}口`;
+                        labelSide.className = `px-2 py-0.5 rounded text-[10px] font-bold ${pos.side === 'LONG' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`;
+                    }
                 }
 
                 const pnlValEl = document.getElementById(`pos-pnl-val-${pos.id}`);
