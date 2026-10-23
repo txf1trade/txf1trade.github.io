@@ -668,7 +668,6 @@
                 vertLines: { color: isDark ? '#2a2e39' : '#d0d7de' }, 
                 horzLines: { color: isDark ? '#2a2e39' : '#d0d7de' } 
             },
-            /* 修正：加入台灣時區設定與時間格式化 */
             localization: {
                 locale: 'zh-TW',
                 timeFormatter: timestamp => {
@@ -687,8 +686,7 @@
                 timeVisible: true, 
                 secondsVisible: false,
                 rightOffset: 5,
-                barSpacing: 12,  /* 放大 K 棒間距，使 K 線更寬敞清晰 */
-                /* 修正：強制 X 軸刻度顯示台灣時間 */
+                barSpacing: 12,
                 tickMarkFormatter: (time) => {
                     const date = new Date(time * 1000);
                     return date.toLocaleTimeString('zh-TW', {
@@ -786,7 +784,7 @@
             }
 
             const isDark = document.body.getAttribute('data-theme') === 'dark';
-            const markerColor = isDark ? '#ffeb3b' : '#000000'; // 深色模式黃色，淺色模式黑色
+            const markerColor = isDark ? '#ffeb3b' : '#000000';
 
             const markers = [];
             if (highestTime !== null && highestPrice !== -Infinity) {
@@ -823,13 +821,21 @@
                 const dateObj = new Date(param.time * 1000);
                 const timeStr = dateObj.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
                 
+                let tooltipContent = `時間: ${timeStr}<br>開: ${data.open.toFixed(decimals)} 高: ${data.high.toFixed(decimals)}<br>低: ${data.low.toFixed(decimals)} 收: ${data.close.toFixed(decimals)}`;
+
+                // 如果是富台指走勢圖，額外計算並僅顯示換算後的台指「收盤」價格
+                if (chartKey === 'twn' && regressionModel.a !== 0) {
+                    let estClose = (regressionModel.a * data.close + regressionModel.b).toFixed(0);
+                    tooltipContent += `<br><span style="color: #ffcc66;">換算台指 收: ${estClose}</span>`;
+                }
+
                 tooltipEl.style.display = 'block';
-                tooltipEl.innerHTML = `時間: ${timeStr}<br>開: ${data.open.toFixed(decimals)} 高: ${data.high.toFixed(decimals)}<br>低: ${data.low.toFixed(decimals)} 收: ${data.close.toFixed(decimals)}`;
+                tooltipEl.innerHTML = tooltipContent;
 
                 let x = param.point.x + 15;
                 let y = param.point.y + 15;
-                if (x + 110 > mainContainer.clientWidth) x = param.point.x - 120;
-                if (y + 85 > mainContainer.clientHeight) y = param.point.y - 90;
+                if (x + 130 > mainContainer.clientWidth) x = param.point.x - 140;
+                if (y + 100 > mainContainer.clientHeight) y = param.point.y - 105;
                 tooltipEl.style.left = x + 'px';
                 tooltipEl.style.top = y + 'px';
             }
@@ -1155,7 +1161,6 @@
         }, 1000);
     }
 
-    // 每 10 秒自動背景輪詢更新 K 棒資料，不需手動重整
     setInterval(async () => {
         try {
             const nowSec = Math.floor(Date.now() / 1000);
