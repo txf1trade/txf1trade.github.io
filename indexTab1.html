@@ -1038,6 +1038,23 @@ function initTxChart() {
             vertLines: { color: '#2a2e39' },
             horzLines: { color: '#2a2e39' },
         },
+        localization: {
+            locale: 'zh-TW',
+            timeFormatter: timestamp => {
+                const date = new Date(timestamp * 1000);
+                if (currentResolution === '1D') {
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                }
+                return date.toLocaleString('zh-TW', {
+                    timeZone: 'Asia/Taipei',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            }
+        },
         timeScale: {
             timeVisible: true,
             secondsVisible: false,
@@ -1049,7 +1066,12 @@ function initTxChart() {
                 if (currentResolution === '1D') {
                     return `${date.getMonth() + 1}/${date.getDate()}`;
                 }
-                return date.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                return date.toLocaleTimeString('zh-TW', {
+                    timeZone: 'Asia/Taipei',
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
             }
         },
     });
@@ -1136,7 +1158,7 @@ function initTxChart() {
 
         if (data) {
             const dateObj = new Date(param.time * 1000);
-            const timeStr = dateObj.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            const timeStr = dateObj.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
             
             tooltipEl.style.display = 'block';
             tooltipEl.innerHTML = `時間: ${timeStr}<br>開: ${data.open.toFixed(0)} 高: ${data.high.toFixed(0)}<br>低: ${data.low.toFixed(0)} 收: ${data.close.toFixed(0)}`;
