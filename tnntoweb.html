@@ -668,11 +668,36 @@
                 vertLines: { color: isDark ? '#2a2e39' : '#d0d7de' }, 
                 horzLines: { color: isDark ? '#2a2e39' : '#d0d7de' } 
             },
+            /* 修正：加入台灣時區設定與時間格式化 */
+            localization: {
+                locale: 'zh-TW',
+                timeFormatter: timestamp => {
+                    const date = new Date(timestamp * 1000);
+                    return date.toLocaleString('zh-TW', {
+                        timeZone: 'Asia/Taipei',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+            },
             timeScale: { 
                 timeVisible: true, 
                 secondsVisible: false,
                 rightOffset: 5,
-                barSpacing: 12  // 放大 K 棒間距，使 K 線更寬敞清晰
+                barSpacing: 12,  /* 放大 K 棒間距，使 K 線更寬敞清晰 */
+                /* 修正：強制 X 軸刻度顯示台灣時間 */
+                tickMarkFormatter: (time) => {
+                    const date = new Date(time * 1000);
+                    return date.toLocaleTimeString('zh-TW', {
+                        timeZone: 'Asia/Taipei',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
             },
         };
     }
@@ -701,10 +726,7 @@
 
         const baseOpts = getChartThemeOptions();
 
-        const mainChart = LightweightCharts.createChart(mainContainer, {
-            ...baseOpts,
-            timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 5, barSpacing: 12 }
-        });
+        const mainChart = LightweightCharts.createChart(mainContainer, baseOpts);
 
         const decimals = prefixTickSize < 1 ? 2 : 0;
 
@@ -799,7 +821,7 @@
 
             if (data) {
                 const dateObj = new Date(param.time * 1000);
-                const timeStr = dateObj.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+                const timeStr = dateObj.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
                 
                 tooltipEl.style.display = 'block';
                 tooltipEl.innerHTML = `時間: ${timeStr}<br>開: ${data.open.toFixed(decimals)} 高: ${data.high.toFixed(decimals)}<br>低: ${data.low.toFixed(decimals)} 收: ${data.close.toFixed(decimals)}`;
@@ -1066,7 +1088,7 @@
                 currentTwn = quote.close;
                 if (quote.datetime) {
                     const dateObj = new Date(quote.datetime);
-                    document.getElementById('td-time').textContent = dateObj.toLocaleTimeString('zh-TW', { hour12: false });
+                    document.getElementById('td-time').textContent = dateObj.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
                 }
             }
         } catch (err) {
