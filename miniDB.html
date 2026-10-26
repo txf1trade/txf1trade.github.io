@@ -44,63 +44,60 @@
 
     .compact-table-row { font-size: 11px; }
 
-    /* 桌面版流暢收合樣式：寬度歸零、邊框消失、超出隱藏 */
+    /* 手機版預設收合為抽屜 (Drawer) */
     #watchlist-wrapper {
-      width: 380px;
-      height: 100%;
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      max-width: 340px;
       background-color: #1e222d;
       border-left: 1px solid #2a2e39;
       display: flex;
       flex-direction: column;
-      transition: width 0.2s ease, border-left 0.2s ease;
-      position: relative;
-      z-index: 10;
-      overflow: hidden;
-      flex-shrink: 0;
+      z-index: 50;
+      transform: translateX(100%);
+      transition: transform 0.25s ease-in-out;
+      box-shadow: -5px 0 25px rgba(0,0,0,0.5);
     }
 
-    #watchlist-wrapper.collapsed {
-      width: 0px;
-      border-left: none;
+    #watchlist-wrapper.open {
+      transform: translateX(0);
     }
 
-    /* 最右側圖示側邊欄固定 */
-    #sidebar-icons {
-      width: 45px;
-      height: 100%;
-      background-color: #131722;
-      border-left: 1px solid #2a2e39;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 10px;
-      gap: 12px;
-      z-index: 12;
-      flex-shrink: 0;
+    /* 桌面版寬螢幕樣式 (支援寬度收合與拖曳) */
+    @media (min-width: 768px) {
+      #watchlist-wrapper {
+        position: relative;
+        transform: none !important;
+        width: 380px;
+        box-shadow: none;
+        transition: width 0.2s ease, border-left 0.2s ease;
+        overflow: hidden;
+      }
+      #watchlist-wrapper.collapsed {
+        width: 0px;
+        border-left: none;
+      }
     }
 
-    .sidebar-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #787b86;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      transition: all 0.15s;
+    /* 手機遮罩層 */
+    #drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease-in-out;
     }
-
-    .sidebar-btn:hover {
-      background-color: #2a2e39;
-      color: #f0f3fa;
+    #drawer-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
     }
-
-    .sidebar-btn.active {
-      color: #2962ff;
-      background-color: rgba(41, 98, 255, 0.15);
+    @media (min-width: 768px) {
+      #drawer-backdrop { display: none !important; }
     }
   </style>
 </head>
@@ -128,7 +125,7 @@
 
       <!-- K線風格切換按鈕 -->
       <button id="btn-style-toggle" class="px-2 py-1 rounded bg-tvHover text-white text-[11px] sm:text-xs font-mono hover:bg-tvBorder transition-colors shadow shrink-0">
-        紅漲綠跌
+        風格: 紅漲綠跌
       </button>
     </div>
 
@@ -181,9 +178,12 @@
     </div>
 
     <!-- Resizer Drag Handle Bar -->
-    <div id="panel-resizer" class="w-1 bg-tvBorder hover:bg-tvAccent cursor-ew-resize shrink-0 transition-colors z-30 select-none relative group" title="拖曳調整面板寬度">
+    <div id="panel-resizer" class="hidden md:block w-1 bg-tvBorder hover:bg-tvAccent cursor-ew-resize shrink-0 transition-colors z-30 select-none relative group" title="拖曳調整面板寬度">
       <div class="absolute inset-y-0 -left-1 -right-1 cursor-ew-resize"></div>
     </div>
+
+    <!-- 手機抽屜背景遮罩 -->
+    <div id="drawer-backdrop"></div>
 
     <!-- 右側自選面板 Wrapper -->
     <div id="watchlist-wrapper">
@@ -196,6 +196,10 @@
         <div class="flex items-center space-x-1">
           <button id="btn-open-modal" class="p-1.5 hover:bg-tvHover rounded text-tvText hover:text-white" title="新增自選商品">
             <i class="fa-solid fa-plus text-xs"></i>
+          </button>
+          <!-- 手機版專屬關閉按鈕 -->
+          <button id="btn-close-drawer" class="md:hidden p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white">
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
       </div>
@@ -234,7 +238,7 @@
       </div>
     </div>
 
-    <!-- 最右側官方圖示側邊欄 (固定顯示，確保隨時可點擊收合/展開) -->
+    <!-- 最右側官方圖示側邊欄 -->
     <div id="sidebar-icons">
       <button class="sidebar-btn active" id="toggle-watchlist-btn" title="自選商品清單">
         <svg width="20" height="20" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2">
@@ -832,7 +836,7 @@
       const upColorClass = isTaiwanStyle ? 'text-[#f23645]' : 'text-[#089981]';
       const downColorClass = isTaiwanStyle ? 'text-[#089981]' : 'text-[#f23645]';
       const colorClass = isUp ? upColorClass : downColorClass;
-      const bgClass = isUp ? (isTaiwanStyle ? 'bg-[#f23645]/20' : 'bg-[#089981]/20') : (isTaiwanStyle ? 'bg-[#089981]/20' : 'bg-[#089981]/20');
+      const bgClass = isUp ? (isTaiwanStyle ? 'bg-[#f23645]/20' : 'bg-[#089981]/20') : (isTaiwanStyle ? 'bg-[#089981]/20' : 'bg-[#f23645]/20');
 
       document.getElementById('card-name').textContent = symbol.name;
       document.getElementById('card-code').textContent = symbol.code;
@@ -900,15 +904,20 @@
       fetchRealtimeQuotes();
       setInterval(fetchRealtimeQuotes, 2000);
 
-      // 修正後的流暢收合/展開控制 (透過切換 .collapsed 類別，確保隨時可點擊展開)
+      // 手機版與桌面版收合/展開控制
       const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
+      const closeDrawerBtn = document.getElementById('btn-close-drawer');
       const watchlistWrapper = document.getElementById('watchlist-wrapper');
+      const backdrop = document.getElementById('drawer-backdrop');
       const resizer = document.getElementById('panel-resizer');
 
-      toggleWatchlistBtn.addEventListener('click', () => {
+      function toggleWatchlist() {
         if (window.innerWidth < 768) {
+          // 手機版：開關抽屜
           watchlistWrapper.classList.toggle('open');
+          backdrop.classList.toggle('show');
         } else {
+          // 桌面版：滑順收合
           watchlistWrapper.classList.toggle('collapsed');
           toggleWatchlistBtn.classList.toggle('active');
           if (watchlistWrapper.classList.contains('collapsed')) {
@@ -923,6 +932,18 @@
             chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
           }
         }, 220);
+      }
+
+      toggleWatchlistBtn.addEventListener('click', toggleWatchlist);
+      if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', toggleWatchlist);
+      if (backdrop) backdrop.addEventListener('click', toggleWatchlist);
+
+      // 點擊清單項目後在手機版自動關閉抽屜
+      window.addEventListener('symbolSelected', () => {
+        if (window.innerWidth < 768) {
+          watchlistWrapper.classList.remove('open');
+          backdrop.classList.remove('show');
+        }
       });
 
       // 底部指標點擊事件 (EMA、日週線、成交量)
@@ -957,7 +978,7 @@
           btn.textContent = '風格: 綠漲紅跌';
           candlestickSeries.applyOptions({
             upColor: '#089981',
-            downColor: '#089981',
+            downColor: '#f23645',
             wickUpColor: '#089981',
             wickDownColor: '#f23645',
           });
@@ -1016,6 +1037,12 @@
         }
       };
     });
+
+    const originalSelectSymbol = selectSymbol;
+    selectSymbol = function(id) {
+      originalSelectSymbol(id);
+      window.dispatchEvent(new Event('symbolSelected'));
+    }
   </script>
 </body>
 </html>
