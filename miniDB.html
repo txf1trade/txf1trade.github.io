@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PRO TRADING TERMINAL</title>
+  <title>PRO TRADING TERMINAL - Clean Mobile</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lightweight Charts v4 CDN -->
@@ -37,14 +37,18 @@
     ::-webkit-scrollbar-track { background: #131722; }
     ::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 3px; }
 
-    .flash-up { animation: flashGreen 0.6s ease-out; }
-    .flash-down { animation: flashRed 0.6s ease-out; }
-    @keyframes flashGreen { 0% { background-color: rgba(8, 153, 129, 0.4); } 100% { background-color: transparent; } }
-    @keyframes flashRed { 0% { background-color: rgba(242, 54, 69, 0.4); } 100% { background-color: transparent; } }
-
     .compact-table-row { font-size: 11px; }
 
-    /* 流暢收合樣式 */
+    /* 柔和舒適的呼吸燈動畫 */
+    @keyframes softPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.92); }
+    }
+    .soft-breathing {
+      animation: softPulse 2.5s infinite ease-in-out;
+    }
+
+    /* 桌面版收合樣式 */
     #watchlist-wrapper {
       width: 410px;
       height: 100%;
@@ -83,7 +87,7 @@
       }
     }
 
-    /* 最右側圖示側邊欄 (灰色圖示) */
+    /* 最右側圖示側邊欄 */
     #sidebar-icons {
       width: 48px;
       height: 100%;
@@ -139,29 +143,45 @@
     @media (min-width: 768px) {
       #drawer-backdrop { display: none !important; }
     }
+
+    /* 圖表左上角均線圖例按鈕互動樣式 */
+    .legend-item {
+      cursor: pointer;
+      padding: 1px 4px;
+      border-radius: 3px;
+      transition: all 0.15s ease;
+    }
+    .legend-item:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .legend-item.disabled {
+      opacity: 0.35;
+      text-decoration: line-through;
+    }
   </style>
 </head>
-<body class="bg-tvBg text-tvText font-sans h-screen w-screen overflow-hidden flex flex-col select-none">
+<body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
 
   <!-- Top Global Header -->
   <header class="h-11 bg-tvPanel border-b border-tvBorder flex items-center justify-between px-3 shrink-0 z-25 relative">
     <div class="flex items-center space-x-2 text-tvAccent font-bold text-base tracking-wider shrink-0">
       <i class="fa-solid fa-chart-line"></i>
-      <span>Mini Dash</span>
+      <span>PRO TERMINAL</span>
     </div>
 
     <!-- Right Global Status / Actions -->
-    <div class="flex items-center space-x-3 text-xs shrink-0">
-      <div id="api-status-badge" class="flex items-center space-x-2 text-tvUp bg-tvUp/10 px-2.5 py-1 rounded border border-tvUp/25 font-mono shadow-sm">
-        <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-tvUp animate-pulse"></span>
-        <span id="api-status-text" class="text-[11px] font-medium hidden sm:inline">即時連線中</span>
-        <span class="text-tvBorder">|</span>
-        <span id="live-clock" class="text-[11px] font-bold text-white tracking-wider">--:--:--</span>
+    <div class="flex items-center space-x-2 text-xs shrink-0 font-mono">
+      <!-- 即時連線狀態 Badge -->
+      <div id="api-status-badge" class="flex items-center space-x-1.5 text-tvUp bg-tvUp/10 px-2.5 py-1 rounded border border-tvUp/25 shadow-sm">
+        <span id="api-status-dot" class="w-2 h-2 rounded-full bg-tvUp soft-breathing"></span>
+        <span id="api-status-text" class="text-[10px] font-medium">即時連線</span>
       </div>
 
-      <div class="h-4 w-px bg-tvBorder hidden xs:block"></div>
-      <button class="hover:text-white p-1"><i class="fa-regular fa-bell text-sm"></i></button>
-      <button class="hover:text-white p-1"><i class="fa-solid fa-gear text-sm"></i></button>
+      <!-- 即時時間 Badge -->
+      <div class="flex items-center space-x-1.5 text-white bg-tvHover px-2.5 py-1 rounded border border-tvBorder shadow-sm">
+        <i class="fa-regular fa-clock text-[10px] text-tvTextMuted"></i>
+        <span id="live-clock" class="text-[10px] font-bold tracking-wider">--:--:--</span>
+      </div>
     </div>
   </header>
 
@@ -171,10 +191,10 @@
     <!-- Left Section: Chart Area -->
     <div class="flex-1 flex flex-col min-w-0 border-r border-tvBorder bg-tvBg">
       <!-- Active Symbol Info Bar -->
-      <div class="h-11 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 sm:px-4 text-xs shrink-0">
-        <div class="flex items-center space-x-3 truncate">
-          <span id="active-symbol-title" class="font-bold text-white text-sm truncate">台指期全 TX-1</span>
-          <span id="active-symbol-exch" class="text-tvTextMuted text-[11px]">TAIFEX</span>
+      <div class="h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 text-xs shrink-0">
+        <div class="flex items-center space-x-2 truncate">
+          <span id="active-symbol-title" class="font-bold text-white text-xs sm:text-sm truncate">台指期全 TX-1</span>
+          <span id="active-symbol-exch" class="text-tvTextMuted text-[10px]">TAIFEX</span>
           
           <div class="h-4 w-px bg-tvBorder hidden sm:block mx-1"></div>
 
@@ -188,15 +208,14 @@
           </div>
         </div>
 
-        <div id="active-price-badge" class="flex items-center space-x-2 font-mono font-bold shrink-0">
-          <span id="active-price" class="text-sm">--</span>
-          <span id="active-change" class="text-xs px-1.5 py-0.5 rounded">--</span>
+        <div id="active-price-badge" class="flex items-center space-x-1.5 font-mono font-bold shrink-0">
+          <span id="active-price" class="text-xs sm:text-sm">--</span>
+          <span id="active-change" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded">--</span>
         </div>
       </div>
 
       <!-- 手機版專屬第二行時框列 -->
-      <div class="sm:hidden h-9 bg-tvPanel/30 border-b border-tvBorder flex items-center px-3 space-x-1 text-xs font-mono shrink-0 overflow-x-auto no-scrollbar">
-        <span class="text-tvTextMuted mr-1">頻率:</span>
+      <div class="sm:hidden h-8 bg-tvPanel/30 border-b border-tvBorder flex items-center px-3 space-x-1 text-xs font-mono shrink-0 overflow-x-auto no-scrollbar">
         <button data-res="1" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
         <button data-res="5" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
         <button data-res="15" class="tf-btn px-2.5 py-0.5 rounded bg-tvHover text-white font-medium shadow">15</button>
@@ -205,29 +224,29 @@
       </div>
 
       <!-- Lightweight Chart Container & Legend -->
-      <div class="flex-1 relative w-full h-full bg-tvBg flex flex-col">
+      <div class="flex-1 relative w-full h-full bg-tvBg flex flex-col min-h-0">
         <!-- 主圖左上角數值即時標籤 -->
-        <div id="chart-legend" class="absolute top-2 left-2 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono bg-tvPanel/80 px-2.5 py-1 rounded border border-tvBorder pointer-events-none shadow">
-          <span class="text-white font-bold">指標</span>
-          <span id="legend-ema20-group" class="text-[#ffcc66]"><span id="label-ema20">EMA20</span>: <span id="legend-ema20">--</span></span>
-          <span id="legend-ema60-group" class="text-[#28c6ee]"><span id="label-ema60">EMA60</span>: <span id="legend-ema60">--</span></span>
-          <span id="legend-daily-group" class="text-[#ee3b76]"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
-          <span id="legend-weekly-group" class="text-[#2186c0]"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
+        <div id="chart-legend" class="absolute top-2 left-2 z-10 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-xs font-mono bg-tvPanel/80 px-2 py-1 rounded border border-tvBorder shadow">
+          <span class="text-white font-bold px-1">指標</span>
+          <span id="legend-ema20-group" data-line="ema20" class="legend-item text-[#ffcc66]" title="點擊切換 EMA20 顯示"><span id="label-ema20">EMA20</span>: <span id="legend-ema20">--</span></span>
+          <span id="legend-ema60-group" data-line="ema60" class="legend-item text-[#28c6ee]" title="點擊切換 EMA60 顯示"><span id="label-ema60">EMA60</span>: <span id="legend-ema60">--</span></span>
+          <span id="legend-daily-group" data-line="daily" class="legend-item text-[#ee3b76]" title="點擊切換日線(EMA76)顯示"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
+          <span id="legend-weekly-group" data-line="weekly" class="legend-item text-[#2186c0]" title="點擊切換週線(EMA380)顯示"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
         </div>
 
         <div id="chart-container" class="flex-1 w-full relative"></div>
 
         <!-- 畫面下方的底部指標切換列 -->
-        <div class="h-10 bg-tvPanel border-t border-tvBorder flex items-center px-4 space-x-6 text-xs shrink-0 z-20 font-mono select-none">
-          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors" data-active="false">EMA</button>
-          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors" data-active="false">日週線</button>
-          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors" data-active="false">成交量</button>
+        <div class="h-10 bg-tvPanel border-t border-tvBorder flex items-center px-3 sm:px-4 space-x-6 text-xs shrink-0 z-20 font-mono select-none pb-safe">
+          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-1.5" data-active="false">EMA</button>
+          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-1.5" data-active="false">日週線</button>
+          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-1.5" data-active="false">成交量</button>
         </div>
       </div>
     </div>
 
     <!-- Resizer Drag Handle Bar -->
-    <div id="panel-resizer" class="w-1 bg-tvBorder hover:bg-tvAccent cursor-ew-resize shrink-0 transition-colors z-30 select-none relative group" title="拖曳調整面板寬度">
+    <div id="panel-resizer" class="hidden md:block w-1 bg-tvBorder hover:bg-tvAccent cursor-ew-resize shrink-0 transition-colors z-30 select-none relative group" title="拖曳調整面板寬度">
       <div class="absolute inset-y-0 -left-1 -right-1 cursor-ew-resize"></div>
     </div>
 
@@ -350,13 +369,18 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // ==========================================
-    // 集中管理的預設指標設定區 (獨立於商品代號)
-    // ==========================================
     const defaultIndicatorSettings = {
-      ema: false,    // 預設開啟 EMA (20/60)
-      daily: true,  // 預設開啟 日週線
-      vol: false    // 預設關閉 成交量
+      ema: false,
+      daily: true,
+      vol: false
+    };
+
+    // 個別均線顯示開關狀態
+    let lineVisibility = {
+      ema20: true,
+      ema60: true,
+      daily: true,
+      weekly: true
     };
 
     const symbolLineConfigs = {
@@ -376,15 +400,16 @@
 
     let watchlistGroups = [
       {
-        groupName: '台股重點',
+        groupName: '台股指',
         items: [
           { id: '1', name: '台指期全', code: 'TX-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
           { id: '2', name: '台指期日', code: 'TXAM-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
           { id: '3', name: '加權指數', code: 'TSEA', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
           { id: '4', name: '櫃買指數', code: 'OTCA', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TPEX' },
           { id: '5', name: '台積電', code: '2330', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
-          { id: '8', name: '富台指', code: 'TWN-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
-          { id: '9', name: '台灣VIX', code: 'TAIWANVIX', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' }
+          { id: '6', name: '聯發科', code: '2454', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
+          { id: '7', name: '富台指', code: 'TWN-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
+          { id: '8', name: '台灣VIX', code: 'TAIWANVIX', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' }
         ]
       },
       {
@@ -394,6 +419,10 @@
           { id: '11', name: '黃金', code: 'GC-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'COMEX' },
           { id: '12', name: '日經225', code: 'NK-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'OSE' }
         ]
+      },
+      {
+        groupName: '股期',
+        items: []
       }
     ];
 
@@ -403,7 +432,6 @@
     const isTaiwanStyle = true; 
     let chart, candlestickSeries, ema20Series, ema60Series, dailySeries, weeklySeries, volumeSeries;
 
-    // 將預設指標狀態綁定全域設定
     let indicatorStates = { ...defaultIndicatorSettings };
 
     let columnSettings = {
@@ -449,7 +477,13 @@
           horzLines: { color: '#1e222d' },
         },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        rightPriceScale: { borderColor: '#2a2e39', textColor: '#ffffff', autoScale: true },
+        rightPriceScale: { 
+          borderColor: '#2a2e39', 
+          textColor: '#ffffff', 
+          autoScale: true,
+          mode: LightweightCharts.PriceScaleMode.Normal,
+          alignLabels: true,
+        },
         timeScale: {
           borderColor: '#2a2e39',
           timeVisible: true,
@@ -479,7 +513,8 @@
         wickDownColor: '#089981',
       });
       candlestickSeries.priceScale().applyOptions({
-        scaleMargins: { top: 0.1, bottom: 0.35 },
+        scaleMargins: { top: 0.12, bottom: 0.15 },
+        autoScale: true,
       });
 
       ema20Series = chart.addLineSeries({
@@ -517,7 +552,7 @@
       });
 
       chart.priceScale('volume_pane').applyOptions({
-        scaleMargins: { top: 0.72, bottom: 0 },
+        scaleMargins: { top: 0.75, bottom: 0 },
         visible: false,
       });
 
@@ -560,16 +595,37 @@
 
       document.getElementById('label-ema20').textContent = `EMA${params.ema20}`;
       document.getElementById('label-ema60').textContent = `EMA${params.ema60}`;
+      document.getElementById('label-daily').textContent = `EMA${params.daily}`;
+      document.getElementById('label-weekly').textContent = `EMA${params.weekly}`;
 
       const ema20Group = document.getElementById('legend-ema20-group');
       const ema60Group = document.getElementById('legend-ema60-group');
+      const dailyGroup = document.getElementById('legend-daily-group');
+      const weeklyGroup = document.getElementById('legend-weekly-group');
+
       if (indicatorStates.ema && currentCandles.length > 0) {
-        ema20Series.setData(calculateEMA(currentCandles, params.ema20));
-        ema60Series.setData(calculateEMA(currentCandles, params.ema60));
-        ema20Series.applyOptions({ visible: true });
-        ema60Series.applyOptions({ visible: true });
         ema20Group.style.display = 'inline-block';
         ema60Group.style.display = 'inline-block';
+
+        if (lineVisibility.ema20) {
+          ema20Series.setData(calculateEMA(currentCandles, params.ema20));
+          ema20Series.applyOptions({ visible: true });
+          ema20Group.classList.remove('disabled');
+        } else {
+          ema20Series.setData([]);
+          ema20Series.applyOptions({ visible: false });
+          ema20Group.classList.add('disabled');
+        }
+
+        if (lineVisibility.ema60) {
+          ema60Series.setData(calculateEMA(currentCandles, params.ema60));
+          ema60Series.applyOptions({ visible: true });
+          ema60Group.classList.remove('disabled');
+        } else {
+          ema60Series.setData([]);
+          ema60Series.applyOptions({ visible: false });
+          ema60Group.classList.add('disabled');
+        }
       } else {
         ema20Series.setData([]);
         ema60Series.setData([]);
@@ -579,18 +635,29 @@
         ema60Group.style.display = 'none';
       }
 
-      const dailyGroup = document.getElementById('legend-daily-group');
-      const weeklyGroup = document.getElementById('legend-weekly-group');
-      document.getElementById('label-daily').textContent = `EMA${params.daily}`;
-      document.getElementById('label-weekly').textContent = `EMA${params.weekly}`;
-
       if (indicatorStates.daily && currentCandles.length > 0) {
-        dailySeries.setData(calculateEMA(currentCandles, params.daily));
-        weeklySeries.setData(calculateEMA(currentCandles, params.weekly));
-        dailySeries.applyOptions({ visible: true });
-        weeklySeries.applyOptions({ visible: true });
         dailyGroup.style.display = 'inline-block';
         weeklyGroup.style.display = 'inline-block';
+
+        if (lineVisibility.daily) {
+          dailySeries.setData(calculateEMA(currentCandles, params.daily));
+          dailySeries.applyOptions({ visible: true });
+          dailyGroup.classList.remove('disabled');
+        } else {
+          dailySeries.setData([]);
+          dailySeries.applyOptions({ visible: false });
+          dailyGroup.classList.add('disabled');
+        }
+
+        if (lineVisibility.weekly) {
+          weeklySeries.setData(calculateEMA(currentCandles, params.weekly));
+          weeklySeries.applyOptions({ visible: true });
+          weeklyGroup.classList.remove('disabled');
+        } else {
+          weeklySeries.setData([]);
+          weeklySeries.applyOptions({ visible: false });
+          weeklyGroup.classList.add('disabled');
+        }
       } else {
         dailySeries.setData([]);
         weeklySeries.setData([]);
@@ -780,41 +847,56 @@
                   lastBar.close = newPrice;
                   candlestickSeries.update(lastBar);
                 } else if (currentBarTime > lastBar.time) {
-                  const newBar = {
-                    time: currentBarTime,
-                    open: lastBar.close,
-                    high: Math.max(lastBar.close, newPrice),
-                    low: Math.min(lastBar.close, newPrice),
-                    close: newPrice,
-                    volume: item.volume || 1000
-                  };
-                  currentCandles.push(newBar);
-                  candlestickSeries.update(newBar);
+                  if (currentBarTime - lastBar.time === stepSeconds) {
+                    const newBar = {
+                      time: currentBarTime,
+                      open: lastBar.close,
+                      high: Math.max(lastBar.close, newPrice),
+                      low: Math.min(lastBar.close, newPrice),
+                      close: newPrice,
+                      volume: item.volume || 1000
+                    };
+                    currentCandles.push(newBar);
+                    candlestickSeries.update(newBar);
+                  } else {
+                    lastBar.high = Math.max(lastBar.high, newPrice);
+                    lastBar.low = Math.min(lastBar.low, newPrice);
+                    lastBar.close = newPrice;
+                    candlestickSeries.update(lastBar);
+                  }
                 }
 
                 const params = getLineParams(item.code);
                 if (indicatorStates.ema) {
-                  const e20Data = calculateEMA(currentCandles, params.ema20);
-                  if (e20Data.length > 0) {
-                    ema20Series.update(e20Data[e20Data.length - 1]);
-                    document.getElementById('legend-ema20').textContent = e20Data[e20Data.length - 1].value.toFixed(2);
+                  if (lineVisibility.ema20) {
+                    const e20Data = calculateEMA(currentCandles, params.ema20);
+                    if (e20Data.length > 0) {
+                      ema20Series.update(e20Data[e20Data.length - 1]);
+                      document.getElementById('legend-ema20').textContent = e20Data[e20Data.length - 1].value.toFixed(2);
+                    }
                   }
-                  const e60Data = calculateEMA(currentCandles, params.ema60);
-                  if (e60Data.length > 0) {
-                    ema60Series.update(e60Data[e60Data.length - 1]);
-                    document.getElementById('legend-ema60').textContent = e60Data[e60Data.length - 1].value.toFixed(2);
+                  if (lineVisibility.ema60) {
+                    const e60Data = calculateEMA(currentCandles, params.ema60);
+                    if (e60Data.length > 0) {
+                      ema60Series.update(e60Data[e60Data.length - 1]);
+                      document.getElementById('legend-ema60').textContent = e60Data[e60Data.length - 1].value.toFixed(2);
+                    }
                   }
                 }
                 if (indicatorStates.daily) {
-                  const dailyData = calculateEMA(currentCandles, params.daily);
-                  if (dailyData.length > 0) {
-                    dailySeries.update(dailyData[dailyData.length - 1]);
-                    document.getElementById('legend-dailyval').textContent = dailyData[dailyData.length - 1].value.toFixed(2);
+                  if (lineVisibility.daily) {
+                    const dailyData = calculateEMA(currentCandles, params.daily);
+                    if (dailyData.length > 0) {
+                      dailySeries.update(dailyData[dailyData.length - 1]);
+                      document.getElementById('legend-dailyval').textContent = dailyData[dailyData.length - 1].value.toFixed(2);
+                    }
                   }
-                  const weeklyData = calculateEMA(currentCandles, params.weekly);
-                  if (weeklyData.length > 0) {
-                    weeklySeries.update(weeklyData[weeklyData.length - 1]);
-                    document.getElementById('legend-weeklyval').textContent = weeklyData[weeklyData.length - 1].value.toFixed(2);
+                  if (lineVisibility.weekly) {
+                    const weeklyData = calculateEMA(currentCandles, params.weekly);
+                    if (weeklyData.length > 0) {
+                      weeklySeries.update(weeklyData[weeklyData.length - 1]);
+                      document.getElementById('legend-weeklyval').textContent = weeklyData[weeklyData.length - 1].value.toFixed(2);
+                    }
                   }
                 }
               }
@@ -1026,15 +1108,24 @@
       fetchRealtimeQuotes();
       setInterval(fetchRealtimeQuotes, 2000);
 
-      // 初始化底部指標按鈕樣式（使預設開啟的 EMA 與 日週線 呈現高亮黃色）
       document.querySelectorAll('.ind-tab').forEach(btn => {
         const indKey = btn.getAttribute('data-ind');
         if (indicatorStates[indKey]) {
           btn.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
         }
       });
+      updateIndicatorDisplay();
 
-      // 設定三：彈出選單開關控制
+      document.querySelectorAll('.legend-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const lineName = item.getAttribute('data-line');
+          if (lineName && lineVisibility.hasOwnProperty(lineName)) {
+            lineVisibility[lineName] = !lineVisibility[lineName];
+            updateIndicatorDisplay();
+          }
+        });
+      });
+
       const settingsBtn = document.getElementById('btn-settings-3');
       const settingsDropdown = document.getElementById('settings-dropdown');
 
@@ -1051,7 +1142,6 @@
         e.stopPropagation();
       });
 
-      // 綁定 checkbox 與 select 事件
       document.getElementById('col-change').addEventListener('change', (e) => {
         columnSettings.change = e.target.checked;
         renderWatchlist();
@@ -1069,7 +1159,6 @@
         renderWatchlist();
       });
 
-      // 自動螢幕大小偵測與側邊欄開關控制
       const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
       const watchlistWrapper = document.getElementById('watchlist-wrapper');
       const backdrop = document.getElementById('drawer-backdrop');
@@ -1112,7 +1201,6 @@
         }
       });
 
-      // 底部指標點擊事件
       document.querySelectorAll('.ind-tab').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const indKey = e.target.getAttribute('data-ind');
@@ -1128,7 +1216,6 @@
         });
       });
 
-      // 時間週期切換
       document.querySelectorAll('.tf-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const targetRes = e.target.getAttribute('data-res');
