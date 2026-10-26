@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mini Trading</title>
+  <title>PRO TRADING TERMINAL</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lightweight Charts v4 CDN -->
@@ -44,18 +44,9 @@
 
     .compact-table-row { font-size: 11px; }
 
-    /* 更明顯的呼吸燈光暈動畫 */
-    @keyframes pulseGlow {
-      0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(8, 153, 129, 0.7); }
-      50% { transform: scale(1.2); opacity: 0.8; box-shadow: 0 0 0 6px rgba(8, 153, 129, 0); }
-    }
-    .breathing-dot {
-      animation: pulseGlow 1.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
-    }
-
     /* 流暢收合樣式 */
     #watchlist-wrapper {
-      width: 380px;
+      width: 410px;
       height: 100%;
       background-color: #1e222d;
       border-left: 1px solid #2a2e39;
@@ -81,7 +72,7 @@
         right: 0;
         bottom: 0;
         width: 100%;
-        max-width: 340px;
+        max-width: 360px;
         z-index: 50;
         transform: translateX(100%);
         transition: transform 0.25s ease-in-out;
@@ -154,28 +145,15 @@
 
   <!-- Top Global Header -->
   <header class="h-11 bg-tvPanel border-b border-tvBorder flex items-center justify-between px-3 shrink-0 z-25 relative">
-    <div class="flex items-center space-x-3 overflow-x-auto no-scrollbar">
-      <div class="flex items-center space-x-2 text-tvAccent font-bold text-base tracking-wider shrink-0">
-        <i class="fa-solid fa-chart-line"></i>
-        <span>Mini Trading</span>
-      </div>
-      <div class="h-4 w-px bg-tvBorder shrink-0"></div>
-      
-      <!-- Timeframe Selector (1, 5, 15, 60, 1D) -->
-      <div id="timeframe-container" class="flex items-center space-x-1 text-xs font-mono shrink-0">
-        <button data-res="1" class="tf-btn px-2.5 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
-        <button data-res="5" class="tf-btn px-2.5 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
-        <button data-res="15" class="tf-btn px-2.5 py-1 rounded bg-tvHover text-white font-medium shadow">15</button>
-        <button data-res="60" class="tf-btn px-2.5 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
-        <button data-res="1D" class="tf-btn px-2.5 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
-      </div>
+    <div class="flex items-center space-x-2 text-tvAccent font-bold text-base tracking-wider shrink-0">
+      <i class="fa-solid fa-chart-line"></i>
+      <span>Mini Dash</span>
     </div>
 
     <!-- Right Global Status / Actions -->
     <div class="flex items-center space-x-3 text-xs shrink-0">
-      <!-- 即時時鐘與明顯呼吸燈連線狀態 -->
       <div id="api-status-badge" class="flex items-center space-x-2 text-tvUp bg-tvUp/10 px-2.5 py-1 rounded border border-tvUp/25 font-mono shadow-sm">
-        <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-tvUp breathing-dot"></span>
+        <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-tvUp animate-pulse"></span>
         <span id="api-status-text" class="text-[11px] font-medium hidden sm:inline">即時連線中</span>
         <span class="text-tvBorder">|</span>
         <span id="live-clock" class="text-[11px] font-bold text-white tracking-wider">--:--:--</span>
@@ -193,35 +171,57 @@
     <!-- Left Section: Chart Area -->
     <div class="flex-1 flex flex-col min-w-0 border-r border-tvBorder bg-tvBg">
       <!-- Active Symbol Info Bar -->
-      <div class="h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-4 text-xs shrink-0">
+      <div class="h-11 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 sm:px-4 text-xs shrink-0">
         <div class="flex items-center space-x-3 truncate">
           <span id="active-symbol-title" class="font-bold text-white text-sm truncate">台指期全 TX-1</span>
-          <span id="active-symbol-exch" class="text-tvTextMuted">TAIFEX</span>
+          <span id="active-symbol-exch" class="text-tvTextMuted text-[11px]">TAIFEX</span>
+          
+          <div class="h-4 w-px bg-tvBorder hidden sm:block mx-1"></div>
+
+          <!-- Timeframe Selector -->
+          <div id="timeframe-container" class="hidden sm:flex items-center space-x-1 text-xs font-mono">
+            <button data-res="1" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
+            <button data-res="5" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
+            <button data-res="15" class="tf-btn px-2 py-0.5 rounded bg-tvHover text-white font-medium shadow">15</button>
+            <button data-res="60" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
+            <button data-res="1D" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
+          </div>
         </div>
+
         <div id="active-price-badge" class="flex items-center space-x-2 font-mono font-bold shrink-0">
           <span id="active-price" class="text-sm">--</span>
           <span id="active-change" class="text-xs px-1.5 py-0.5 rounded">--</span>
         </div>
       </div>
 
+      <!-- 手機版專屬第二行時框列 -->
+      <div class="sm:hidden h-9 bg-tvPanel/30 border-b border-tvBorder flex items-center px-3 space-x-1 text-xs font-mono shrink-0 overflow-x-auto no-scrollbar">
+        <span class="text-tvTextMuted mr-1">頻率:</span>
+        <button data-res="1" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
+        <button data-res="5" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
+        <button data-res="15" class="tf-btn px-2.5 py-0.5 rounded bg-tvHover text-white font-medium shadow">15</button>
+        <button data-res="60" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
+        <button data-res="1D" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
+      </div>
+
       <!-- Lightweight Chart Container & Legend -->
       <div class="flex-1 relative w-full h-full bg-tvBg flex flex-col">
         <!-- 主圖左上角數值即時標籤 -->
         <div id="chart-legend" class="absolute top-2 left-2 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono bg-tvPanel/80 px-2.5 py-1 rounded border border-tvBorder pointer-events-none shadow">
-          <span class="text-white font-bold">EMA</span>
-          <span id="legend-ema20-group" class="text-[#ffcc66]">EMA20: <span id="legend-ema20">--</span></span>
-          <span id="legend-ema60-group" class="text-[#28c6ee]">EMA60: <span id="legend-ema60">--</span></span>
-          <span id="legend-daily-group" class="text-[#ee3b76] hidden"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
-          <span id="legend-weekly-group" class="text-[#2186c0] hidden"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
+          <span class="text-white font-bold">指標</span>
+          <span id="legend-ema20-group" class="text-[#ffcc66]"><span id="label-ema20">EMA20</span>: <span id="legend-ema20">--</span></span>
+          <span id="legend-ema60-group" class="text-[#28c6ee]"><span id="label-ema60">EMA60</span>: <span id="legend-ema60">--</span></span>
+          <span id="legend-daily-group" class="text-[#ee3b76]"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
+          <span id="legend-weekly-group" class="text-[#2186c0]"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
         </div>
 
         <div id="chart-container" class="flex-1 w-full relative"></div>
 
-        <!-- 畫面下方的底部指標切換列 (EMA、日週線、成交量) -->
+        <!-- 畫面下方的底部指標切換列 -->
         <div class="h-10 bg-tvPanel border-t border-tvBorder flex items-center px-4 space-x-6 text-xs shrink-0 z-20 font-mono select-none">
-          <button data-ind="ema" class="ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors">EMA</button>
-          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors">日週線</button>
-          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors">成交量</button>
+          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors" data-active="false">EMA</button>
+          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors" data-active="false">日週線</button>
+          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors" data-active="false">成交量</button>
         </div>
       </div>
     </div>
@@ -237,30 +237,50 @@
     <!-- 右側自選面板 Wrapper -->
     <div id="watchlist-wrapper">
       <!-- Watchlist Header -->
-      <div class="h-10 px-3 border-b border-tvBorder flex items-center justify-between shrink-0">
+      <div class="h-10 px-3 border-b border-tvBorder flex items-center justify-between shrink-0 relative">
         <div class="flex items-center space-x-2">
           <span class="font-bold text-sm text-white">自選商品群組</span>
           <span class="text-xs bg-tvHover px-2 py-0.5 rounded text-tvTextMuted font-mono" id="watchlist-count">0</span>
         </div>
         <div class="flex items-center space-x-1">
+          <button id="btn-settings-3" class="p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white relative" title="設定三：欄位與總量顯示設定">
+            <i class="fa-solid fa-sliders text-xs"></i>
+          </button>
           <button id="btn-open-modal" class="p-1.5 hover:bg-tvHover rounded text-tvText hover:text-white" title="新增自選商品">
             <i class="fa-solid fa-plus text-xs"></i>
           </button>
-          <!-- 手機版關閉抽屜按鈕 -->
           <button id="btn-close-drawer" class="md:hidden p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
+
+        <!-- 設定三：下拉選單 -->
+        <div id="settings-dropdown" class="absolute top-11 right-2 bg-tvPanel border border-tvBorder rounded shadow-xl p-3 z-50 hidden text-xs w-52 space-y-2.5">
+          <div class="font-bold text-white border-b border-tvBorder pb-1 mb-1">顯示欄位設定</div>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-change" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>漲跌 (點數)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-percent" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>漲跌幅 (%)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-volume" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>總量顯示</span>
+          </label>
+          <div class="border-t border-tvBorder pt-2 mt-1">
+            <div class="text-tvTextMuted mb-1 text-[10px]">總量單位模式</div>
+            <select id="vol-mode-select" class="w-full bg-tvBg border border-tvBorder rounded px-2 py-1 text-white focus:outline-none focus:border-tvAccent">
+              <option value="auto">自動 (K/M 縮寫或完整)</option>
+              <option value="full">完整顯示數字</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <!-- Watchlist Table Header -->
-      <div class="flex items-center px-2 py-2 text-[11px] text-tvTextMuted font-medium border-b border-tvBorder shrink-0 bg-tvBg/40 w-full">
-        <div class="w-[18%] text-left truncate pr-0.5">代號</div>
-        <div class="w-[22%] text-left truncate px-0.5">名稱</div>
-        <div class="w-[22%] text-right truncate px-0.5">成交價</div>
-        <div class="w-[18%] text-right truncate px-0.5">漲跌</div>
-        <div class="w-[20%] text-right truncate pl-0.5 pr-1">總量</div>
-      </div>
+      <div id="watchlist-header" class="flex items-center px-2 py-2 text-[11px] text-tvTextMuted font-medium border-b border-tvBorder shrink-0 bg-tvBg/40 w-full"></div>
 
       <!-- Watchlist Items Container -->
       <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full"></div>
@@ -321,7 +341,6 @@
 
   <!-- JavaScript Application Logic -->
   <script>
-    // 即時時鐘定時器
     function updateClock() {
       const now = new Date();
       const timeString = now.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
@@ -331,14 +350,23 @@
     setInterval(updateClock, 1000);
     updateClock();
 
+    // ==========================================
+    // 集中管理的預設指標設定區 (獨立於商品代號)
+    // ==========================================
+    const defaultIndicatorSettings = {
+      ema: false,    // 預設開啟 EMA (20/60)
+      daily: true,  // 預設開啟 日週線
+      vol: false    // 預設關閉 成交量
+    };
+
     const symbolLineConfigs = {
-      'TX-1': { daily: 76, weekly: 380 },                           
-      'TXAM-1': { daily: 76, weekly: 380 },                         
-      'TWN-1': { daily: 80, weekly: 400 },                          
-      'NQ-1': { daily: 92, weekly: 460 },                           
-      'GC-1': { daily: 92, weekly: 460 },                           
-      'NK-1': { daily: 92, weekly: 460 },                           
-      'DEFAULT': { daily: 76, weekly: 380 }                         
+      'TX-1':   { ema20: 20, ema60: 60, daily: 76, weekly: 380 },                           
+      'TXAM-1': { ema20: 20, ema60: 60, daily: 76, weekly: 380 },                         
+      'TWN-1':  { ema20: 20, ema60: 60, daily: 80, weekly: 400 },                          
+      'NQ-1':   { ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'GC-1':   { ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'NK-1':   { ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'DEFAULT':{ ema20: 20, ema60: 60, daily: 76, weekly: 380 }                         
     };
 
     function getLineParams(code) {
@@ -375,10 +403,14 @@
     const isTaiwanStyle = true; 
     let chart, candlestickSeries, ema20Series, ema60Series, dailySeries, weeklySeries, volumeSeries;
 
-    let indicatorStates = {
-      ema: true,
-      daily: false,
-      vol: false
+    // 將預設指標狀態綁定全域設定
+    let indicatorStates = { ...defaultIndicatorSettings };
+
+    let columnSettings = {
+      change: true,
+      percent: true,
+      volume: true,
+      volMode: 'auto'
     };
 
     function getAllWatchlistItems() {
@@ -496,8 +528,8 @@
         const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TX-1' };
         const params = getLineParams(currentSymbol.code);
 
-        const e20Data = calculateEMA(currentCandles, 20);
-        const e60Data = calculateEMA(currentCandles, 60);
+        const e20Data = calculateEMA(currentCandles, params.ema20);
+        const e60Data = calculateEMA(currentCandles, params.ema60);
         const dailyData = calculateEMA(currentCandles, params.daily);
         const weeklyData = calculateEMA(currentCandles, params.weekly);
 
@@ -526,11 +558,14 @@
       const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TX-1' };
       const params = getLineParams(currentSymbol.code);
 
+      document.getElementById('label-ema20').textContent = `EMA${params.ema20}`;
+      document.getElementById('label-ema60').textContent = `EMA${params.ema60}`;
+
       const ema20Group = document.getElementById('legend-ema20-group');
       const ema60Group = document.getElementById('legend-ema60-group');
       if (indicatorStates.ema && currentCandles.length > 0) {
-        ema20Series.setData(calculateEMA(currentCandles, 20));
-        ema60Series.setData(calculateEMA(currentCandles, 60));
+        ema20Series.setData(calculateEMA(currentCandles, params.ema20));
+        ema60Series.setData(calculateEMA(currentCandles, params.ema60));
         ema20Series.applyOptions({ visible: true });
         ema60Series.applyOptions({ visible: true });
         ema20Group.style.display = 'inline-block';
@@ -637,8 +672,8 @@
             const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: symbolCode };
             const params = getLineParams(currentSymbol.code);
 
-            const last20 = calculateEMA(currentCandles, 20);
-            const last60 = calculateEMA(currentCandles, 60);
+            const last20 = calculateEMA(currentCandles, params.ema20);
+            const last60 = calculateEMA(currentCandles, params.ema60);
             const lastDaily = calculateEMA(currentCandles, params.daily);
             const lastWeekly = calculateEMA(currentCandles, params.weekly);
 
@@ -687,8 +722,8 @@
 
       if (currentCandles.length > 0) {
         const params = getLineParams(symbolCode);
-        const last20 = calculateEMA(currentCandles, 20);
-        const last60 = calculateEMA(currentCandles, 60);
+        const last20 = calculateEMA(currentCandles, params.ema20);
+        const last60 = calculateEMA(currentCandles, params.ema60);
         const lastDaily = calculateEMA(currentCandles, params.daily);
         const lastWeekly = calculateEMA(currentCandles, params.weekly);
 
@@ -759,12 +794,12 @@
 
                 const params = getLineParams(item.code);
                 if (indicatorStates.ema) {
-                  const e20Data = calculateEMA(currentCandles, 20);
+                  const e20Data = calculateEMA(currentCandles, params.ema20);
                   if (e20Data.length > 0) {
                     ema20Series.update(e20Data[e20Data.length - 1]);
                     document.getElementById('legend-ema20').textContent = e20Data[e20Data.length - 1].value.toFixed(2);
                   }
-                  const e60Data = calculateEMA(currentCandles, 60);
+                  const e60Data = calculateEMA(currentCandles, params.ema60);
                   if (e60Data.length > 0) {
                     ema60Series.update(e60Data[e60Data.length - 1]);
                     document.getElementById('legend-ema60').textContent = e60Data[e60Data.length - 1].value.toFixed(2);
@@ -798,12 +833,37 @@
       }
     }
 
-    // 渲染群組化自選清單 (設定三：顯示漲跌點數，對照下方橙框)[cite: 15]
+    function formatSmartVolume(vol) {
+      if (!vol || vol === 0) return '--';
+      if (columnSettings.volMode === 'full') {
+        return vol.toLocaleString();
+      }
+      if (vol >= 1000000000) {
+        return (vol / 1000000000).toFixed(1) + 'G';
+      } else if (vol >= 1000000) {
+        return (vol / 1000000).toFixed(1) + 'M';
+      } else if (vol >= 1000) {
+        return (vol / 1000).toFixed(1) + 'k';
+      }
+      return vol.toLocaleString();
+    }
+
     function renderWatchlist() {
+      const headerContainer = document.getElementById('watchlist-header');
       const container = document.getElementById('watchlist-items');
       container.innerHTML = '';
       const allItems = getAllWatchlistItems();
       document.getElementById('watchlist-count').textContent = allItems.length;
+
+      let headerHTML = `
+        <div class="w-[18%] text-left truncate pr-0.5">代號</div>
+        <div class="w-[22%] text-left truncate px-0.5">名稱</div>
+        <div class="w-[24%] text-right truncate px-0.5">成交價</div>
+      `;
+      if (columnSettings.change) headerHTML += `<div class="w-[18%] text-right truncate px-0.5">漲跌</div>`;
+      if (columnSettings.percent) headerHTML += `<div class="w-[18%] text-right truncate px-0.5">漲跌%</div>`;
+      if (columnSettings.volume) headerHTML += `<div class="w-[20%] text-right truncate pl-0.5 pr-1">總量</div>`;
+      headerContainer.innerHTML = headerHTML;
 
       watchlistGroups.forEach(group => {
         const groupHeader = document.createElement('div');
@@ -814,6 +874,7 @@
         group.items.forEach(item => {
           const hasRef = item.refPrice > 0;
           const change = hasRef ? (item.price - item.refPrice) : 0;
+          const changePercent = hasRef ? ((change / item.refPrice) * 100).toFixed(2) : '0.00';
           const isUp = change >= 0;
           
           const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
@@ -826,19 +887,36 @@
           }`;
           row.onclick = () => selectSymbol(item.id);
 
-          row.innerHTML = `
+          let rowHTML = `
             <div class="w-[18%] font-mono text-tvTextMuted text-[11px] truncate pr-0.5">${item.code}</div>
             <div class="w-[22%] font-bold text-white truncate px-0.5">${item.name}</div>
-            <div class="w-[22%] text-right font-mono font-medium text-white truncate px-0.5">
+            <div class="w-[24%] text-right font-mono font-medium text-white truncate px-0.5">
               ${item.price > 0 ? item.price.toLocaleString(undefined, { minimumFractionDigits: item.price < 1000 ? 2 : 0 }) : '--'}
             </div>
-            <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
-              ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)}` : '--'}
-            </div>
-            <div class="w-[20%] text-right font-mono text-tvTextMuted text-[11px] truncate pl-0.5 pr-1">
-              ${formatVolume(item.volume)}
-            </div>
           `;
+          if (columnSettings.change) {
+            rowHTML += `
+              <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
+                ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)}` : '--'}
+              </div>
+            `;
+          }
+          if (columnSettings.percent) {
+            rowHTML += `
+              <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
+                ${item.price > 0 ? `${isUp ? '+' : ''}${changePercent}%` : '--'}
+              </div>
+            `;
+          }
+          if (columnSettings.volume) {
+            rowHTML += `
+              <div class="w-[20%] text-right font-mono text-tvTextMuted text-[11px] truncate pl-0.5 pr-1">
+                ${formatSmartVolume(item.volume)}
+              </div>
+            `;
+          }
+
+          row.innerHTML = rowHTML;
           container.appendChild(row);
         });
       });
@@ -900,9 +978,7 @@
     }
 
     function formatVolume(vol) {
-      if (!vol || vol === 0) return '--';
-      if (vol >= 10000) return (vol / 1000).toFixed(1) + 'k';
-      return vol.toString();
+      return formatSmartVolume(vol);
     }
 
     function initPanelResizer() {
@@ -910,7 +986,7 @@
       const panelWrapper = document.getElementById('watchlist-wrapper');
       let isResizing = false;
       let startX = 0;
-      let startWidth = 380;
+      let startWidth = 410;
 
       resizer.addEventListener('mousedown', (e) => {
         isResizing = true;
@@ -921,7 +997,7 @@
         const onMouseMove = (e) => {
           if (!isResizing) return;
           let newWidth = startWidth + (startX - e.clientX);
-          newWidth = Math.max(280, Math.min(newWidth, 650));
+          newWidth = Math.max(300, Math.min(newWidth, 680));
           panelWrapper.style.width = `${newWidth}px`;
           if (chart) {
             const container = document.getElementById('chart-container');
@@ -950,6 +1026,49 @@
       fetchRealtimeQuotes();
       setInterval(fetchRealtimeQuotes, 2000);
 
+      // 初始化底部指標按鈕樣式（使預設開啟的 EMA 與 日週線 呈現高亮黃色）
+      document.querySelectorAll('.ind-tab').forEach(btn => {
+        const indKey = btn.getAttribute('data-ind');
+        if (indicatorStates[indKey]) {
+          btn.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
+        }
+      });
+
+      // 設定三：彈出選單開關控制
+      const settingsBtn = document.getElementById('btn-settings-3');
+      const settingsDropdown = document.getElementById('settings-dropdown');
+
+      settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsDropdown.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', () => {
+        settingsDropdown.classList.add('hidden');
+      });
+
+      settingsDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      // 綁定 checkbox 與 select 事件
+      document.getElementById('col-change').addEventListener('change', (e) => {
+        columnSettings.change = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('col-percent').addEventListener('change', (e) => {
+        columnSettings.percent = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('col-volume').addEventListener('change', (e) => {
+        columnSettings.volume = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('vol-mode-select').addEventListener('change', (e) => {
+        columnSettings.volMode = e.target.value;
+        renderWatchlist();
+      });
+
       // 自動螢幕大小偵測與側邊欄開關控制
       const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
       const watchlistWrapper = document.getElementById('watchlist-wrapper');
@@ -963,11 +1082,9 @@
 
       function toggleWatchlist() {
         if (isMobileScreen()) {
-          // 手機/小螢幕模式：開關抽屜
           watchlistWrapper.classList.toggle('open');
           backdrop.classList.toggle('show');
         } else {
-          // 電腦/大螢幕模式：滑順寬度收合
           watchlistWrapper.classList.toggle('collapsed');
           toggleWatchlistBtn.classList.toggle('active');
           if (watchlistWrapper.classList.contains('collapsed')) {
@@ -988,7 +1105,6 @@
       if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', toggleWatchlist);
       if (backdrop) backdrop.addEventListener('click', toggleWatchlist);
 
-      // 點擊清單項目後在手機版自動關閉抽屜
       window.addEventListener('symbolSelected', () => {
         if (isMobileScreen()) {
           watchlistWrapper.classList.remove('open');
@@ -996,7 +1112,7 @@
         }
       });
 
-      // 底部指標點擊事件 (EMA、日週線、成交量)
+      // 底部指標點擊事件
       document.querySelectorAll('.ind-tab').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const indKey = e.target.getAttribute('data-ind');
@@ -1015,14 +1131,18 @@
       // 時間週期切換
       document.querySelectorAll('.tf-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
+          const targetRes = e.target.getAttribute('data-res');
           document.querySelectorAll('.tf-btn').forEach(b => {
-            b.classList.remove('bg-tvHover', 'text-white', 'font-medium', 'shadow');
-            b.classList.add('text-tvTextMuted');
+            if (b.getAttribute('data-res') === targetRes) {
+              b.classList.add('bg-tvHover', 'text-white', 'font-medium', 'shadow');
+              b.classList.remove('text-tvTextMuted');
+            } else {
+              b.classList.remove('bg-tvHover', 'text-white', 'font-medium', 'shadow');
+              b.classList.add('text-tvTextMuted');
+            }
           });
-          e.target.classList.add('bg-tvHover', 'text-white', 'font-medium', 'shadow');
-          e.target.classList.remove('text-tvTextMuted');
 
-          currentResolution = e.target.getAttribute('data-res');
+          currentResolution = targetRes;
           currentCandles = []; 
           const allItems = getAllWatchlistItems();
           const symbol = allItems.find(s => s.id === selectedSymbolId);
@@ -1037,7 +1157,6 @@
       const form = document.getElementById('add-symbol-form');
 
       const closeModal = () => modal.classList.add('hidden');
-      openBtn.onclick = () => modal.classList.add('hidden') === false ? modal.classList.remove('hidden') : modal.classList.remove('hidden');
       openBtn.onclick = () => modal.classList.remove('hidden');
       closeBtn.onclick = closeModal;
       cancelBtn.onclick = closeModal;
