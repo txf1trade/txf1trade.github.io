@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PRO TRADING TERMINAL - Mobile Optimized</title>
+  <title>Mini Trading</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lightweight Charts v4 CDN -->
@@ -44,42 +44,91 @@
 
     .compact-table-row { font-size: 11px; }
 
-    /* 手機版預設收合為抽屜 (Drawer) */
+    /* 更明顯的呼吸燈光暈動畫 */
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(8, 153, 129, 0.7); }
+      50% { transform: scale(1.2); opacity: 0.8; box-shadow: 0 0 0 6px rgba(8, 153, 129, 0); }
+    }
+    .breathing-dot {
+      animation: pulseGlow 1.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+
+    /* 流暢收合樣式 */
     #watchlist-wrapper {
-      position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      width: 100%;
-      max-width: 340px;
+      width: 380px;
+      height: 100%;
       background-color: #1e222d;
       border-left: 1px solid #2a2e39;
       display: flex;
       flex-direction: column;
-      z-index: 50;
-      transform: translateX(100%);
-      transition: transform 0.25s ease-in-out;
-      box-shadow: -5px 0 25px rgba(0,0,0,0.5);
+      transition: width 0.2s ease, border-left 0.2s ease;
+      position: relative;
+      z-index: 10;
+      overflow: hidden;
+      flex-shrink: 0;
     }
 
-    #watchlist-wrapper.open {
-      transform: translateX(0);
+    #watchlist-wrapper.collapsed {
+      width: 0px;
+      border-left: none;
     }
 
-    /* 桌面版寬螢幕樣式 (支援寬度收合與拖曳) */
-    @media (min-width: 768px) {
+    /* 手機版抽屜覆蓋模式 */
+    @media (max-width: 767px) {
       #watchlist-wrapper {
-        position: relative;
-        transform: none !important;
-        width: 380px;
-        box-shadow: none;
-        transition: width 0.2s ease, border-left 0.2s ease;
-        overflow: hidden;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 340px;
+        z-index: 50;
+        transform: translateX(100%);
+        transition: transform 0.25s ease-in-out;
+        box-shadow: -5px 0 25px rgba(0,0,0,0.5);
       }
-      #watchlist-wrapper.collapsed {
-        width: 0px;
-        border-left: none;
+      #watchlist-wrapper.open {
+        transform: translateX(0);
       }
+    }
+
+    /* 最右側圖示側邊欄 (灰色圖示) */
+    #sidebar-icons {
+      width: 48px;
+      height: 100%;
+      background-color: #131722;
+      border-left: 1px solid #2a2e39;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 10px;
+      gap: 12px;
+      z-index: 12;
+      flex-shrink: 0;
+    }
+
+    .sidebar-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #787b86;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .sidebar-btn:hover {
+      background-color: #2a2e39;
+      color: #f0f3fa;
+    }
+
+    .sidebar-btn.active {
+      color: #2962ff;
+      background-color: rgba(41, 98, 255, 0.15);
     }
 
     /* 手機遮罩層 */
@@ -101,40 +150,40 @@
     }
   </style>
 </head>
-<body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
+<body class="bg-tvBg text-tvText font-sans h-screen w-screen overflow-hidden flex flex-col select-none">
 
   <!-- Top Global Header -->
-  <header class="h-11 bg-tvPanel border-b border-tvBorder flex items-center justify-between px-2 sm:px-3 shrink-0 z-25 relative">
-    <div class="flex items-center space-x-1.5 sm:space-x-3 overflow-x-auto no-scrollbar">
-      <div class="flex items-center space-x-1.5 text-tvAccent font-bold text-xs sm:text-base tracking-wider shrink-0">
+  <header class="h-11 bg-tvPanel border-b border-tvBorder flex items-center justify-between px-3 shrink-0 z-25 relative">
+    <div class="flex items-center space-x-3 overflow-x-auto no-scrollbar">
+      <div class="flex items-center space-x-2 text-tvAccent font-bold text-base tracking-wider shrink-0">
         <i class="fa-solid fa-chart-line"></i>
-        <span class="hidden xs:inline">PRO TERMINAL</span>
+        <span>Mini Trading</span>
       </div>
       <div class="h-4 w-px bg-tvBorder shrink-0"></div>
       
-      <!-- Timeframe Selector -->
+      <!-- Timeframe Selector (1, 5, 15, 60, 1D) -->
       <div id="timeframe-container" class="flex items-center space-x-1 text-xs font-mono shrink-0">
-        <button data-res="1" class="tf-btn px-2 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
-        <button data-res="5" class="tf-btn px-2 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
-        <button data-res="15" class="tf-btn px-2 py-1 rounded bg-tvHover text-white font-medium shadow">15</button>
-        <button data-res="60" class="tf-btn px-2 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
-        <button data-res="1D" class="tf-btn px-2 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
+        <button data-res="1" class="tf-btn px-2.5 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
+        <button data-res="5" class="tf-btn px-2.5 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
+        <button data-res="15" class="tf-btn px-2.5 py-1 rounded bg-tvHover text-white font-medium shadow">15</button>
+        <button data-res="60" class="tf-btn px-2.5 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
+        <button data-res="1D" class="tf-btn px-2.5 py-1 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
       </div>
-
-      <div class="h-4 w-px bg-tvBorder shrink-0"></div>
-
-      <!-- K線風格切換按鈕 -->
-      <button id="btn-style-toggle" class="px-2 py-1 rounded bg-tvHover text-white text-[11px] sm:text-xs font-mono hover:bg-tvBorder transition-colors shadow shrink-0">
-        風格: 紅漲綠跌
-      </button>
     </div>
 
     <!-- Right Global Status / Actions -->
-    <div class="flex items-center space-x-2 text-xs shrink-0">
-      <div id="api-status-badge" class="hidden sm:flex items-center space-x-1.5 text-tvUp bg-tvUp/10 px-2.5 py-1 rounded border border-tvUp/20 font-mono">
-        <span id="api-status-dot" class="w-2 h-2 rounded-full bg-tvUp animate-pulse"></span>
-        <span id="api-status-text" class="text-[11px] font-medium">即時連線中</span>
+    <div class="flex items-center space-x-3 text-xs shrink-0">
+      <!-- 即時時鐘與明顯呼吸燈連線狀態 -->
+      <div id="api-status-badge" class="flex items-center space-x-2 text-tvUp bg-tvUp/10 px-2.5 py-1 rounded border border-tvUp/25 font-mono shadow-sm">
+        <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-tvUp breathing-dot"></span>
+        <span id="api-status-text" class="text-[11px] font-medium hidden sm:inline">即時連線中</span>
+        <span class="text-tvBorder">|</span>
+        <span id="live-clock" class="text-[11px] font-bold text-white tracking-wider">--:--:--</span>
       </div>
+
+      <div class="h-4 w-px bg-tvBorder hidden xs:block"></div>
+      <button class="hover:text-white p-1"><i class="fa-regular fa-bell text-sm"></i></button>
+      <button class="hover:text-white p-1"><i class="fa-solid fa-gear text-sm"></i></button>
     </div>
   </header>
 
@@ -144,21 +193,21 @@
     <!-- Left Section: Chart Area -->
     <div class="flex-1 flex flex-col min-w-0 border-r border-tvBorder bg-tvBg">
       <!-- Active Symbol Info Bar -->
-      <div class="h-9 sm:h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 sm:px-4 text-xs shrink-0">
-        <div class="flex items-center space-x-2 truncate">
-          <span id="active-symbol-title" class="font-bold text-white text-xs sm:text-sm truncate">台指期全 TX-1</span>
-          <span id="active-symbol-exch" class="text-tvTextMuted text-[10px] hidden xs:inline">TAIFEX</span>
+      <div class="h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-4 text-xs shrink-0">
+        <div class="flex items-center space-x-3 truncate">
+          <span id="active-symbol-title" class="font-bold text-white text-sm truncate">台指期全 TX-1</span>
+          <span id="active-symbol-exch" class="text-tvTextMuted">TAIFEX</span>
         </div>
-        <div id="active-price-badge" class="flex items-center space-x-1.5 font-mono font-bold shrink-0">
-          <span id="active-price" class="text-xs sm:text-sm">--</span>
-          <span id="active-change" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded">--</span>
+        <div id="active-price-badge" class="flex items-center space-x-2 font-mono font-bold shrink-0">
+          <span id="active-price" class="text-sm">--</span>
+          <span id="active-change" class="text-xs px-1.5 py-0.5 rounded">--</span>
         </div>
       </div>
 
       <!-- Lightweight Chart Container & Legend -->
       <div class="flex-1 relative w-full h-full bg-tvBg flex flex-col">
         <!-- 主圖左上角數值即時標籤 -->
-        <div id="chart-legend" class="absolute top-2 left-2 z-10 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-xs font-mono bg-tvPanel/80 px-2 py-1 rounded border border-tvBorder pointer-events-none shadow">
+        <div id="chart-legend" class="absolute top-2 left-2 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono bg-tvPanel/80 px-2.5 py-1 rounded border border-tvBorder pointer-events-none shadow">
           <span class="text-white font-bold">EMA</span>
           <span id="legend-ema20-group" class="text-[#ffcc66]">EMA20: <span id="legend-ema20">--</span></span>
           <span id="legend-ema60-group" class="text-[#28c6ee]">EMA60: <span id="legend-ema60">--</span></span>
@@ -168,9 +217,9 @@
 
         <div id="chart-container" class="flex-1 w-full relative"></div>
 
-        <!-- 畫面下方的底部指標切換列 -->
-        <div class="h-9 sm:h-10 bg-tvPanel border-t border-tvBorder flex items-center px-3 sm:px-4 space-x-4 sm:space-x-6 text-xs shrink-0 z-20 font-mono select-none">
-          <button data-ind="ema" class="ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-0.5 sm:pb-1 transition-colors">EMA</button>
+        <!-- 畫面下方的底部指標切換列 (EMA、日週線、成交量) -->
+        <div class="h-10 bg-tvPanel border-t border-tvBorder flex items-center px-4 space-x-6 text-xs shrink-0 z-20 font-mono select-none">
+          <button data-ind="ema" class="ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors">EMA</button>
           <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors">日週線</button>
           <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors">成交量</button>
         </div>
@@ -178,7 +227,7 @@
     </div>
 
     <!-- Resizer Drag Handle Bar -->
-    <div id="panel-resizer" class="hidden md:block w-1 bg-tvBorder hover:bg-tvAccent cursor-ew-resize shrink-0 transition-colors z-30 select-none relative group" title="拖曳調整面板寬度">
+    <div id="panel-resizer" class="w-1 bg-tvBorder hover:bg-tvAccent cursor-ew-resize shrink-0 transition-colors z-30 select-none relative group" title="拖曳調整面板寬度">
       <div class="absolute inset-y-0 -left-1 -right-1 cursor-ew-resize"></div>
     </div>
 
@@ -197,7 +246,7 @@
           <button id="btn-open-modal" class="p-1.5 hover:bg-tvHover rounded text-tvText hover:text-white" title="新增自選商品">
             <i class="fa-solid fa-plus text-xs"></i>
           </button>
-          <!-- 手機版專屬關閉按鈕 -->
+          <!-- 手機版關閉抽屜按鈕 -->
           <button id="btn-close-drawer" class="md:hidden p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white">
             <i class="fa-solid fa-xmark"></i>
           </button>
@@ -241,11 +290,7 @@
     <!-- 最右側官方圖示側邊欄 -->
     <div id="sidebar-icons">
       <button class="sidebar-btn active" id="toggle-watchlist-btn" title="自選商品清單">
-        <svg width="20" height="20" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M7 4.5C7 3.67157 7.67157 3 8.5 3H19.5C20.3284 3 21 3.67157 21 4.5V24.5L14 19.5L7 24.5V4.5Z"></path>
-          <line x1="10" y1="8" x2="18" y2="8" stroke-width="2"></line>
-          <line x1="10" y1="12" x2="18" y2="12" stroke-width="2"></line>
-        </svg>
+        <i class="fa-solid fa-bookmark text-sm"></i>
       </button>
     </div>
   </div>
@@ -276,6 +321,16 @@
 
   <!-- JavaScript Application Logic -->
   <script>
+    // 即時時鐘定時器
+    function updateClock() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+      const clockElem = document.getElementById('live-clock');
+      if (clockElem) clockElem.textContent = timeString;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
     const symbolLineConfigs = {
       'TX-1': { daily: 76, weekly: 380 },                           
       'TXAM-1': { daily: 76, weekly: 380 },                         
@@ -317,7 +372,7 @@
     let selectedSymbolId = '1';
     let currentResolution = '15'; 
     let currentCandles = []; 
-    let isTaiwanStyle = true; 
+    const isTaiwanStyle = true; 
     let chart, candlestickSeries, ema20Series, ema60Series, dailySeries, weeklySeries, volumeSeries;
 
     let indicatorStates = {
@@ -356,8 +411,6 @@
         layout: {
           background: { type: 'solid', color: '#131722' },
           textColor: '#ffffff',
-          separatorColor: '#2a2e39',
-          separatorHoverColor: '#2962ff',
         },
         grid: {
           vertLines: { color: '#1e222d' },
@@ -392,7 +445,9 @@
         borderVisible: false,
         wickUpColor: '#f23645',
         wickDownColor: '#089981',
-        pane: 0,
+      });
+      candlestickSeries.priceScale().applyOptions({
+        scaleMargins: { top: 0.1, bottom: 0.35 },
       });
 
       ema20Series = chart.addLineSeries({
@@ -400,7 +455,6 @@
         lineWidth: 2,
         priceLineVisible: false,
         lastValueVisible: true,
-        pane: 0,
       });
 
       ema60Series = chart.addLineSeries({
@@ -408,7 +462,6 @@
         lineWidth: 2,
         priceLineVisible: false,
         lastValueVisible: true,
-        pane: 0,
       });
 
       dailySeries = chart.addLineSeries({
@@ -416,7 +469,6 @@
         lineWidth: 2,
         priceLineVisible: false,
         lastValueVisible: true,
-        pane: 0,
       });
 
       weeklySeries = chart.addLineSeries({
@@ -424,13 +476,17 @@
         lineWidth: 2,
         priceLineVisible: false,
         lastValueVisible: true,
-        pane: 0,
       });
 
       volumeSeries = chart.addHistogramSeries({
         color: '#26a69a',
         priceFormat: { type: 'volume' },
-        pane: 1,
+        priceScaleId: 'volume_pane',
+      });
+
+      chart.priceScale('volume_pane').applyOptions({
+        scaleMargins: { top: 0.72, bottom: 0 },
+        visible: false,
       });
 
       chart.subscribeCrosshairMove(param => {
@@ -509,9 +565,10 @@
         weeklyGroup.style.display = 'none';
       }
 
+      const upCol = '#f23645';
+      const downCol = '#089981';
+
       if (indicatorStates.vol && currentCandles.length > 0) {
-        const upCol = isTaiwanStyle ? '#f23645' : '#089981';
-        const downCol = isTaiwanStyle ? '#089981' : '#f23645';
         const volData = currentCandles.map(c => ({
           time: c.time,
           value: c.volume || 1000,
@@ -519,9 +576,11 @@
         }));
         volumeSeries.setData(volData);
         volumeSeries.applyOptions({ visible: true });
+        chart.priceScale('volume_pane').applyOptions({ visible: true });
       } else {
         volumeSeries.setData([]);
         volumeSeries.applyOptions({ visible: false });
+        chart.priceScale('volume_pane').applyOptions({ visible: false });
       }
 
       const legend = document.getElementById('chart-legend');
@@ -666,7 +725,7 @@
               const oldPrice = item.price;
               const newPrice = quote.close || item.price;
               item.price = newPrice;
-              item.refPrice = quote.prevRef || item.refPrice;
+              item.refPrice = quote.prevRef || quote.refRef || item.refPrice;
               item.volume = quote.volume || item.volume;
               item.high = quote.high || item.high;
               item.low = quote.low || item.low;
@@ -733,17 +792,13 @@
             updateActivePriceDisplay(activeSymbol);
             updateDetailCard(activeSymbol);
           }
-          document.getElementById('api-status-text').textContent = '即時連線中';
-          document.getElementById('api-status-dot').className = 'w-2 h-2 rounded-full bg-tvUp animate-pulse';
-          document.getElementById('api-status-badge').className = 'flex items-center space-x-1.5 text-tvUp bg-tvUp/10 px-2.5 py-1 rounded border border-tvUp/20 font-mono';
         }
       } catch (err) {
-        document.getElementById('api-status-text').textContent = '連線異常/重試中';
-        document.getElementById('api-status-dot').className = 'w-2 h-2 rounded-full bg-tvDown animate-pulse';
-        document.getElementById('api-status-badge').className = 'flex items-center space-x-1.5 text-tvDown bg-tvDown/10 px-2.5 py-1 rounded border border-tvDown/20 font-mono';
+        console.error('Realtime quote error:', err);
       }
     }
 
+    // 渲染群組化自選清單 (設定三：顯示漲跌點數，對照下方橙框)[cite: 15]
     function renderWatchlist() {
       const container = document.getElementById('watchlist-items');
       container.innerHTML = '';
@@ -759,12 +814,9 @@
         group.items.forEach(item => {
           const hasRef = item.refPrice > 0;
           const change = hasRef ? (item.price - item.refPrice) : 0;
-          const changePercent = hasRef ? ((change / item.refPrice) * 100).toFixed(2) : '0.00';
           const isUp = change >= 0;
           
-          const upColorClass = isTaiwanStyle ? 'text-[#f23645]' : 'text-[#089981]';
-          const downColorClass = isTaiwanStyle ? 'text-[#089981]' : 'text-[#f23645]';
-          const colorClass = isUp ? upColorClass : downColorClass;
+          const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
           const isSelected = item.id === selectedSymbolId;
 
           const row = document.createElement('div');
@@ -781,7 +833,7 @@
               ${item.price > 0 ? item.price.toLocaleString(undefined, { minimumFractionDigits: item.price < 1000 ? 2 : 0 }) : '--'}
             </div>
             <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
-              ${item.price > 0 ? `${isUp ? '+' : ''}${changePercent}%` : '--'}
+              ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)}` : '--'}
             </div>
             <div class="w-[20%] text-right font-mono text-tvTextMuted text-[11px] truncate pl-0.5 pr-1">
               ${formatVolume(item.volume)}
@@ -812,10 +864,8 @@
       const changePercent = hasRef ? ((change / symbol.refPrice) * 100).toFixed(2) : '0.00';
       const isUp = change >= 0;
 
-      const upColorClass = isTaiwanStyle ? 'text-[#f23645]' : 'text-[#089981]';
-      const downColorClass = isTaiwanStyle ? 'text-[#089981]' : 'text-[#f23645]';
-      const colorClass = isUp ? upColorClass : downColorClass;
-      const bgClass = isUp ? (isTaiwanStyle ? 'bg-[#f23645]/20' : 'bg-[#089981]/20') : (isTaiwanStyle ? 'bg-[#089981]/20' : 'bg-[#f23645]/20');
+      const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+      const bgClass = isUp ? 'bg-[#f23645]/20' : 'bg-[#089981]/20';
 
       const priceElem = document.getElementById('active-price');
       const changeElem = document.getElementById('active-change');
@@ -833,10 +883,8 @@
       const changePercent = hasRef ? ((change / symbol.refPrice) * 100).toFixed(2) : '0.00';
       const isUp = change >= 0;
 
-      const upColorClass = isTaiwanStyle ? 'text-[#f23645]' : 'text-[#089981]';
-      const downColorClass = isTaiwanStyle ? 'text-[#089981]' : 'text-[#f23645]';
-      const colorClass = isUp ? upColorClass : downColorClass;
-      const bgClass = isUp ? (isTaiwanStyle ? 'bg-[#f23645]/20' : 'bg-[#089981]/20') : (isTaiwanStyle ? 'bg-[#089981]/20' : 'bg-[#f23645]/20');
+      const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+      const bgClass = isUp ? 'bg-[#f23645]/20' : 'bg-[#089981]/20';
 
       document.getElementById('card-name').textContent = symbol.name;
       document.getElementById('card-code').textContent = symbol.code;
@@ -864,35 +912,33 @@
       let startX = 0;
       let startWidth = 380;
 
-      if (resizer) {
-        resizer.addEventListener('mousedown', (e) => {
-          isResizing = true;
-          startX = e.clientX;
-          startWidth = panelWrapper.offsetWidth;
-          document.body.style.cursor = 'ew-resize';
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = panelWrapper.offsetWidth;
+        document.body.style.cursor = 'ew-resize';
 
-          const onMouseMove = (e) => {
-            if (!isResizing) return;
-            let newWidth = startWidth + (startX - e.clientX);
-            newWidth = Math.max(280, Math.min(newWidth, 650));
-            panelWrapper.style.width = `${newWidth}px`;
-            if (chart) {
-              const container = document.getElementById('chart-container');
-              chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-            }
-          };
+        const onMouseMove = (e) => {
+          if (!isResizing) return;
+          let newWidth = startWidth + (startX - e.clientX);
+          newWidth = Math.max(280, Math.min(newWidth, 650));
+          panelWrapper.style.width = `${newWidth}px`;
+          if (chart) {
+            const container = document.getElementById('chart-container');
+            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+          }
+        };
 
-          const onMouseUp = () => {
-            isResizing = false;
-            document.body.style.cursor = '';
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-          };
+        const onMouseUp = () => {
+          isResizing = false;
+          document.body.style.cursor = '';
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
 
-          document.addEventListener('mousemove', onMouseMove);
-          document.addEventListener('mouseup', onMouseUp);
-        });
-      }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -904,20 +950,24 @@
       fetchRealtimeQuotes();
       setInterval(fetchRealtimeQuotes, 2000);
 
-      // 手機版與桌面版收合/展開控制
+      // 自動螢幕大小偵測與側邊欄開關控制
       const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
-      const closeDrawerBtn = document.getElementById('btn-close-drawer');
       const watchlistWrapper = document.getElementById('watchlist-wrapper');
       const backdrop = document.getElementById('drawer-backdrop');
       const resizer = document.getElementById('panel-resizer');
+      const closeDrawerBtn = document.getElementById('btn-close-drawer');
+
+      function isMobileScreen() {
+        return window.innerWidth < 768;
+      }
 
       function toggleWatchlist() {
-        if (window.innerWidth < 768) {
-          // 手機版：開關抽屜
+        if (isMobileScreen()) {
+          // 手機/小螢幕模式：開關抽屜
           watchlistWrapper.classList.toggle('open');
           backdrop.classList.toggle('show');
         } else {
-          // 桌面版：滑順收合
+          // 電腦/大螢幕模式：滑順寬度收合
           watchlistWrapper.classList.toggle('collapsed');
           toggleWatchlistBtn.classList.toggle('active');
           if (watchlistWrapper.classList.contains('collapsed')) {
@@ -940,7 +990,7 @@
 
       // 點擊清單項目後在手機版自動關閉抽屜
       window.addEventListener('symbolSelected', () => {
-        if (window.innerWidth < 768) {
+        if (isMobileScreen()) {
           watchlistWrapper.classList.remove('open');
           backdrop.classList.remove('show');
         }
@@ -960,37 +1010,6 @@
 
           updateIndicatorDisplay();
         });
-      });
-
-      // K線風格切換按鈕事件
-      document.getElementById('btn-style-toggle').addEventListener('click', () => {
-        isTaiwanStyle = !isTaiwanStyle;
-        const btn = document.getElementById('btn-style-toggle');
-        if (isTaiwanStyle) {
-          btn.textContent = '風格: 紅漲綠跌';
-          candlestickSeries.applyOptions({
-            upColor: '#f23645',
-            downColor: '#089981',
-            wickUpColor: '#f23645',
-            wickDownColor: '#089981',
-          });
-        } else {
-          btn.textContent = '風格: 綠漲紅跌';
-          candlestickSeries.applyOptions({
-            upColor: '#089981',
-            downColor: '#f23645',
-            wickUpColor: '#089981',
-            wickDownColor: '#f23645',
-          });
-        }
-        updateIndicatorDisplay();
-        renderWatchlist();
-        const allItems = getAllWatchlistItems();
-        const activeSymbol = allItems.find(s => s.id === selectedSymbolId);
-        if (activeSymbol) {
-          updateActivePriceDisplay(activeSymbol);
-          updateDetailCard(activeSymbol);
-        }
       });
 
       // 時間週期切換
@@ -1018,6 +1037,7 @@
       const form = document.getElementById('add-symbol-form');
 
       const closeModal = () => modal.classList.add('hidden');
+      openBtn.onclick = () => modal.classList.add('hidden') === false ? modal.classList.remove('hidden') : modal.classList.remove('hidden');
       openBtn.onclick = () => modal.classList.remove('hidden');
       closeBtn.onclick = closeModal;
       cancelBtn.onclick = closeModal;
