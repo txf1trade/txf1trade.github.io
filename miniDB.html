@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PRO TRADING TERMINAL - Clean Mobile</title>
+  <title>Mini TradingDash</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lightweight Charts v4 CDN -->
@@ -166,7 +166,7 @@
   <header class="h-11 bg-tvPanel border-b border-tvBorder flex items-center justify-between px-3 shrink-0 z-25 relative">
     <div class="flex items-center space-x-2 text-tvAccent font-bold text-base tracking-wider shrink-0">
       <i class="fa-solid fa-chart-line"></i>
-      <span>PRO TERMINAL</span>
+      <span>Mini TradingDash</span>
     </div>
 
     <!-- Right Global Status / Actions -->
@@ -188,8 +188,8 @@
   <!-- Main Grid Content -->
   <div class="flex-1 flex overflow-hidden relative">
     
-    <!-- Left Section: Chart Area -->
-    <div class="flex-1 flex flex-col min-w-0 border-r border-tvBorder bg-tvBg">
+    <!-- Left Section: Chart Area (設定 max-h-[65vh] 減少 K 線圖佔用高度) -->
+    <div class="flex-1 flex flex-col min-w-0 border-r border-tvBorder bg-tvBg max-h-[65vh] sm:max-h-none">
       <!-- Active Symbol Info Bar -->
       <div class="h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 text-xs shrink-0">
         <div class="flex items-center space-x-2 truncate">
@@ -236,11 +236,11 @@
 
         <div id="chart-container" class="flex-1 w-full relative"></div>
 
-        <!-- 畫面下方的底部指標切換列 -->
-        <div class="h-10 bg-tvPanel border-t border-tvBorder flex items-center px-3 sm:px-4 space-x-6 text-xs shrink-0 z-20 font-mono select-none pb-safe">
-          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-1.5" data-active="false">EMA</button>
-          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-1.5" data-active="false">日週線</button>
-          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-1.5" data-active="false">成交量</button>
+        <!-- 畫面下方的底部指標切換列：增加高度 (h-14) 與內距，調高位置方便點擊 -->
+        <div class="h-14 bg-tvPanel border-t border-tvBorder flex items-center px-4 space-x-6 text-sm shrink-0 z-20 font-mono select-none">
+          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">EMA</button>
+          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
+          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
         </div>
       </div>
     </div>
