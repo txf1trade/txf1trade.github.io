@@ -39,6 +39,7 @@
 
     .compact-table-row { font-size: 11px; }
 
+    /* 柔和舒適的呼吸燈動畫 */
     @keyframes softPulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.4; transform: scale(0.92); }
@@ -47,6 +48,7 @@
       animation: softPulse 2.5s infinite ease-in-out;
     }
 
+    /* 桌面版收合樣式 */
     #watchlist-wrapper {
       width: 410px;
       height: 100%;
@@ -66,6 +68,7 @@
       border-left: none;
     }
 
+    /* 手機版抽屜覆蓋模式 */
     @media (max-width: 767px) {
       #watchlist-wrapper {
         position: fixed;
@@ -84,6 +87,7 @@
       }
     }
 
+    /* 最右側圖示側邊欄 */
     #sidebar-icons {
       width: 48px;
       height: 100%;
@@ -122,6 +126,7 @@
       background-color: rgba(41, 98, 255, 0.15);
     }
 
+    /* 手機遮罩層 */
     #drawer-backdrop {
       position: fixed;
       inset: 0;
@@ -152,18 +157,6 @@
     .legend-item.disabled {
       opacity: 0.35;
       text-decoration: line-through;
-    }
-
-    /* 手繪線條 Canvas 遮罩 */
-    #drawing-canvas {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 5;
-    }
-    #drawing-canvas.active {
-      pointer-events: auto;
-      cursor: crosshair;
     }
   </style>
 </head>
@@ -214,20 +207,8 @@
           </div>
         </div>
 
-        <!-- 右側操作按鈕：畫線工具、清除畫線、另存圖片 -->
-        <div class="flex items-center space-x-1.5 font-mono shrink-0">
-          <button id="btn-draw-mode" class="px-2 py-1 bg-tvHover hover:bg-tvAccent text-tvText hover:text-white rounded text-[11px] transition-colors flex items-center space-x-1" title="切換畫線或十字線模式">
-            <i class="fa-solid fa-pencil text-[10px]"></i><span>畫線工具</span>
-          </button>
-          <button id="btn-clear-drawings" class="px-2 py-1 bg-tvHover hover:bg-red-600 text-tvTextMuted hover:text-white rounded text-[11px] transition-colors" title="清除所有手繪線條">
-            <i class="fa-solid fa-trash-can text-[10px]"></i>
-          </button>
-          <button id="btn-export-img" class="px-2 py-1 bg-tvAccent hover:bg-blue-600 text-white rounded text-[11px] font-medium transition-colors flex items-center space-x-1" title="另存圖表圖片">
-            <i class="fa-solid fa-camera text-[10px]"></i><span>截圖</span>
-          </button>
-          
-          <div class="h-4 w-px bg-tvBorder mx-1"></div>
-          <span id="active-price" class="text-xs sm:text-sm font-bold">--</span>
+        <div id="active-price-badge" class="flex items-center space-x-1.5 font-mono font-bold shrink-0">
+          <span id="active-price" class="text-xs sm:text-sm">--</span>
           <span id="active-change" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded">--</span>
         </div>
       </div>
@@ -243,35 +224,39 @@
 
       <!-- Lightweight Chart Container & Legend -->
       <div class="flex-1 relative w-full h-full bg-tvBg flex flex-col min-h-0">
-        <!-- 主圖左上角數值即時標籤 -->
+        <!-- 主圖左上角數值即時標籤 (修改為垂直多列 / 換行佈局) -->
         <div id="chart-legend" class="absolute top-2 left-2 z-10 flex flex-col items-start gap-y-1 text-[10px] sm:text-xs font-mono bg-tvPanel/85 px-2.5 py-1.5 rounded border border-tvBorder shadow pointer-events-auto">
+          <!-- 過濾線列 -->
           <div id="legend-row-filter" class="flex items-center gap-x-2">
             <span id="legend-filter-group" data-line="filter12" class="legend-item text-[#df8028]" title="切換過濾線(EMA12)顯示"><span id="label-filter">EMA12</span>: <span id="legend-filter">--</span></span>
           </div>
+
+          <!-- 多頭線列 -->
           <div id="legend-row-ema" class="flex items-center gap-x-2">
             <span id="legend-ema20-group" data-line="ema20" class="legend-item text-[#ffcc66]" title="切換多頭線(EMA20)顯示"><span id="label-ema20">EMA20</span>: <span id="legend-ema20">--</span></span>
-            <span id="legend-ema60-group" data-line="ema60" class="legend-item text-[#28c6ee]" title="切換多頭線(EMA60)顯示"><span id="label-ema60">EMA60</span>: <span id="legend-ema60">--</span></span>
+            <span id="legend-ema60-group" data-line="ema60" class="legend-item text-[#28c6ee]" title="切換多頭線(EMA60)顯示"><span id="label-ema60">60</span>: <span id="legend-ema60">--</span></span>
           </div>
+
+          <!-- 日週線列 -->
           <div id="legend-row-daily" class="flex items-center gap-x-2">
-            <span id="legend-daily-group" data-line="daily" class="legend-item text-[#ee3b76]" title="切換日線(EMA76)顯示"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
-            <span id="legend-weekly-group" data-line="weekly" class="legend-item text-[#2186c0]" title="切換週線(EMA380)顯示"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
+            <span id="legend-daily-group" data-line="daily" class="legend-item text-[#ee3b76]" title="點擊切換日線(EMA76)顯示"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
+            <span id="legend-weekly-group" data-line="weekly" class="legend-item text-[#2186c0]" title="點擊切換週線(EMA380)顯示"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
           </div>
+
+          <!-- ATR趨勢列 -->
           <div id="legend-row-atr" class="flex items-center gap-x-2">
-            <span id="legend-atr-group" data-line="atrTrend" class="legend-item text-[#00cbff]" title="切換 ATR 趨勢線顯示"><span id="label-atr">ATR趨勢</span>: <span id="legend-atrval">--</span></span>
+            <span id="legend-atr-group" data-line="atrTrend" class="legend-item text-[#00cbff]" title="點擊切換 ATR 趨勢線顯示"><span id="label-atr">ATR趨勢</span>: <span id="legend-atrval">--</span></span>
           </div>
         </div>
 
-        <div id="chart-container" class="flex-1 w-full relative">
-          <!-- 手繪畫線用的 Canvas 覆蓋層 -->
-          <canvas id="drawing-canvas"></canvas>
-        </div>
+        <div id="chart-container" class="flex-1 w-full relative"></div>
 
         <!-- 畫面下方的底部指標切換列 -->
         <div class="h-14 bg-tvPanel border-t border-tvBorder flex items-center px-4 space-x-6 text-sm shrink-0 z-20 font-mono select-none">
           <button data-ind="filter" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">過濾線</button>
           <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">多頭線</button>
           <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
-          <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR趨勢</button>
+          <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR</button>
           <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
         </div>
       </div>
@@ -287,6 +272,7 @@
 
     <!-- 右側自選面板 Wrapper -->
     <div id="watchlist-wrapper">
+      <!-- Watchlist Header -->
       <div class="h-10 px-3 border-b border-tvBorder flex items-center justify-between shrink-0 relative">
         <div class="flex items-center space-x-2">
           <span class="font-bold text-sm text-white">自選商品群組</span>
@@ -304,6 +290,7 @@
           </button>
         </div>
 
+        <!-- 設定三：下拉選單 -->
         <div id="settings-dropdown" class="absolute top-11 right-2 bg-tvPanel border border-tvBorder rounded shadow-xl p-3 z-50 hidden text-xs w-52 space-y-2.5">
           <div class="font-bold text-white border-b border-tvBorder pb-1 mb-1">顯示欄位設定</div>
           <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
@@ -328,9 +315,13 @@
         </div>
       </div>
 
+      <!-- Watchlist Table Header -->
       <div id="watchlist-header" class="flex items-center px-2 py-2 text-[11px] text-tvTextMuted font-medium border-b border-tvBorder shrink-0 bg-tvBg/40 w-full"></div>
+
+      <!-- Watchlist Items Container -->
       <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full"></div>
 
+      <!-- Bottom Quick Summary Card -->
       <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0">
         <div class="flex justify-between items-start mb-1.5">
           <div>
@@ -352,6 +343,7 @@
       </div>
     </div>
 
+    <!-- 最右側官方圖示側邊欄 -->
     <div id="sidebar-icons">
       <button class="sidebar-btn active" id="toggle-watchlist-btn" title="自選商品清單">
         <i class="fa-solid fa-bookmark text-sm"></i>
@@ -395,11 +387,11 @@
     updateClock();
 
     const defaultIndicatorSettings = {
-      filter: true,
-      ema: false,
-      daily: true,
-      atr: false,
-      vol: false
+      filter: true,   // 過濾線預設開啟
+      ema: false,     // 多頭線預設關閉
+      daily: true,    // 日週線預設開啟
+      atr: false,     // ATR趨勢預設關閉
+      vol: false      // 成交量預設關閉
     };
 
     let lineVisibility = {
@@ -625,8 +617,6 @@
           horzLines: { color: '#1e222d' },
         },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        handleScroll: { mouseWheel: true, pressedMouseMove: true },
-        handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
         rightPriceScale: { 
           borderColor: '#2a2e39', 
           textColor: '#ffffff', 
@@ -720,11 +710,6 @@
         visible: false,
       });
 
-      // 監聽圖表範圍變動（平移、縮放），讓手繪線條跟著 K 線同步移動
-      chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
-        redrawDrawings();
-      });
-
       chart.subscribeCrosshairMove(param => {
         if (!param || !param.time || !currentCandles.length) return;
         const time = param.time;
@@ -764,334 +749,7 @@
 
       window.addEventListener('resize', () => {
         chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-        resizeDrawingCanvas();
       });
-      resizeDrawingCanvas();
-    }
-
-    // 手繪畫線功能邏輯（改為綁定 Time 與 Price，使其能隨圖表移動）
-    let isDrawingMode = false;
-    let drawings = []; // 儲存 { time1, price1, time2, price2 }
-    let isDrawing = false;
-    let startX = 0, startY = 0;
-    let tempTime1 = null, tempPrice1 = null;
-
-    function resizeDrawingCanvas() {
-      const container = document.getElementById('chart-container');
-      const canvas = document.getElementById('drawing-canvas');
-      if (canvas && container) {
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
-        redrawDrawings();
-      }
-    }
-
-    function redrawDrawings() {
-      const canvas = document.getElementById('drawing-canvas');
-      if (!canvas || !chart || !candlestickSeries) return;
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = '#00cbff';
-      ctx.lineWidth = 2;
-
-      drawings.forEach(line => {
-        const x1 = chart.timeScale().timeToCoordinate(line.time1);
-        const y1 = candlestickSeries.priceToCoordinate(line.price1);
-        const x2 = chart.timeScale().timeToCoordinate(line.time2);
-        const y2 = candlestickSeries.priceToCoordinate(line.price2);
-
-        if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-        }
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      initChart();
-      initPanelResizer();
-      renderWatchlist();
-      selectSymbol(selectedSymbolId);
-
-      fetchRealtimeQuotes();
-      setInterval(fetchRealtimeQuotes, 2000);
-
-      // 畫線工具按鈕切換
-      const drawBtn = document.getElementById('btn-draw-mode');
-      const clearDrawBtn = document.getElementById('btn-clear-drawings');
-      const canvas = document.getElementById('drawing-canvas');
-
-      drawBtn.addEventListener('click', () => {
-        isDrawingMode = !isDrawingMode;
-        if (isDrawingMode) {
-          drawBtn.innerHTML = '<i class="fa-solid fa-crosshairs text-[10px]"></i><span>切回十字線</span>';
-          drawBtn.classList.add('bg-tvAccent', 'text-white');
-          canvas.classList.add('active');
-          chart.applyOptions({
-            handleScroll: false,
-            handleScale: false
-          });
-        } else {
-          drawBtn.innerHTML = '<i class="fa-solid fa-pencil text-[10px]"></i><span>畫線工具</span>';
-          drawBtn.classList.remove('bg-tvAccent', 'text-white');
-          canvas.classList.remove('active');
-          chart.applyOptions({
-            handleScroll: { mouseWheel: true, pressedMouseMove: true },
-            handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
-          });
-        }
-      });
-
-      clearDrawBtn.addEventListener('click', () => {
-        drawings = [];
-        redrawDrawings();
-      });
-
-      canvas.addEventListener('mousedown', (e) => {
-        if (!isDrawingMode) return;
-        isDrawing = true;
-        const rect = canvas.getBoundingClientRect();
-        startX = e.clientX - rect.left;
-        startY = e.clientY - rect.top;
-
-        tempTime1 = chart.timeScale().coordinateToTime(startX);
-        tempPrice1 = candlestickSeries.coordinateToPrice(startY);
-      });
-
-      canvas.addEventListener('mousemove', (e) => {
-        if (!isDrawing || !isDrawingMode) return;
-        const rect = canvas.getBoundingClientRect();
-        const currentX = e.clientX - rect.left;
-        const currentY = e.clientY - rect.top;
-        
-        redrawDrawings();
-        const ctx = canvas.getContext('2d');
-        ctx.strokeStyle = '#00cbff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(currentX, currentY);
-        ctx.stroke();
-      });
-
-      canvas.addEventListener('mouseup', (e) => {
-        if (!isDrawing || !isDrawingMode) return;
-        isDrawing = false;
-        const rect = canvas.getBoundingClientRect();
-        const endX = e.clientX - rect.left;
-        const endY = e.clientY - rect.top;
-
-        const time2 = chart.timeScale().coordinateToTime(endX);
-        const price2 = candlestickSeries.coordinateToPrice(endY);
-
-        if (tempTime1 !== null && time2 !== null && tempPrice1 !== null && price2 !== null) {
-          drawings.push({
-            time1: tempTime1,
-            price1: tempPrice1,
-            time2: time2,
-            price2: price2
-          });
-        }
-        redrawDrawings();
-      });
-
-      // 另存圖片功能：使用官方內建 takeScreenshot API
-      document.getElementById('btn-export-img').addEventListener('click', () => {
-        if (!chart) return;
-        
-        setTimeout(() => {
-          const chartCanvas = chart.takeScreenshot();
-          const drawingCanvas = document.getElementById('drawing-canvas');
-          
-          if (!chartCanvas) {
-            alert('圖表尚未載入完成');
-            return;
-          }
-
-          const exportCanvas = document.createElement('canvas');
-          exportCanvas.width = chartCanvas.width;
-          exportCanvas.height = chartCanvas.height;
-          const ctx = exportCanvas.getContext('2d');
-
-          ctx.drawImage(chartCanvas, 0, 0);
-
-          if (drawingCanvas && drawings.length > 0) {
-            ctx.drawImage(drawingCanvas, 0, 0, exportCanvas.width, exportCanvas.height);
-          }
-
-          const link = document.createElement('a');
-          link.download = `TradingDash_${selectedSymbolId}_${Date.now()}.png`;
-          link.href = exportCanvas.toDataURL('image/png');
-          link.click();
-        }, 150);
-      });
-
-      document.querySelectorAll('.ind-tab').forEach(btn => {
-        const indKey = btn.getAttribute('data-ind');
-        if (indicatorStates[indKey]) {
-          btn.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
-        }
-      });
-      updateIndicatorDisplay();
-
-      document.querySelectorAll('.legend-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-          const lineName = item.getAttribute('data-line');
-          if (lineName === 'filter12') {
-            lineVisibility.filter12 = !lineVisibility.filter12;
-          } else if (lineName === 'ema20' || lineName === 'ema60') {
-            lineVisibility[lineName] = !lineVisibility[lineName];
-          } else if (lineName && lineVisibility.hasOwnProperty(lineName)) {
-            lineVisibility[lineName] = !lineVisibility[lineName];
-          }
-          updateIndicatorDisplay();
-        });
-      });
-
-      const settingsBtn = document.getElementById('btn-settings-3');
-      const settingsDropdown = document.getElementById('settings-dropdown');
-
-      settingsBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        settingsDropdown.classList.toggle('hidden');
-      });
-
-      document.addEventListener('click', () => {
-        settingsDropdown.classList.add('hidden');
-      });
-
-      settingsDropdown.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
-
-      document.getElementById('col-change').addEventListener('change', (e) => {
-        columnSettings.change = e.target.checked;
-        renderWatchlist();
-      });
-      document.getElementById('col-percent').addEventListener('change', (e) => {
-        columnSettings.percent = e.target.checked;
-        renderWatchlist();
-      });
-      document.getElementById('col-volume').addEventListener('change', (e) => {
-        columnSettings.volume = e.target.checked;
-        renderWatchlist();
-      });
-      document.getElementById('vol-mode-select').addEventListener('change', (e) => {
-        columnSettings.volMode = e.target.value;
-        renderWatchlist();
-      });
-
-      const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
-      const watchlistWrapper = document.getElementById('watchlist-wrapper');
-      const backdrop = document.getElementById('drawer-backdrop');
-      const resizer = document.getElementById('panel-resizer');
-      const closeDrawerBtn = document.getElementById('btn-close-drawer');
-
-      function isMobileScreen() {
-        return window.innerWidth < 768;
-      }
-
-      function toggleWatchlist() {
-        if (isMobileScreen()) {
-          watchlistWrapper.classList.toggle('open');
-          backdrop.classList.toggle('show');
-        } else {
-          watchlistWrapper.classList.toggle('collapsed');
-          toggleWatchlistBtn.classList.toggle('active');
-          if (watchlistWrapper.classList.contains('collapsed')) {
-            if (resizer) resizer.style.display = 'none';
-          } else {
-            if (resizer) resizer.style.display = 'block';
-          }
-        }
-        setTimeout(() => {
-          if (chart) {
-            const container = document.getElementById('chart-container');
-            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-            resizeDrawingCanvas();
-          }
-        }, 220);
-      }
-
-      toggleWatchlistBtn.addEventListener('click', toggleWatchlist);
-      if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', toggleWatchlist);
-      if (backdrop) backdrop.addEventListener('click', toggleWatchlist);
-
-      window.addEventListener('symbolSelected', () => {
-        if (isMobileScreen()) {
-          watchlistWrapper.classList.remove('open');
-          backdrop.classList.remove('show');
-        }
-      });
-
-      document.querySelectorAll('.ind-tab').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const indKey = e.target.getAttribute('data-ind');
-          indicatorStates[indKey] = !indicatorStates[indKey];
-
-          if (indicatorStates[indKey]) {
-            e.target.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
-          } else {
-            e.target.className = 'ind-tab text-tvTextMuted hover:text-white transition-colors';
-          }
-
-          updateIndicatorDisplay();
-        });
-      });
-
-      document.querySelectorAll('.tf-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const targetRes = e.target.getAttribute('data-res');
-          document.querySelectorAll('.tf-btn').forEach(b => {
-            if (b.getAttribute('data-res') === targetRes) {
-              b.classList.add('bg-tvHover', 'text-white', 'font-medium', 'shadow');
-              b.classList.remove('text-tvTextMuted');
-            } else {
-              b.classList.remove('bg-tvHover', 'text-white', 'font-medium', 'shadow');
-              b.classList.add('text-tvTextMuted');
-            }
-          });
-
-          currentResolution = targetRes;
-          currentCandles = []; 
-          const allItems = getAllWatchlistItems();
-          const symbol = allItems.find(s => s.id === selectedSymbolId);
-          if (symbol) loadHistoryData(symbol.code, currentResolution);
-        });
-      });
-
-      const modal = document.getElementById('add-symbol-modal');
-      const openBtn = document.getElementById('btn-open-modal');
-      const closeBtn = document.getElementById('btn-close-modal');
-      const cancelBtn = document.getElementById('btn-cancel-modal');
-      const form = document.getElementById('add-symbol-form');
-
-      const closeModal = () => modal.classList.add('hidden');
-      openBtn.onclick = () => modal.classList.remove('hidden');
-      closeBtn.onclick = closeModal;
-      cancelBtn.onclick = closeModal;
-
-      form.onsubmit = (e) => {
-        e.preventDefault();
-        const name = document.getElementById('input-name').value;
-        const code = document.getElementById('input-code').value.toUpperCase();
-        if (name && code) {
-          const newSymbol = { id: Date.now().toString(), name, code, price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'CUSTOM' };
-          watchlistGroups[0].items.push(newSymbol);
-          renderWatchlist();
-          selectSymbol(newSymbol.id);
-          form.reset();
-          closeModal();
-        }
-      };
-    });
-
-    const originalSelectSymbol = selectSymbol;
-    selectSymbol = function(id) {
-      originalSelectSymbol(id);
-      window.dispatchEvent(new Event('symbolSelected'));
     }
 
     function updateIndicatorDisplay() {
@@ -1117,6 +775,7 @@
       const weeklyGroup = document.getElementById('legend-weekly-group');
       const atrGroup = document.getElementById('legend-atr-group');
 
+      // 1. 過濾線列 (EMA12)
       if (indicatorStates.filter && currentCandles.length > 0) {
         rowFilter.style.display = 'flex';
         if (lineVisibility.filter12) {
@@ -1134,8 +793,10 @@
         rowFilter.style.display = 'none';
       }
 
+      // 2. 多頭線列 (EMA20 / EMA60)
       if (indicatorStates.ema && currentCandles.length > 0) {
         rowEma.style.display = 'flex';
+
         if (lineVisibility.ema20) {
           ema20Series.setData(calculateEMA(currentCandles, params.ema20));
           ema20Series.applyOptions({ visible: true });
@@ -1145,6 +806,7 @@
           ema20Series.applyOptions({ visible: false });
           ema20Group.classList.add('disabled');
         }
+
         if (lineVisibility.ema60) {
           ema60Series.setData(calculateEMA(currentCandles, params.ema60));
           ema60Series.applyOptions({ visible: true });
@@ -1162,8 +824,10 @@
         rowEma.style.display = 'none';
       }
 
+      // 3. 日週線列
       if (indicatorStates.daily && currentCandles.length > 0) {
         rowDaily.style.display = 'flex';
+
         if (lineVisibility.daily) {
           dailySeries.setData(calculateEMA(currentCandles, params.daily));
           dailySeries.applyOptions({ visible: true });
@@ -1173,6 +837,7 @@
           dailySeries.applyOptions({ visible: false });
           dailyGroup.classList.add('disabled');
         }
+
         if (lineVisibility.weekly) {
           weeklySeries.setData(calculateEMA(currentCandles, params.weekly));
           weeklySeries.applyOptions({ visible: true });
@@ -1190,6 +855,7 @@
         rowDaily.style.display = 'none';
       }
 
+      // 4. ATR 趨勢列
       if (indicatorStates.atr && currentCandles.length > 0) {
         rowAtr.style.display = 'flex';
         if (lineVisibility.atrTrend) {
@@ -1274,10 +940,38 @@
           currentCandles = candleData;
           candlestickSeries.setData(currentCandles);
           updateIndicatorDisplay();
+
+          if (currentCandles.length > 0) {
+            const allItems = getAllWatchlistItems();
+            const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: symbolCode };
+            const params = getLineParams(currentSymbol.code);
+
+            const lastFilter = calculateEMA(currentCandles, params.filter);
+            const last20 = calculateEMA(currentCandles, params.ema20);
+            const last60 = calculateEMA(currentCandles, params.ema60);
+            const lastDaily = calculateEMA(currentCandles, params.daily);
+            const lastWeekly = calculateEMA(currentCandles, params.weekly);
+            const lastAtr = calculateAtrTrend(currentCandles);
+
+            if (indicatorStates.filter && lastFilter.length > 0) {
+              document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(2);
+            }
+            if (indicatorStates.ema && last20.length > 0) {
+              document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(2);
+              document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(2);
+            }
+            if (indicatorStates.daily && lastDaily.length > 0) {
+              document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(2);
+              document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(2);
+            }
+            if (indicatorStates.atr && lastAtr.length > 0) {
+              document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(2);
+            }
+          }
+
           const barsCount = currentCandles.length;
           chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, barsCount - 80), to: barsCount - 1 });
           chart.priceScale('right').applyOptions({ autoScale: true });
-          redrawDrawings();
           return;
         }
         throw new Error('API 資料為空');
@@ -1307,10 +1001,35 @@
       currentCandles = candleData;
       candlestickSeries.setData(currentCandles);
       updateIndicatorDisplay();
+
+      if (currentCandles.length > 0) {
+        const params = getLineParams(symbolCode);
+        const lastFilter = calculateEMA(currentCandles, params.filter);
+        const last20 = calculateEMA(currentCandles, params.ema20);
+        const last60 = calculateEMA(currentCandles, params.ema60);
+        const lastDaily = calculateEMA(currentCandles, params.daily);
+        const lastWeekly = calculateEMA(currentCandles, params.weekly);
+        const lastAtr = calculateAtrTrend(currentCandles);
+
+        if (indicatorStates.filter && lastFilter.length > 0) {
+          document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(2);
+        }
+        if (indicatorStates.ema && last20.length > 0) {
+          document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(2);
+          document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(2);
+        }
+        if (indicatorStates.daily && lastDaily.length > 0) {
+          document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(2);
+          document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(2);
+        }
+        if (indicatorStates.atr && lastAtr.length > 0) {
+          document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(2);
+        }
+      }
+
       const barsCount = currentCandles.length;
       chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, barsCount - 80), to: barsCount - 1 });
       chart.priceScale('right').applyOptions({ autoScale: true });
-      redrawDrawings();
     }
 
     async function fetchRealtimeQuotes() {
@@ -1333,7 +1052,7 @@
             if (item) {
               const newPrice = quote.close || item.price;
               item.price = newPrice;
-              item.refPrice = quote.prevRef || quote.refRef || quote.refRef || item.refPrice;
+              item.refPrice = quote.prevRef || quote.refRef || item.refRef || item.refPrice;
               item.volume = quote.volume || item.volume;
               item.high = quote.high || item.high;
               item.low = quote.low || item.low;
@@ -1369,6 +1088,54 @@
                     lastBar.low = Math.min(lastBar.low, newPrice);
                     lastBar.close = newPrice;
                     candlestickSeries.update(lastBar);
+                  }
+                }
+
+                const params = getLineParams(item.code);
+                if (indicatorStates.filter && lineVisibility.filter12) {
+                  const filterData = calculateEMA(currentCandles, params.filter);
+                  if (filterData.length > 0) {
+                    filter12Series.update(filterData[filterData.length - 1]);
+                    document.getElementById('legend-filter').textContent = filterData[filterData.length - 1].value.toFixed(2);
+                  }
+                }
+                if (indicatorStates.ema) {
+                  if (lineVisibility.ema20) {
+                    const e20Data = calculateEMA(currentCandles, params.ema20);
+                    if (e20Data.length > 0) {
+                      ema20Series.update(e20Data[e20Data.length - 1]);
+                      document.getElementById('legend-ema20').textContent = e20Data[e20Data.length - 1].value.toFixed(2);
+                    }
+                  }
+                  if (lineVisibility.ema60) {
+                    const e60Data = calculateEMA(currentCandles, params.ema60);
+                    if (e60Data.length > 0) {
+                      ema60Series.update(e60Data[e60Data.length - 1]);
+                      document.getElementById('legend-ema60').textContent = e60Data[e60Data.length - 1].value.toFixed(2);
+                    }
+                  }
+                }
+                if (indicatorStates.daily) {
+                  if (lineVisibility.daily) {
+                    const dailyData = calculateEMA(currentCandles, params.daily);
+                    if (dailyData.length > 0) {
+                      dailySeries.update(dailyData[dailyData.length - 1]);
+                      document.getElementById('legend-dailyval').textContent = dailyData[dailyData.length - 1].value.toFixed(2);
+                    }
+                  }
+                  if (lineVisibility.weekly) {
+                    const weeklyData = calculateEMA(currentCandles, params.weekly);
+                    if (weeklyData.length > 0) {
+                      weeklySeries.update(weeklyData[weeklyData.length - 1]);
+                      document.getElementById('legend-weeklyval').textContent = weeklyData[weeklyData.length - 1].value.toFixed(2);
+                    }
+                  }
+                }
+                if (indicatorStates.atr && lineVisibility.atrTrend) {
+                  const atrData = calculateAtrTrend(currentCandles);
+                  if (atrData.length > 0) {
+                    atrTrendSeries.update(atrData[atrData.length - 1]);
+                    document.getElementById('legend-atrval').textContent = atrData[atrData.length - 1].value.toFixed(2);
                   }
                 }
               }
@@ -1568,7 +1335,6 @@
           if (chart) {
             const container = document.getElementById('chart-container');
             chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-            resizeDrawingCanvas();
           }
         };
 
@@ -1582,6 +1348,180 @@
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
       });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      initPanelResizer();
+      renderWatchlist();
+      selectSymbol(selectedSymbolId);
+
+      fetchRealtimeQuotes();
+      setInterval(fetchRealtimeQuotes, 2000);
+
+      document.querySelectorAll('.ind-tab').forEach(btn => {
+        const indKey = btn.getAttribute('data-ind');
+        if (indicatorStates[indKey]) {
+          btn.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
+        }
+      });
+      updateIndicatorDisplay();
+
+      document.querySelectorAll('.legend-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const lineName = item.getAttribute('data-line');
+          if (lineName === 'filter12') {
+            lineVisibility.filter12 = !lineVisibility.filter12;
+          } else if (lineName === 'ema20' || lineName === 'ema60') {
+            lineVisibility[lineName] = !lineVisibility[lineName];
+          } else if (lineName && lineVisibility.hasOwnProperty(lineName)) {
+            lineVisibility[lineName] = !lineVisibility[lineName];
+          }
+          updateIndicatorDisplay();
+        });
+      });
+
+      const settingsBtn = document.getElementById('btn-settings-3');
+      const settingsDropdown = document.getElementById('settings-dropdown');
+
+      settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsDropdown.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', () => {
+        settingsDropdown.classList.add('hidden');
+      });
+
+      settingsDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      document.getElementById('col-change').addEventListener('change', (e) => {
+        columnSettings.change = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('col-percent').addEventListener('change', (e) => {
+        columnSettings.percent = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('col-volume').addEventListener('change', (e) => {
+        columnSettings.volume = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('vol-mode-select').addEventListener('change', (e) => {
+        columnSettings.volMode = e.target.value;
+        renderWatchlist();
+      });
+
+      const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
+      const watchlistWrapper = document.getElementById('watchlist-wrapper');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const resizer = document.getElementById('panel-resizer');
+      const closeDrawerBtn = document.getElementById('btn-close-drawer');
+
+      function isMobileScreen() {
+        return window.innerWidth < 768;
+      }
+
+      function toggleWatchlist() {
+        if (isMobileScreen()) {
+          watchlistWrapper.classList.toggle('open');
+          backdrop.classList.toggle('show');
+        } else {
+          watchlistWrapper.classList.toggle('collapsed');
+          toggleWatchlistBtn.classList.toggle('active');
+          if (watchlistWrapper.classList.contains('collapsed')) {
+            if (resizer) resizer.style.display = 'none';
+          } else {
+            if (resizer) resizer.style.display = 'block';
+          }
+        }
+        setTimeout(() => {
+          if (chart) {
+            const container = document.getElementById('chart-container');
+            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+          }
+        }, 220);
+      }
+
+      toggleWatchlistBtn.addEventListener('click', toggleWatchlist);
+      if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', toggleWatchlist);
+      if (backdrop) backdrop.addEventListener('click', toggleWatchlist);
+
+      window.addEventListener('symbolSelected', () => {
+        if (isMobileScreen()) {
+          watchlistWrapper.classList.remove('open');
+          backdrop.classList.remove('show');
+        }
+      });
+
+      document.querySelectorAll('.ind-tab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const indKey = e.target.getAttribute('data-ind');
+          indicatorStates[indKey] = !indicatorStates[indKey];
+
+          if (indicatorStates[indKey]) {
+            e.target.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
+          } else {
+            e.target.className = 'ind-tab text-tvTextMuted hover:text-white transition-colors';
+          }
+
+          updateIndicatorDisplay();
+        });
+      });
+
+      document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const targetRes = e.target.getAttribute('data-res');
+          document.querySelectorAll('.tf-btn').forEach(b => {
+            if (b.getAttribute('data-res') === targetRes) {
+              b.classList.add('bg-tvHover', 'text-white', 'font-medium', 'shadow');
+              b.classList.remove('text-tvTextMuted');
+            } else {
+              b.classList.remove('bg-tvHover', 'text-white', 'font-medium', 'shadow');
+              b.classList.add('text-tvTextMuted');
+            }
+          });
+
+          currentResolution = targetRes;
+          currentCandles = []; 
+          const allItems = getAllWatchlistItems();
+          const symbol = allItems.find(s => s.id === selectedSymbolId);
+          if (symbol) loadHistoryData(symbol.code, currentResolution);
+        });
+      });
+
+      const modal = document.getElementById('add-symbol-modal');
+      const openBtn = document.getElementById('btn-open-modal');
+      const closeBtn = document.getElementById('btn-close-modal');
+      const cancelBtn = document.getElementById('btn-cancel-modal');
+      const form = document.getElementById('add-symbol-form');
+
+      const closeModal = () => modal.classList.add('hidden');
+      openBtn.onclick = () => modal.classList.remove('hidden');
+      closeBtn.onclick = closeModal;
+      cancelBtn.onclick = closeModal;
+
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const name = document.getElementById('input-name').value;
+        const code = document.getElementById('input-code').value.toUpperCase();
+        if (name && code) {
+          const newSymbol = { id: Date.now().toString(), name, code, price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'CUSTOM' };
+          watchlistGroups[0].items.push(newSymbol);
+          renderWatchlist();
+          selectSymbol(newSymbol.id);
+          form.reset();
+          closeModal();
+        }
+      };
+    });
+
+    const originalSelectSymbol = selectSymbol;
+    selectSymbol = function(id) {
+      originalSelectSymbol(id);
+      window.dispatchEvent(new Event('symbolSelected'));
     }
   </script>
 </body>
