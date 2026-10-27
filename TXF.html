@@ -1,693 +1,1403 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台指期即時報價與波動率監控</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mini TradingDash</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lightweight Charts v4 CDN -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            tvBg: '#131722',
+            tvPanel: '#1e222d',
+            tvHover: '#2a2e39',
+            tvBorder: '#2a2e39',
+            tvText: '#d1d4dc',
+            tvTextMuted: '#787b86',
+            tvUp: '#089981',
+            tvDown: '#f23645',
+            tvAccent: '#2962ff'
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 3px; height: 3px; }
+    ::-webkit-scrollbar-track { background: #131722; }
+    ::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 3px; }
+
+    .compact-table-row { font-size: 11px; }
+
+    /* 柔和舒適的呼吸燈動畫 */
+    @keyframes softPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.92); }
+    }
+    .soft-breathing {
+      animation: softPulse 2.5s infinite ease-in-out;
     }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #121318;
-      color: #e0e0e0;
+    /* 桌面版收合樣式 */
+    #watchlist-wrapper {
+      width: 410px;
+      height: 100%;
+      background-color: #1e222d;
+      border-left: 1px solid #2a2e39;
       display: flex;
       flex-direction: column;
+      transition: width 0.2s ease, border-left 0.2s ease;
+      position: relative;
+      z-index: 10;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    #watchlist-wrapper.collapsed {
+      width: 0px;
+      border-left: none;
+    }
+
+    /* 手機版抽屜覆蓋模式 */
+    @media (max-width: 767px) {
+      #watchlist-wrapper {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 360px;
+        z-index: 50;
+        transform: translateX(100%);
+        transition: transform 0.25s ease-in-out;
+        box-shadow: -5px 0 25px rgba(0,0,0,0.5);
+      }
+      #watchlist-wrapper.open {
+        transform: translateX(0);
+      }
+    }
+
+    /* 最右側圖示側邊欄 */
+    #sidebar-icons {
+      width: 48px;
+      height: 100%;
+      background-color: #131722;
+      border-left: 1px solid #2a2e39;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 10px;
+      gap: 12px;
+      z-index: 12;
+      flex-shrink: 0;
+    }
+
+    .sidebar-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
       justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 20px;
-      gap: 16px;
-    }
-
-    .card {
-      background: #1e222d;
-      border: 1px solid #2a2e39;
-      border-radius: 12px;
-      padding: 24px;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #2a2e39;
-      padding-bottom: 12px;
-      margin-bottom: 12px;
-    }
-
-    .symbol-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .live-dot {
-      width: 8px;
-      height: 8px;
-      background-color: #22c55e;
-      border-radius: 50%;
-      display: inline-block;
-      box-shadow: 0 0 8px #22c55e;
-    }
-
-    .time-stamp {
-      font-size: 13px;
-      color: #22c55e;
-      font-family: monospace;
-      font-weight: bold;
-    }
-
-    /* 日/夜盤切換按鈕區 */
-    .session-toggle {
-      display: flex;
-      background: #131722;
-      border: 1px solid #2a2e39;
-      border-radius: 8px;
-      padding: 3px;
-      margin-bottom: 16px;
-    }
-
-    .toggle-btn {
-      flex: 1;
+      color: #787b86;
       background: transparent;
       border: none;
-      color: #787b86;
-      padding: 6px 0;
-      font-size: 12px;
-      font-weight: 600;
-      border-radius: 6px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s;
     }
 
-    .toggle-btn.active {
-      background: #2a2e39;
-      color: #ffffff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    .sidebar-btn:hover {
+      background-color: #2a2e39;
+      color: #f0f3fa;
     }
 
-    .price-main {
-      padding: 4px 0;
+    .sidebar-btn.active {
+      color: #2962ff;
+      background-color: rgba(41, 98, 255, 0.15);
     }
 
-    .price-row {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .price-value {
-      font-size: 48px;
-      font-weight: 800;
-      font-family: monospace;
-      letter-spacing: -1px;
-      line-height: 1;
-    }
-
-    .change-info {
-      margin-top: 8px;
-      font-size: 16px;
-      font-weight: 700;
-      font-family: monospace;
-      text-align: center;
-    }
-
-    .metrics-box {
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px dashed #2a2e39;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      font-size: 13px;
-      color: #787b86;
-    }
-
-    .metric-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .metric-value {
-      font-family: monospace;
-      font-weight: 600;
-      color: #e0e0e0;
-    }
-
-    /* 波動率圖表卡片樣式 */
-    .vix-card {
-      background: #1e222d;
-      border: 1px solid #2a2e39;
-      border-radius: 12px;
-      padding: 16px;
-      width: 100%;
-      max-width: 400px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    }
-
-    .vix-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .vix-title-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 15px;
-      font-weight: 700;
-      color: #ffffff;
-    }
-
-    .vix-stats-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: monospace;
-      font-weight: 700;
-      font-size: 13px;
-    }
-
-    .vix-content-area {
-      width: 100%;
-      height: 160px;
-      position: relative;
-      cursor: pointer;
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    /* 緊湊型詳細行情資訊表格樣式 */
-    .vix-details-view {
-      display: none;
-      width: 100%;
-      height: 100%;
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-      gap: 4px;
-      align-content: center;
-    }
-
-    .vix-details-view.active {
-      display: grid;
-    }
-
-    .vix-canvas-wrap {
-      width: 100%;
-      height: 100%;
-    }
-
-    .vix-canvas-wrap.hidden {
-      display: none;
-    }
-
-    .grid-cell {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 1px;
-      background: #131722;
-      padding: 4px 6px;
-      border-radius: 4px;
-      border: 1px solid #2a2e39;
-    }
-
-    .grid-label {
-      font-size: 10px;
-      color: #787b86;
-      line-height: 1;
-    }
-
-    .grid-val {
-      font-size: 14px;
-      font-family: monospace;
-      font-weight: bold;
-      line-height: 1.2;
-    }
-
-    /* 觸發彈出面板的按鈕樣式 */
-    .external-link-btn {
-      display: block;
-      width: 100%;
-      max-width: 400px;
-      background: #2a2e39;
-      color: #b2b5be;
-      text-decoration: none;
-      padding: 10px 0;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      transition: all 0.2s ease;
-      text-align: center;
-      border: 1px solid #363a45;
-      cursor: pointer;
-    }
-
-    .external-link-btn:hover {
-      background: #363a45;
-      color: #ffffff;
-    }
-
-    /* 彈出面板 (Modal) 樣式 */
-    .modal-overlay {
-      display: none;
+    /* 手機遮罩層 */
+    #drawer-backdrop {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.75);
-      z-index: 999;
-      justify-content: center;
-      align-items: center;
-      padding: 10px;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease-in-out;
+    }
+    #drawer-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    @media (min-width: 768px) {
+      #drawer-backdrop { display: none !important; }
     }
 
-    .modal-overlay.active {
-      display: flex;
-    }
-
-    .modal-content {
-      background: #1e222d;
-      border: 1px solid #2a2e39;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 880px;
-      height: 90vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-      overflow: hidden;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
-      background: #131722;
-      border-bottom: 1px solid #2a2e39;
-    }
-
-    .modal-title {
-      font-size: 15px;
-      font-weight: bold;
-      color: #ffffff;
-    }
-
-    .close-modal-btn {
-      background: #2a2e39;
-      color: #b2b5be;
-      border: none;
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 13px;
+    .legend-item {
       cursor: pointer;
-      font-weight: bold;
-      transition: background 0.2s;
+      padding: 1px 4px;
+      border-radius: 3px;
+      transition: all 0.15s ease;
+      display: inline-block;
+    }
+    .legend-item:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .legend-item.disabled {
+      opacity: 0.35;
+      text-decoration: line-through;
     }
 
-    .close-modal-btn:hover {
-      background: #f23645;
+    /* 群組 Tab 按鈕樣式 */
+    .group-tab-btn {
+      position: relative;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #787b86;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .group-tab-btn:hover {
+      color: #d1d4dc;
+    }
+    .group-tab-btn.active {
       color: #ffffff;
     }
-
-    .modal-body {
-      flex: 1;
-      width: 100%;
-      background: #121212;
+    .group-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 15%;
+      width: 70%;
+      height: 3px;
+      background-color: #ffffff;
+      border-radius: 2px 2px 0 0;
     }
 
-    .modal-body iframe {
+    /* 右下角走勢圖 Canvas 容器 */
+    .vix-mini-canvas-container {
       width: 100%;
-      height: 100%;
-      border: none;
+      height: 140px;
+      position: relative;
+      background: #131722;
+      border-radius: 6px;
+      border: 1px solid #2a2e39;
+      overflow: hidden;
+      flex-shrink: 0;
     }
-
-    /* 台股配色：紅色為上漲，綠色為下跌 */
-    .up { color: #f23645; fill: #f23645; stroke: #f23645; }
-    .down { color: #089981; fill: #089981; stroke: #089981; }
-    .neutral { color: #e0e0e0; fill: #e0e0e0; stroke: #e0e0e0; }
   </style>
 </head>
-<body>
+<body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
 
-<!-- 台指期卡片 -->
-<div class="card">
-  <div class="header">
-    <div class="symbol-title">
-      <span class="live-dot"></span>
-      台指期 (TX-1)
+  <!-- Top Global Header -->
+  <header class="h-11 bg-tvPanel border-b border-tvBorder flex items-center justify-between px-3 shrink-0 z-25 relative">
+    <div class="flex items-center space-x-2 text-tvAccent font-bold text-base tracking-wider shrink-0">
+      <i class="fa-solid fa-chart-line"></i>
+      <span>Mini TradingDash</span>
     </div>
-    <div class="time-stamp" id="update-time">--:--:--</div>
-  </div>
 
-  <div class="session-toggle">
-    <button class="toggle-btn active" id="btn-day" onclick="switchSession('day')">☀️日盤 (08:45)</button>
-    <button class="toggle-btn" id="btn-night" onclick="switchSession('night')">🌙全日盤 (15:00)</button>
-  </div>
+    <!-- Right Global Status / Actions -->
+    <div class="flex items-center space-x-2.5 text-xs shrink-0 font-mono">
+      <div id="api-status-badge" class="flex items-center space-x-1.5 text-tvUp bg-tvUp/15 px-3 py-1.5 rounded-md border border-tvUp/50 shadow-[0_0_12px_rgba(8,153,129,0.25)] cursor-pointer hover:bg-tvUp/25 transition-all select-none group" title="點擊手動重新整理資料">
+        <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-tvUp soft-breathing"></span>
+        <i id="api-status-icon" class="fa-solid fa-rotate text-[10px] text-tvUp transition-transform"></i>
+        <span id="api-status-text" class="text-[11px] font-bold tracking-wide">即時連線</span>
+      </div>
 
-  <div class="price-main">
-    <div class="price-row">
-      <svg id="k-candle" width="22" height="46" viewBox="0 0 22 46" style="display: none;">
-        <line id="candle-wick" x1="11" y1="2" x2="11" y2="44" stroke-width="2" />
-        <rect id="candle-body" x="5" width="12" rx="1" ry="1" />
-      </svg>
-      <div class="price-value neutral" id="close-price">-----</div>
+      <div class="flex items-center space-x-1.5 text-white bg-tvHover px-2.5 py-1 rounded border border-tvBorder shadow-sm">
+        <i class="fa-regular fa-clock text-[10px] text-tvTextMuted"></i>
+        <span id="live-clock" class="text-[10px] font-bold tracking-wider">--:--:--</span>
+      </div>
     </div>
-    <div class="change-info neutral" id="change-price">-- (--%)</div>
-  </div>
+  </header>
 
-  <div class="metrics-box">
-    <div class="metric-row">
-      <span id="open-label">日盤開盤價 (08:45)</span>
-      <span class="metric-value" id="session-open">-----</span>
-    </div>
-    <div class="metric-row">
-      <span>總成交量</span>
-      <span class="metric-value" id="total-volume">----- 口</span>
-    </div>
-  </div>
-</div>
-
-<!-- 點擊圖表切換詳細資訊的台指波動率 (TAIWANVIX) 卡片 -->
-<div class="vix-card">
-  <div class="vix-card-header" onclick="toggleVixView()" title="點擊切換圖表與詳細資訊">
-    <div class="vix-title-group">
-      <svg id="vix-mini-candle" width="14" height="28" viewBox="0 0 22 46" style="display:none;">
-        <line id="vix-wick" x1="11" y1="2" x2="11" y2="44" stroke-width="2" />
-        <rect id="vix-body" x="5" width="12" rx="1" ry="1" />
-      </svg>
-      <span id="vix-card-title-text">台指波動率 VIX</span>
-    </div>
-    <div class="vix-stats-group">
-      <span id="vix-current-val" class="neutral">--</span>
-      <span id="vix-change-val" class="neutral">--</span>
-      <span id="vix-pct-val" class="neutral">--%</span>
-    </div>
-  </div>
-
-  <!-- 互動顯示區域：點擊可直接在「走勢圖」與「詳細數據表」之間切換 -->
-  <div class="vix-content-area" onclick="toggleVixView()" title="點擊切換圖表與詳細資訊">
+  <!-- Main Grid Content -->
+  <div class="flex-1 flex overflow-hidden relative">
     
-    <!-- 圖表視圖 -->
-    <div class="vix-canvas-wrap" id="vixCanvasWrap">
-      <canvas id="vixCanvas"></canvas>
+    <!-- Left Section: Chart Area -->
+    <div class="flex-1 flex flex-col min-w-0 border-r border-tvBorder bg-tvBg max-h-[65vh] sm:max-h-none">
+      <!-- Active Symbol Info Bar -->
+      <div class="h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 text-xs shrink-0">
+        <div class="flex items-center space-x-2 truncate">
+          <span id="active-symbol-title" class="font-bold text-white text-xs sm:text-sm truncate">台指期全 TX-1</span>
+          <span id="active-symbol-exch" class="text-tvTextMuted text-[10px]">TAIFEX</span>
+          
+          <div class="h-4 w-px bg-tvBorder hidden sm:block mx-1"></div>
+
+          <!-- Timeframe Selector -->
+          <div id="timeframe-container" class="hidden sm:flex items-center space-x-1 text-xs font-mono">
+            <button data-res="1" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
+            <button data-res="5" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
+            <button data-res="15" class="tf-btn px-2 py-0.5 rounded bg-tvHover text-white font-medium shadow">15</button>
+            <button data-res="60" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
+            <button data-res="1D" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
+          </div>
+        </div>
+
+        <div id="active-price-badge" class="flex items-center space-x-1.5 font-mono font-bold shrink-0">
+          <span id="active-price" class="text-xs sm:text-sm">--</span>
+          <span id="active-change" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded">--</span>
+        </div>
+      </div>
+
+      <!-- 手機版專屬第二行時框列 -->
+      <div class="sm:hidden h-8 bg-tvPanel/30 border-b border-tvBorder flex items-center px-3 space-x-1 text-xs font-mono shrink-0 overflow-x-auto no-scrollbar">
+        <button data-res="1" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
+        <button data-res="5" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
+        <button data-res="15" class="tf-btn px-2.5 py-0.5 rounded bg-tvHover text-white font-medium shadow">15</button>
+        <button data-res="60" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
+        <button data-res="1D" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
+      </div>
+
+      <!-- Lightweight Chart Container & Legend -->
+      <div class="flex-1 relative w-full h-full bg-tvBg flex flex-col min-h-0">
+        <!-- 主圖左上角數值即時標籤 -->
+        <div id="chart-legend" class="absolute top-2 left-2 z-10 flex flex-col items-start gap-y-1 text-[10px] sm:text-xs font-mono bg-tvPanel/85 px-2.5 py-1.5 rounded border border-tvBorder shadow pointer-events-auto">
+          <div id="legend-row-filter" class="flex items-center gap-x-2">
+            <span id="legend-filter-group" data-line="filter12" class="legend-item text-[#df8028]" title="切換過濾線(EMA12)顯示"><span id="label-filter">EMA12</span>: <span id="legend-filter">--</span></span>
+          </div>
+          <div id="legend-row-ema" class="flex items-center gap-x-2">
+            <span id="legend-ema20-group" data-line="ema20" class="legend-item text-[#ffcc66]" title="切換多頭線(EMA20)顯示"><span id="label-ema20">EMA20</span>: <span id="legend-ema20">--</span></span>
+            <span id="legend-ema60-group" data-line="ema60" class="legend-item text-[#28c6ee]" title="切換多頭線(EMA60)顯示"><span id="label-ema60">60</span>: <span id="legend-ema60">--</span></span>
+          </div>
+          <div id="legend-row-daily" class="flex items-center gap-x-2">
+            <span id="legend-daily-group" data-line="daily" class="legend-item text-[#ee3b76]" title="點擊切換日線(EMA76)顯示"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
+            <span id="legend-weekly-group" data-line="weekly" class="legend-item text-[#2186c0]" title="點擊切換週線(EMA380)顯示"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
+          </div>
+          <div id="legend-row-atr" class="flex items-center gap-x-2">
+            <span id="legend-atr-group" data-line="atrTrend" class="legend-item text-[#00cbff]" title="點擊切換 ATR 趨勢線顯示"><span id="label-atr">ATR趨勢</span>: <span id="legend-atrval">--</span></span>
+          </div>
+        </div>
+
+        <div id="chart-container" class="flex-1 w-full relative"></div>
+
+        <!-- 畫面下方的底部指標切換列 -->
+        <div class="h-14 bg-tvPanel border-t border-tvBorder flex items-center px-4 space-x-6 text-sm shrink-0 z-20 font-mono select-none">
+          <button data-ind="filter" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">過濾線</button>
+          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">多頭線</button>
+          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
+          <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR</button>
+          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
+        </div>
+      </div>
     </div>
 
-    <!-- 緊湊型詳細行情數據視圖 -->
-    <div class="vix-details-view" id="vixDetailsView">
-      <div class="grid-cell">
-        <span class="grid-label">成交</span>
-        <span class="grid-val neutral" id="back-close">--</span>
+    <!-- Resizer Drag Handle Bar -->
+    <div id="panel-resizer" class="hidden md:block w-1 bg-tvBorder hover:bg-tvAccent cursor-ew-resize shrink-0 transition-colors z-30 select-none relative group" title="拖曳調整面板寬度">
+      <div class="absolute inset-y-0 -left-1 -right-1 cursor-ew-resize"></div>
+    </div>
+
+    <!-- 手機抽屜背景遮罩 -->
+    <div id="drawer-backdrop"></div>
+
+    <!-- 右側自選面板 Wrapper -->
+    <div id="watchlist-wrapper">
+      <!-- Watchlist Header -->
+      <div class="h-10 px-3 border-b border-tvBorder flex items-center justify-between shrink-0 relative">
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-sm text-white">自選商品群組</span>
+          <span class="text-xs bg-tvHover px-2 py-0.5 rounded text-tvTextMuted font-mono" id="watchlist-count">0</span>
+        </div>
+        <div class="flex items-center space-x-1">
+          <button id="btn-settings-3" class="p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white relative" title="設定三：欄位與總量顯示設定">
+            <i class="fa-solid fa-sliders text-xs"></i>
+          </button>
+          <button id="btn-open-modal" class="p-1.5 hover:bg-tvHover rounded text-tvText hover:text-white" title="新增自選商品">
+            <i class="fa-solid fa-plus text-xs"></i>
+          </button>
+          <button id="btn-close-drawer" class="md:hidden p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- 設定三：下拉選單 -->
+        <div id="settings-dropdown" class="absolute top-11 right-2 bg-tvPanel border border-tvBorder rounded shadow-xl p-3 z-50 hidden text-xs w-52 space-y-2.5">
+          <div class="font-bold text-white border-b border-tvBorder pb-1 mb-1">顯示欄位設定</div>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-change" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>漲跌 (點數)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-percent" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>漲跌幅 (%)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-volume" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>總量顯示</span>
+          </label>
+          <div class="border-t border-tvBorder pt-2 mt-1">
+            <div class="text-tvTextMuted mb-1 text-[10px]">總量單位模式</div>
+            <select id="vol-mode-select" class="w-full bg-tvBg border border-tvBorder rounded px-2 py-1 text-white focus:outline-none focus:border-tvAccent">
+              <option value="auto">自動 (K/M 縮寫或完整)</option>
+              <option value="full">完整顯示數字</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <div class="grid-cell">
-        <span class="grid-label">開盤</span>
-        <span class="grid-val neutral" id="back-open">--</span>
-      </div>    
-      <div class="grid-cell">
-        <span class="grid-label">漲跌</span>
-        <span class="grid-val neutral" id="back-change">--</span>
+
+      <!-- 三大群組切換 Tab -->
+      <div id="group-tabs-bar" class="flex items-center border-b border-tvBorder bg-tvBg/60 shrink-0">
+        <button class="group-tab-btn active" data-group="自選股">自選股</button>
+        <button class="group-tab-btn" data-group="海期">海期</button>
+        <button class="group-tab-btn" data-group="股期">股期</button>
       </div>
-      <div class="grid-cell">
-        <span class="grid-label">昨收</span>
-        <span class="grid-val neutral" id="back-prevref">--</span>
+
+      <!-- Watchlist Table Header -->
+      <div id="watchlist-header" class="flex items-center px-2 py-2 text-[11px] text-tvTextMuted font-medium border-b border-tvBorder shrink-0 bg-tvBg/40 w-full"></div>
+
+      <!-- Watchlist Items Container -->
+      <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full min-h-[100px]"></div>
+
+      <!-- 上下垂直拖曳調整霸 -->
+      <div id="bottom-resizer" class="h-1.5 bg-tvBorder hover:bg-tvAccent cursor-ns-resize shrink-0 transition-colors relative z-20 flex items-center justify-center group" title="上下拖曳調整下方詳細面板高度">
+        <div class="w-8 h-0.5 bg-tvTextMuted/50 rounded-full group-hover:bg-white"></div>
       </div>
-      <div class="grid-cell">
-        <span class="grid-label">最高</span>
-        <span class="grid-val neutral" id="back-high">--</span>
-      </div>
-      <div class="grid-cell">
-        <span class="grid-label">最低</span>
-        <span class="grid-val neutral" id="back-low">--</span>
-      </div>
-      <div class="grid-cell">
-        <span class="grid-label">漲跌幅</span>
-        <span class="grid-val neutral" id="back-pct">--</span>
-      </div>
-      <div class="grid-cell">
-        <span class="grid-label">成交量</span>
-        <span class="grid-val neutral" id="back-vol">--</span>
+
+      <!-- Bottom Quick Summary Card + 右下角走勢圖 Canvas (支援動態調整高度) -->
+      <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0 flex flex-col gap-2" style="height: 290px; min-height: 180px; max-height: 75%;">
+        <div class="flex justify-between items-start">
+          <div>
+            <div id="card-name" class="font-bold text-white text-sm">--</div>
+            <div id="card-code" class="text-tvTextMuted text-[10px] bg-tvHover px-1.5 py-0.5 rounded font-mono mt-0.5 inline-block">--</div>
+          </div>
+          <div id="card-change-badge" class="font-mono text-right font-bold text-xs px-2 py-0.5 rounded bg-tvHover">--</div>
+        </div>
+
+        <div class="flex items-baseline space-x-2">
+          <span id="card-price" class="text-xl font-bold font-mono text-white">--</span>
+          <span class="text-[10px] text-tvTextMuted">TWD</span>
+        </div>
+
+        <div class="grid grid-cols-4 gap-1 pt-1 border-t border-tvBorder/30 text-[11px] font-mono text-center">
+          <div class="bg-tvBg p-1 rounded border border-tvBorder"><span class="text-tvTextMuted block text-[9px]">最高</span><span id="card-high" class="text-tvUp font-bold">--</span></div>
+          <div class="bg-tvBg p-1 rounded border border-tvBorder"><span class="text-tvTextMuted block text-[9px]">最低</span><span id="card-low" class="text-tvDown font-bold">--</span></div>
+          <div class="bg-tvBg p-1 rounded border border-tvBorder"><span class="text-tvTextMuted block text-[9px]">總量</span><span id="card-vol" class="text-white font-bold">--</span></div>
+          <div class="bg-tvBg p-1 rounded border border-tvBorder"><span class="text-tvTextMuted block text-[9px]">昨收</span><span id="card-ref" class="text-tvText font-bold">--</span></div>
+        </div>
+
+        <!-- 右下角即時走勢圖 Canvas (不被高度受限) -->
+        <div class="vix-mini-canvas-container flex-1">
+          <div class="absolute top-1 left-2 z-10 text-[10px] font-bold text-white flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-tvUp"></span>
+            <span id="vix-canvas-title">即時走勢圖</span>
+          </div>
+          <canvas id="miniVixCanvas" class="w-full h-full block"></canvas>
+        </div>
       </div>
     </div>
 
+    <!-- 最右側官方圖示側邊欄 -->
+    <div id="sidebar-icons">
+      <button class="sidebar-btn active" id="toggle-watchlist-btn" title="自選商品清單">
+        <i class="fa-solid fa-bookmark text-sm"></i>
+      </button>
+    </div>
   </div>
-</div>
 
-<!-- 觸發彈出面板的按鈕 -->
-<button class="external-link-btn" onclick="openModal()">
-  🔗 富台換算台指
-</button>
-
-<!-- 彈出面板結構 -->
-<div class="modal-overlay" id="twnModal" onclick="handleOutsideClick(event)">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span class="modal-title">📊 富時台轉換成台指期</span>
-      <button class="close-modal-btn" onclick="closeModal()">✕ 關閉</button>
-    </div>
-    <div class="modal-body">
-      <iframe src="https://txf1trade.github.io/tnntoweb" id="twnIframe"></iframe>
+  <!-- Add Symbol Modal -->
+  <div id="add-symbol-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-tvPanel border border-tvBorder rounded-lg w-full max-w-sm p-4 shadow-2xl">
+      <div class="flex justify-between items-center mb-4 border-b border-tvBorder pb-2">
+        <h3 class="text-sm font-bold text-white">新增自選商品</h3>
+        <button id="btn-close-modal" class="text-tvTextMuted hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="add-symbol-form" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-tvTextMuted mb-1">分類群組</label>
+          <select id="input-group" class="w-full bg-tvBg border border-tvBorder rounded px-3 py-2 text-white focus:outline-none focus:border-tvAccent">
+            <option value="自選股">自選股</option>
+            <option value="海期">海期</option>
+            <option value="股期">股期</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-tvTextMuted mb-1">商品名稱</label>
+          <input type="text" id="input-name" required placeholder="例如: 台積電" class="w-full bg-tvBg border border-tvBorder rounded px-3 py-2 text-white focus:outline-none focus:border-tvAccent">
+        </div>
+        <div>
+          <label class="block text-tvTextMuted mb-1">商品代號</label>
+          <input type="text" id="input-code" required placeholder="例如: 2330" class="w-full bg-tvBg border border-tvBorder rounded px-3 py-2 text-white focus:outline-none focus:border-tvAccent">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" id="btn-cancel-modal" class="px-3 py-1.5 rounded bg-tvHover text-tvText hover:text-white">取消</button>
+          <button type="submit" class="px-3 py-1.5 rounded bg-tvAccent text-white font-medium hover:bg-blue-600">確定新增</button>
+        </div>
+      </form>
     </div>
   </div>
-</div>
 
-<script>
-  function openModal() {
-    const modal = document.getElementById('twnModal');
-    const iframe = document.getElementById('twnIframe');
-    modal.classList.add('active');
-    if (iframe) iframe.src = iframe.src;
-  }
-
-  function closeModal() {
-    document.getElementById('twnModal').classList.remove('active');
-  }
-
-  function handleOutsideClick(event) {
-    if (event.target.id === 'twnModal') closeModal();
-  }
-
-  let isDetailsView = false;
-
-  function toggleVixView() {
-    isDetailsView = !isDetailsView;
-    const canvasWrap = document.getElementById('vixCanvasWrap');
-    const detailsView = document.getElementById('vixDetailsView');
-    const titleText = document.getElementById('vix-card-title-text');
-
-    if (isDetailsView) {
-      canvasWrap.classList.add('hidden');
-      detailsView.classList.add('active');
-      titleText.innerText = '台指波動率 VIX (詳細資訊)';
-    } else {
-      canvasWrap.classList.remove('hidden');
-      detailsView.classList.remove('active');
-      titleText.innerText = '台指波動率 VIX';
+  <!-- JavaScript Application Logic -->
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+      const clockElem = document.getElementById('live-clock');
+      if (clockElem) clockElem.textContent = timeString;
     }
-  }
+    setInterval(updateClock, 1000);
+    updateClock();
 
-  let currentSession = 'day';
+    const defaultIndicatorSettings = {
+      filter: true,
+      ema: false,
+      daily: true,
+      atr: false,
+      vol: false
+    };
 
-  function getApiUrl() {
-    return currentSession === 'day'
-      ? "https://tvapi.futures-op.com/history?symbol=TXAM-1&resolution=1&ws=true&intraday=true"
-      : "https://tvapi.futures-op.com/history?symbol=TX-1&resolution=1&ws=true&intraday=true";
-  }
+    let lineVisibility = {
+      filter12: true,
+      ema20: true,
+      ema60: true,
+      daily: true,
+      weekly: true,
+      atrTrend: true
+    };
 
-  function switchSession(mode) {
-    currentSession = mode;
-    document.getElementById('btn-day').classList.toggle('active', mode === 'day');
-    document.getElementById('btn-night').classList.toggle('active', mode === 'night');
-    fetchQuoteData();
-  }
+    const symbolLineConfigs = {
+      'TX-1':   { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 },                           
+      'TXAM-1': { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 },                         
+      'TWN-1':  { filter: 12, ema20: 20, ema60: 60, daily: 80, weekly: 400 },                          
+      'NQ-1':   { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'GC-1':   { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'NK-1':   { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'DEFAULT':{ filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 }                         
+    };
 
-  function updateLiveClock() {
-    const now = new Date();
-    document.getElementById('update-time').innerText = now.toLocaleTimeString('zh-TW', { hour12: false });
-  }
-  
-  updateLiveClock();
-  setInterval(updateLiveClock, 1000);
+    function getLineParams(code) {
+      const upper = (code || '').toUpperCase();
+      return symbolLineConfigs[upper] || symbolLineConfigs['DEFAULT'];
+    }
 
-  function renderMicroCandle(wickEl, bodyEl, svgEl, open, high, low, close) {
-    const maxP = Math.max(open, high, low, close);
-    const minP = Math.min(open, high, low, close);
-    const range = (maxP - minP) || 1;
+    let activeTabGroup = '自選股';
 
-    const svgHeight = 42; 
-    const paddingTop = 2;
-    const getY = (price) => paddingTop + (maxP - price) / range * svgHeight;
+    let watchlistGroups = [
+      {
+        groupName: '自選股',
+        items: [
+          { id: '1', name: '台指期全', code: 'TX-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
+          { id: '2', name: '台指期日', code: 'TXAM-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
+          { id: '3', name: '加權指數', code: 'TSEA', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
+          { id: '4', name: '櫃買指數', code: 'OTCA', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TPEX' },
+          { id: '5', name: '台積電', code: '2330', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
+          { id: '6', name: '聯發科', code: '2454', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
+          { id: '7', name: '富台指', code: 'TWN-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
+          { id: '8', name: '台灣VIX', code: 'TAIWANVIX', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' }
+        ]
+      },
+      {
+        groupName: '海期',
+        items: [
+          { id: '10', name: '納指期', code: 'NQ-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'CME' },
+          { id: '11', name: '黃金', code: 'GC-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'COMEX' },
+          { id: '12', name: '日經225', code: 'NK-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'OSE' }
+        ]
+      },
+      {
+        groupName: '股期',
+        items: []
+      }
+    ];
 
-    const isCandleUp = close >= open;
-    const colorHex = isCandleUp ? '#f23645' : '#089981';
+    let selectedSymbolId = '1';
+    let currentResolution = '15'; 
+    let currentCandles = []; 
+    let chart, candlestickSeries, filter12Series, ema20Series, ema60Series, dailySeries, weeklySeries, atrTrendSeries, volumeSeries;
 
-    wickEl.setAttribute('y1', getY(high));
-    wickEl.setAttribute('y2', getY(low));
-    wickEl.setAttribute('stroke', colorHex);
+    let indicatorStates = { ...defaultIndicatorSettings };
 
-    bodyEl.setAttribute('y', Math.min(getY(open), getY(close)));
-    bodyEl.setAttribute('height', Math.max(Math.abs(getY(close) - getY(open)), 3));
-    bodyEl.setAttribute('fill', colorHex);
+    let columnSettings = {
+      change: true,
+      percent: true,
+      volume: true,
+      volMode: 'auto'
+    };
 
-    svgEl.style.display = 'block';
-  }
+    let lastQuoteSuccessTime = Date.now();
+    let isDataDelayed = false;
 
-  async function fetchQuoteData() {
-    try {
-      const response = await fetch(getApiUrl(), { cache: "no-cache" });
-      if (!response.ok) return;
+    function setConnectionStatus(status) {
+      const badge = document.getElementById('api-status-badge');
+      const dot = document.getElementById('api-status-dot');
+      const text = document.getElementById('api-status-text');
+      const icon = document.getElementById('api-status-icon');
+
+      if (status === 'delayed') {
+        isDataDelayed = true;
+        badge.className = "flex items-center space-x-1.5 text-amber-400 bg-amber-400/15 px-3 py-1.5 rounded-md border border-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.3)] cursor-pointer hover:bg-amber-400/25 transition-all select-none group";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 soft-breathing";
+        icon.className = "fa-solid fa-rotate text-[10px] text-amber-400";
+        text.textContent = "連線延遲";
+      } else if (status === 'refreshing') {
+        icon.classList.add('fa-spin');
+        text.textContent = "重新整理...";
+      } else {
+        isDataDelayed = false;
+        badge.className = "flex items-center space-x-1.5 text-tvUp bg-tvUp/15 px-3 py-1.5 rounded-md border border-tvUp/50 shadow-[0_0_12px_rgba(8,153,129,0.25)] cursor-pointer hover:bg-tvUp/25 transition-all select-none group";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-tvUp soft-breathing";
+        icon.className = "fa-solid fa-rotate text-[10px] text-tvUp";
+        text.textContent = "即時連線";
+      }
+    }
+
+    setInterval(() => {
+      const now = Date.now();
+      if (now - lastQuoteSuccessTime > 6000 && !isDataDelayed) {
+        setConnectionStatus('delayed');
+      }
+    }, 1000);
+
+    function getAllWatchlistItems() {
+      let items = [];
+      watchlistGroups.forEach(g => items.push(...g.items));
+      return items;
+    }
+
+    function calculateEMA(data, period) {
+      let results = [];
+      if (period <= 0 || data.length === 0) return results;
+      let multiplier = 2 / (period + 1);
+      let prevEMA = null;
+      for (let i = 0; i < data.length; i++) {
+        let close = data[i].close;
+        if (i === 0) {
+          prevEMA = close;
+        } else {
+          prevEMA = (close - prevEMA) * multiplier + prevEMA;
+        }
+        results.push({ time: data[i].time, value: prevEMA });
+      }
+      return results;
+    }
+
+    function calculateAtrTrend(candles, length = 14, multi = 2.0, src_hl = true) {
+      if (!candles || candles.length === 0) return [];
+
+      let trs = [];
+      for (let i = 0; i < candles.length; i++) {
+        let c = candles[i];
+        let prevClose = i > 0 ? candles[i - 1].close : c.open;
+        let tr = Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));
+        trs.push(tr);
+      }
+
+      let atrValues = [];
+      let alpha = 2 / (length + 1);
+      let prevEmaTr = trs[0];
+      for (let i = 0; i < trs.length; i++) {
+        if (i === 0) {
+          prevEmaTr = trs[0];
+        } else {
+          prevEmaTr = (trs[i] - prevEmaTr) * alpha + prevEmaTr;
+        }
+        atrValues.push(prevEmaTr * multi);
+      }
+
+      let lowerAtr = [];
+      let upperAtr = [];
+      for (let i = 0; i < candles.length; i++) {
+        let startIdx = Math.max(0, i - length + 1);
+        let slice = candles.slice(startIdx, i + 1);
+        if (src_hl) {
+          let lowVal = Math.min(...slice.map(s => s.low));
+          let highVal = Math.max(...slice.map(s => s.high));
+          lowerAtr.push(lowVal);
+          upperAtr.push(highVal);
+        } else {
+          let lowVal = Math.min(...slice.map(s => s.close));
+          let highVal = Math.max(...slice.map(s => s.close));
+          lowerAtr.push(lowVal);
+          upperAtr.push(highVal);
+        }
+      }
+
+      let trendLine = [];
+      let prevTrend = 0;
+      let upDownTrend = null;
+
+      for (let i = 0; i < candles.length; i++) {
+        let direction = 'neutral';
+        if (i > 0) {
+          if (upperAtr[i] > upperAtr[i - 1]) direction = 'up';
+          else if (lowerAtr[i] < lowerAtr[i - 1]) direction = 'down';
+        }
+
+        let c = candles[i];
+        let currentTrend = prevTrend;
+
+        if (direction === 'up') {
+          currentTrend = c.low - atrValues[i];
+          if (i > 0 && currentTrend < prevTrend) currentTrend = prevTrend;
+        } else if (direction === 'down') {
+          currentTrend = c.high + atrValues[i];
+          if (i > 0 && currentTrend > prevTrend) currentTrend = prevTrend;
+        } else {
+          currentTrend = prevTrend !== 0 ? prevTrend : (c.low - atrValues[i]);
+        }
+
+        if (i > 0) {
+          if (currentTrend > prevTrend) upDownTrend = 'up';
+          else if (currentTrend < prevTrend) upDownTrend = 'down';
+        }
+
+        let halfCandle = c.open + ((c.close - c.open) / 2);
+        let lineColor = '#ff0099';
+        if (halfCandle < currentTrend && upDownTrend !== 'down') {
+          lineColor = '#ff4100';
+        } else if (upDownTrend === 'up') {
+          lineColor = '#00cbff';
+        } else if (halfCandle > currentTrend) {
+          lineColor = '#ff4101';
+        }
+
+        prevTrend = currentTrend;
+        trendLine.push({ time: c.time, value: currentTrend, color: lineColor });
+      }
+
+      return trendLine;
+    }
+
+    function initChart() {
+      const container = document.getElementById('chart-container');
       
-      const data = await response.json();
-      if (!Array.isArray(data) || data.length === 0) return;
-
-      const sessionOpenPrice = data[0].open;
-      const latest = data[data.length - 1];
-      const currentPrice = latest.close;
-
-      let sessionHigh = -Infinity, sessionLow = Infinity, totalVolume = 0;
-      data.forEach(item => {
-        if (item.high > sessionHigh) sessionHigh = item.high;
-        if (item.low < sessionLow) sessionLow = item.low;
-        totalVolume += (item.volume || 0);
+      chart = LightweightCharts.createChart(container, {
+        layout: {
+          background: { type: 'solid', color: '#131722' },
+          textColor: '#ffffff',
+        },
+        grid: {
+          vertLines: { color: '#1e222d' },
+          horzLines: { color: '#1e222d' },
+        },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { 
+          borderColor: '#2a2e39', 
+          textColor: '#ffffff', 
+          autoScale: true,
+          mode: LightweightCharts.PriceScaleMode.Normal,
+          alignLabels: true,
+        },
+        timeScale: {
+          borderColor: '#2a2e39',
+          timeVisible: true,
+          secondsVisible: false,
+          textColor: '#ffffff',
+          tickMarkFormatter: (time) => {
+            const date = new Date(time * 1000);
+            if (currentResolution === '1D') return `${date.getMonth() + 1}/${date.getDate()}`;
+            return date.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
+          }
+        },
+        localization: {
+          locale: 'zh-TW',
+          timeFormatter: timestamp => {
+            const date = new Date(timestamp * 1000);
+            if (currentResolution === '1D') return `${date.getMonth() + 1}/${date.getDate()}`;
+            return date.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+          }
+        },
       });
 
-      const changeVal = currentPrice - sessionOpenPrice;
-      const changePercent = ((changeVal / sessionOpenPrice) * 100).toFixed(2);
-      const isUp = changeVal > 0, isDown = changeVal < 0;
-      const colorClass = isUp ? 'up' : (isDown ? 'down' : 'neutral');
-      const sign = isUp ? '+' : '';
+      candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#f23645',
+        downColor: '#089981',
+        borderVisible: false,
+        wickUpColor: '#f23645',
+        wickDownColor: '#089981',
+      });
+      candlestickSeries.priceScale().applyOptions({
+        scaleMargins: { top: 0.12, bottom: 0.15 },
+        autoScale: true,
+      });
 
-      const closeEl = document.getElementById('close-price');
-      closeEl.innerText = currentPrice.toLocaleString();
-      closeEl.className = `price-value ${colorClass}`;
+      filter12Series = chart.addLineSeries({
+        color: '#df8028',
+        lineWidth: 1.5,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
 
-      const changeEl = document.getElementById('change-price');
-      changeEl.innerText = `${sign}${changeVal.toLocaleString()} (${sign}${changePercent}%)`;
-      changeEl.className = `change-info ${colorClass}`;
+      ema20Series = chart.addLineSeries({
+        color: '#ffcc66',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
 
-      document.getElementById('open-label').innerText = currentSession === 'day' ? '日盤開盤價 (08:45)' : '夜盤開盤價 (15:00)';
-      document.getElementById('session-open').innerText = sessionOpenPrice.toLocaleString();
-      document.getElementById('total-volume').innerText = `${totalVolume.toLocaleString()} 口`;
+      ema60Series = chart.addLineSeries({
+        color: '#28c6ee',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
 
-      renderMicroCandle(
-        document.getElementById('candle-wick'), 
-        document.getElementById('candle-body'), 
-        document.getElementById('k-candle'), 
-        sessionOpenPrice, sessionHigh, sessionLow, currentPrice
-      );
-    } catch (err) {
-      console.error("台指期報價更新失敗：", err);
-    }
-  }
+      dailySeries = chart.addLineSeries({
+        color: '#ee3b76',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
 
-  async function fetchAndRenderVIX() {
-    try {
-      const response = await fetch("https://tv-signalr.futures-op.com/history?symbol=TAIWANVIX&resolution=1&ws=true&intraday=true", { cache: "no-cache" });
-      if (!response.ok) return;
+      weeklySeries = chart.addLineSeries({
+        color: '#2186c0',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
 
-      const json = await response.json();
-      const list = json && Array.isArray(json.bars) ? json.bars : [];
-      if (list.length === 0) return;
+      atrTrendSeries = chart.addLineSeries({
+        color: '#00cbff',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
 
-      const prevRef = json.prevRef !== undefined ? json.prevRef : 
-                      (json.meta && json.meta.prevRef !== undefined ? json.meta.prevRef : 25.15);
-      
-      const latest = list[list.length - 1];
-      const currentVal = latest.close;
-      const openPrice = list[0].open;
-      const totalVol = list.reduce((acc, item) => acc + (item.volume || 0), 0);
+      volumeSeries = chart.addHistogramSeries({
+        color: '#26a69a',
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume_pane',
+      });
 
-      let highVal = -Infinity, lowVal = Infinity;
-      let highIdx = 0, lowIdx = 0;
+      chart.priceScale('volume_pane').applyOptions({
+        scaleMargins: { top: 0.75, bottom: 0 },
+        visible: false,
+      });
 
-      list.forEach((item, idx) => {
-        if (item.high > highVal) {
-          highVal = item.high;
-          highIdx = idx;
+      chart.subscribeCrosshairMove(param => {
+        if (!param || !param.time || !currentCandles.length) return;
+        const time = param.time;
+        const allItems = getAllWatchlistItems();
+        const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TX-1' };
+        const params = getLineParams(currentSymbol.code);
+
+        const filterData = calculateEMA(currentCandles, params.filter);
+        const e20Data = calculateEMA(currentCandles, params.ema20);
+        const e60Data = calculateEMA(currentCandles, params.ema60);
+        const dailyData = calculateEMA(currentCandles, params.daily);
+        const weeklyData = calculateEMA(currentCandles, params.weekly);
+        const atrData = calculateAtrTrend(currentCandles);
+
+        const matchFilter = filterData.find(d => d.time === time);
+        const match20 = e20Data.find(d => d.time === time);
+        const match60 = e60Data.find(d => d.time === time);
+        const matchDaily = dailyData.find(d => d.time === time);
+        const matchWeekly = weeklyData.find(d => d.time === time);
+        const matchAtr = atrData.find(d => d.time === time);
+
+        if (indicatorStates.filter) {
+          document.getElementById('legend-filter').textContent = matchFilter ? matchFilter.value.toFixed(2) : '--';
         }
-        if (item.low < lowVal) {
-          lowVal = item.low;
-          lowIdx = idx;
+        if (indicatorStates.ema) {
+          document.getElementById('legend-ema20').textContent = match20 ? match20.value.toFixed(2) : '--';
+          document.getElementById('legend-ema60').textContent = match60 ? match60.value.toFixed(2) : '--';
+        }
+        if (indicatorStates.daily) {
+          document.getElementById('legend-dailyval').textContent = matchDaily ? matchDaily.value.toFixed(2) : '--';
+          document.getElementById('legend-weeklyval').textContent = matchWeekly ? matchWeekly.value.toFixed(2) : '--';
+        }
+        if (indicatorStates.atr) {
+          document.getElementById('legend-atrval').textContent = matchAtr ? matchAtr.value.toFixed(2) : '--';
         }
       });
 
-      const changeVal = currentVal - prevRef;
-      const changePct = prevRef ? (changeVal / prevRef) * 100 : 0;
-      const isUp = changeVal >= 0;
-      const colorClass = isUp ? 'up' : 'down';
-      const sign = changeVal > 0 ? '+' : '';
+      window.addEventListener('resize', () => {
+        chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+      });
+    }
 
-      // 1. 更新頂部數值與顏色
-      document.getElementById('vix-current-val').innerText = currentVal.toFixed(2);
-      document.getElementById('vix-current-val').className = colorClass;
+    function updateIndicatorDisplay() {
+      const allItems = getAllWatchlistItems();
+      const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TX-1' };
+      const params = getLineParams(currentSymbol.code);
 
-      document.getElementById('vix-change-val').innerText = `${sign}${changeVal.toFixed(2)}`;
-      document.getElementById('vix-change-val').className = colorClass;
+      document.getElementById('label-filter').textContent = `EMA${params.filter}`;
+      document.getElementById('label-ema20').textContent = `EMA${params.ema20}`;
+      document.getElementById('label-ema60').textContent = `EMA${params.ema60}`;
+      document.getElementById('label-daily').textContent = `EMA${params.daily}`;
+      document.getElementById('label-weekly').textContent = `EMA${params.weekly}`;
 
-      document.getElementById('vix-pct-val').innerText = `${sign}${changePct.toFixed(2)}%`;
-      document.getElementById('vix-pct-val').className = colorClass;
+      const rowFilter = document.getElementById('legend-row-filter');
+      const rowEma = document.getElementById('legend-row-ema');
+      const rowDaily = document.getElementById('legend-row-daily');
+      const rowAtr = document.getElementById('legend-row-atr');
 
-      // 2. 更新詳細表格數據
-      document.getElementById('back-close').innerText = currentVal.toFixed(2);
-      document.getElementById('back-close').className = `grid-val ${colorClass}`;
+      const filterGroup = document.getElementById('legend-filter-group');
+      const ema20Group = document.getElementById('legend-ema20-group');
+      const ema60Group = document.getElementById('legend-ema60-group');
+      const dailyGroup = document.getElementById('legend-daily-group');
+      const weeklyGroup = document.getElementById('legend-weekly-group');
+      const atrGroup = document.getElementById('legend-atr-group');
 
-      document.getElementById('back-change').innerText = `${sign}${changeVal.toFixed(2)}`;
-      document.getElementById('back-change').className = `grid-val ${colorClass}`;
+      if (indicatorStates.filter && currentCandles.length > 0) {
+        rowFilter.style.display = 'flex';
+        if (lineVisibility.filter12) {
+          filter12Series.setData(calculateEMA(currentCandles, params.filter));
+          filter12Series.applyOptions({ visible: true });
+          filterGroup.classList.remove('disabled');
+        } else {
+          filter12Series.setData([]);
+          filter12Series.applyOptions({ visible: false });
+          filterGroup.classList.add('disabled');
+        }
+      } else {
+        filter12Series.setData([]);
+        filter12Series.applyOptions({ visible: false });
+        rowFilter.style.display = 'none';
+      }
 
-      document.getElementById('back-open').innerText = openPrice.toFixed(2);
-      document.getElementById('back-open').className = 'grid-val neutral';
+      if (indicatorStates.ema && currentCandles.length > 0) {
+        rowEma.style.display = 'flex';
 
-      document.getElementById('back-prevref').innerText = prevRef.toFixed(2);
-      document.getElementById('back-prevref').className = 'grid-val neutral';
+        if (lineVisibility.ema20) {
+          ema20Series.setData(calculateEMA(currentCandles, params.ema20));
+          ema20Series.applyOptions({ visible: true });
+          ema20Group.classList.remove('disabled');
+        } else {
+          ema20Series.setData([]);
+          ema20Series.applyOptions({ visible: false });
+          ema20Group.classList.add('disabled');
+        }
 
-      document.getElementById('back-high').innerText = highVal.toFixed(2);
-      document.getElementById('back-high').className = 'grid-val up';
+        if (lineVisibility.ema60) {
+          ema60Series.setData(calculateEMA(currentCandles, params.ema60));
+          ema60Series.applyOptions({ visible: true });
+          ema60Group.classList.remove('disabled');
+        } else {
+          ema60Series.setData([]);
+          ema60Series.applyOptions({ visible: false });
+          ema60Group.classList.add('disabled');
+        }
+      } else {
+        ema20Series.setData([]);
+        ema60Series.setData([]);
+        ema20Series.applyOptions({ visible: false });
+        ema60Series.applyOptions({ visible: false });
+        rowEma.style.display = 'none';
+      }
 
-      document.getElementById('back-low').innerText = lowVal.toFixed(2);
-      document.getElementById('back-low').className = 'grid-val down';
+      if (indicatorStates.daily && currentCandles.length > 0) {
+        rowDaily.style.display = 'flex';
 
-      document.getElementById('back-pct').innerText = `${sign}${changePct.toFixed(2)}%`;
-      document.getElementById('back-pct').className = `grid-val ${colorClass}`;
+        if (lineVisibility.daily) {
+          dailySeries.setData(calculateEMA(currentCandles, params.daily));
+          dailySeries.applyOptions({ visible: true });
+          dailyGroup.classList.remove('disabled');
+        } else {
+          dailySeries.setData([]);
+          dailySeries.applyOptions({ visible: false });
+          dailyGroup.classList.add('disabled');
+        }
 
-      document.getElementById('back-vol').innerText = totalVol > 0 ? totalVol.toLocaleString() : '0';
-      document.getElementById('back-vol').className = 'grid-val neutral';
+        if (lineVisibility.weekly) {
+          weeklySeries.setData(calculateEMA(currentCandles, params.weekly));
+          weeklySeries.applyOptions({ visible: true });
+          weeklyGroup.classList.remove('disabled');
+        } else {
+          weeklySeries.setData([]);
+          weeklySeries.applyOptions({ visible: false });
+          weeklyGroup.classList.add('disabled');
+        }
+      } else {
+        dailySeries.setData([]);
+        weeklySeries.setData([]);
+        dailySeries.applyOptions({ visible: false });
+        weeklySeries.applyOptions({ visible: false });
+        rowDaily.style.display = 'none';
+      }
 
-      // 3. 渲染微型 K 棒
-      renderMicroCandle(
-        document.getElementById('vix-wick'),
-        document.getElementById('vix-body'),
-        document.getElementById('vix-mini-candle'),
-        openPrice, highVal, lowVal, currentVal
-      );
+      if (indicatorStates.atr && currentCandles.length > 0) {
+        rowAtr.style.display = 'flex';
+        if (lineVisibility.atrTrend) {
+          const atrData = calculateAtrTrend(currentCandles);
+          atrTrendSeries.setData(atrData);
+          atrTrendSeries.applyOptions({ visible: true });
+          atrGroup.classList.remove('disabled');
+        } else {
+          atrTrendSeries.setData([]);
+          atrTrendSeries.applyOptions({ visible: false });
+          atrGroup.classList.add('disabled');
+        }
+      } else {
+        atrTrendSeries.setData([]);
+        atrTrendSeries.applyOptions({ visible: false });
+        rowAtr.style.display = 'none';
+      }
 
-      // 4. 繪製走勢圖 Canvas（僅在圖表顯示時渲染以效能最佳化）
-      if (!isDetailsView) {
-        const canvas = document.getElementById('vixCanvas');
+      const upCol = '#f23645';
+      const downCol = '#089981';
+
+      if (indicatorStates.vol && currentCandles.length > 0) {
+        const volData = currentCandles.map(c => ({
+          time: c.time,
+          value: c.volume || 1000,
+          color: c.close >= c.open ? upCol : downCol
+        }));
+        volumeSeries.setData(volData);
+        volumeSeries.applyOptions({ visible: true });
+        chart.priceScale('volume_pane').applyOptions({ visible: true });
+      } else {
+        volumeSeries.setData([]);
+        volumeSeries.applyOptions({ visible: false });
+        chart.priceScale('volume_pane').applyOptions({ visible: false });
+      }
+
+      const legend = document.getElementById('chart-legend');
+      if (!indicatorStates.filter && !indicatorStates.ema && !indicatorStates.daily && !indicatorStates.atr) {
+        legend.style.display = 'none';
+      } else {
+        legend.style.display = 'flex';
+      }
+    }
+
+    function getResolutionSeconds(res) {
+      if (res === '1') return 60;
+      if (res === '5') return 300;
+      if (res === '15') return 900;
+      if (res === '60') return 3600;
+      if (res === '1D') return 86400;
+      return 900;
+    }
+
+    async function loadHistoryData(symbolCode, resolution) {
+      currentCandles = []; 
+      const toTime = Math.floor(Date.now() / 1000);
+      const daysToSubtract = resolution === '1D' ? 365 : 60;
+      const fromTime = toTime - (daysToSubtract * 24 * 60 * 60);
+      const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(symbolCode)}&resolution=${resolution}&from=${fromTime}&to=${toTime}&ws=true&metaData=true`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+
+        let candleData = [];
+        const barsData = Array.isArray(data) ? data : (data.bars || []);
+        const normalizeTime = t => t > 1e10 ? Math.floor(t / 1000) : t;
+
+        if (Array.isArray(barsData) && barsData.length > 0) {
+          barsData.forEach(item => {
+            let rawTime = item.time || new Date(item.datetime).getTime();
+            let time = normalizeTime(rawTime);
+            if (resolution === '1D') time -= 86400; 
+            const volume = item.volume !== undefined ? item.volume : (Math.floor(Math.random() * 20000 + 5000));
+            candleData.push({ time, open: item.open, high: item.high, low: item.low, close: item.close, volume });
+          });
+        }
+
+        if (candleData.length > 0) {
+          candleData.sort((a, b) => a.time - b.time);
+          currentCandles = candleData;
+          candlestickSeries.setData(currentCandles);
+          updateIndicatorDisplay();
+
+          if (currentCandles.length > 0) {
+            const allItems = getAllWatchlistItems();
+            const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: symbolCode };
+            const params = getLineParams(currentSymbol.code);
+
+            const lastFilter = calculateEMA(currentCandles, params.filter);
+            const last20 = calculateEMA(currentCandles, params.ema20);
+            const last60 = calculateEMA(currentCandles, params.ema60);
+            const lastDaily = calculateEMA(currentCandles, params.daily);
+            const lastWeekly = calculateEMA(currentCandles, params.weekly);
+            const lastAtr = calculateAtrTrend(currentCandles);
+
+            if (indicatorStates.filter && lastFilter.length > 0) {
+              document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(2);
+            }
+            if (indicatorStates.ema && last20.length > 0) {
+              document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(2);
+              document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(2);
+            }
+            if (indicatorStates.daily && lastDaily.length > 0) {
+              document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(2);
+              document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(2);
+            }
+            if (indicatorStates.atr && lastAtr.length > 0) {
+              document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(2);
+            }
+          }
+
+          const barsCount = currentCandles.length;
+          chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, barsCount - 80), to: barsCount - 1 });
+          chart.priceScale('right').applyOptions({ autoScale: true });
+          return;
+        }
+        throw new Error('API 資料為空');
+      } catch (err) {
+        loadMockHistoryFallback(symbolCode);
+      }
+    }
+
+    function loadMockHistoryFallback(symbolCode) {
+      const now = Math.floor(Date.now() / 1000);
+      let candleData = [];
+      let basePrice = symbolCode === '2330' ? 980 : (symbolCode.includes('TX') ? 22600 : 250);
+      const step = getResolutionSeconds(currentResolution);
+
+      for (let i = 80; i >= 1; i--) {
+        let time = now - (i * step);
+        if (currentResolution === '1D') time -= 86400;
+        const open = basePrice + (Math.random() * 20 - 10);
+        const high = open + Math.random() * 15;
+        const low = open - Math.random() * 15;
+        const close = (open + high + low) / 3;
+        basePrice = close;
+        const volume = Math.floor(Math.abs(high - low) * 1000 + 5000);
+        candleData.push({ time, open, high, low, close, volume });
+      }
+
+      currentCandles = candleData;
+      candlestickSeries.setData(currentCandles);
+      updateIndicatorDisplay();
+
+      if (currentCandles.length > 0) {
+        const params = getLineParams(symbolCode);
+        const lastFilter = calculateEMA(currentCandles, params.filter);
+        const last20 = calculateEMA(currentCandles, params.ema20);
+        const last60 = calculateEMA(currentCandles, params.ema60);
+        const lastDaily = calculateEMA(currentCandles, params.daily);
+        const lastWeekly = calculateEMA(currentCandles, params.weekly);
+        const lastAtr = calculateAtrTrend(currentCandles);
+
+        if (indicatorStates.filter && lastFilter.length > 0) {
+          document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(2);
+        }
+        if (indicatorStates.ema && last20.length > 0) {
+          document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(2);
+          document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(2);
+        }
+        if (indicatorStates.daily && lastDaily.length > 0) {
+          document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(2);
+          document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(2);
+        }
+        if (indicatorStates.atr && lastAtr.length > 0) {
+          document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(2);
+        }
+      }
+
+      const barsCount = currentCandles.length;
+      chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, barsCount - 80), to: barsCount - 1 });
+      chart.priceScale('right').applyOptions({ autoScale: true });
+    }
+
+    async function fetchRealtimeQuotes() {
+      const allItems = getAllWatchlistItems();
+      if (allItems.length === 0 || currentCandles.length === 0) return;
+      const symbolsParam = allItems.map(item => item.code).join(',');
+      const apiUrl = `https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=${encodeURIComponent(symbolsParam)}`;
+
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('API Error');
+        const data = await response.json();
+
+        if (Array.isArray(data)) {
+          lastQuoteSuccessTime = Date.now();
+          setConnectionStatus('normal');
+
+          data.forEach(quote => {
+            const item = allItems.find(i => i.code.toUpperCase() === quote.symbol.toUpperCase());
+            if (item) {
+              const newPrice = quote.close || item.price;
+              item.price = newPrice;
+              item.refPrice = quote.prevRef || quote.refRef || item.refRef || item.refPrice;
+              item.volume = quote.volume || item.volume;
+              item.high = quote.high || item.high;
+              item.low = quote.low || item.low;
+
+              if (item.id === selectedSymbolId && newPrice > 0 && candlestickSeries && currentCandles.length > 0) {
+                const stepSeconds = getResolutionSeconds(currentResolution);
+                const nowSec = Math.floor(Date.now() / 1000);
+                const currentBarTime = currentResolution === '1D' 
+                  ? Math.floor(nowSec / 86400) * 86400 - 86400 
+                  : Math.floor(nowSec / stepSeconds) * stepSeconds;
+
+                let lastBar = currentCandles[currentCandles.length - 1];
+
+                if (lastBar.time === currentBarTime) {
+                  lastBar.high = Math.max(lastBar.high, newPrice);
+                  lastBar.low = Math.min(lastBar.low, newPrice);
+                  lastBar.close = newPrice;
+                  candlestickSeries.update(lastBar);
+                } else if (currentBarTime > lastBar.time) {
+                  if (currentBarTime - lastBar.time === stepSeconds) {
+                    const newBar = {
+                      time: currentBarTime,
+                      open: lastBar.close,
+                      high: Math.max(lastBar.close, newPrice),
+                      low: Math.min(lastBar.close, newPrice),
+                      close: newPrice,
+                      volume: item.volume || 1000
+                    };
+                    currentCandles.push(newBar);
+                    candlestickSeries.update(newBar);
+                  } else {
+                    lastBar.high = Math.max(lastBar.high, newPrice);
+                    lastBar.low = Math.min(lastBar.low, newPrice);
+                    lastBar.close = newPrice;
+                    candlestickSeries.update(lastBar);
+                  }
+                }
+
+                const params = getLineParams(item.code);
+                if (indicatorStates.filter && lineVisibility.filter12) {
+                  const filterData = calculateEMA(currentCandles, params.filter);
+                  if (filterData.length > 0) {
+                    filter12Series.update(filterData[filterData.length - 1]);
+                    document.getElementById('legend-filter').textContent = filterData[filterData.length - 1].value.toFixed(2);
+                  }
+                }
+                if (indicatorStates.ema) {
+                  if (lineVisibility.ema20) {
+                    const e20Data = calculateEMA(currentCandles, params.ema20);
+                    if (e20Data.length > 0) {
+                      ema20Series.update(e20Data[e20Data.length - 1]);
+                      document.getElementById('legend-ema20').textContent = e20Data[e20Data.length - 1].value.toFixed(2);
+                    }
+                  }
+                  if (lineVisibility.ema60) {
+                    const e60Data = calculateEMA(currentCandles, params.ema60);
+                    if (e60Data.length > 0) {
+                      ema60Series.update(e60Data[e60Data.length - 1]);
+                      document.getElementById('legend-ema60').textContent = e60Data[e60Data.length - 1].value.toFixed(2);
+                    }
+                  }
+                }
+                if (indicatorStates.daily) {
+                  if (lineVisibility.daily) {
+                    const dailyData = calculateEMA(currentCandles, params.daily);
+                    if (dailyData.length > 0) {
+                      dailySeries.update(dailyData[dailyData.length - 1]);
+                      document.getElementById('legend-dailyval').textContent = dailyData[dailyData.length - 1].value.toFixed(2);
+                    }
+                  }
+                  if (lineVisibility.weekly) {
+                    const weeklyData = calculateEMA(currentCandles, params.weekly);
+                    if (weeklyData.length > 0) {
+                      weeklySeries.update(weeklyData[weeklyData.length - 1]);
+                      document.getElementById('legend-weeklyval').textContent = weeklyData[weeklyData.length - 1].value.toFixed(2);
+                    }
+                  }
+                }
+                if (indicatorStates.atr && lineVisibility.atrTrend) {
+                  const atrData = calculateAtrTrend(currentCandles);
+                  if (atrData.length > 0) {
+                    atrTrendSeries.update(atrData[atrData.length - 1]);
+                    document.getElementById('legend-atrval').textContent = atrData[atrData.length - 1].value.toFixed(2);
+                  }
+                }
+              }
+            }
+          });
+
+          renderWatchlist();
+          const activeSymbol = allItems.find(s => s.id === selectedSymbolId);
+          if (activeSymbol) {
+            updateActivePriceDisplay(activeSymbol);
+            updateDetailCard(activeSymbol);
+          }
+        }
+      } catch (err) {
+        console.error('Realtime quote error:', err);
+        setConnectionStatus('delayed');
+      }
+    }
+
+    document.getElementById('api-status-badge').addEventListener('click', async () => {
+      setConnectionStatus('refreshing');
+      const allItems = getAllWatchlistItems();
+      const symbol = allItems.find(s => s.id === selectedSymbolId);
+      if (symbol) {
+        await loadHistoryData(symbol.code, currentResolution);
+      }
+      await fetchRealtimeQuotes();
+      setTimeout(() => {
+        const icon = document.getElementById('api-status-icon');
+        if (icon) icon.classList.remove('fa-spin');
+        if (!isDataDelayed) setConnectionStatus('normal');
+      }, 700);
+    });
+
+    function formatSmartVolume(vol) {
+      if (!vol || vol === 0) return '--';
+      if (columnSettings.volMode === 'full') {
+        return vol.toLocaleString();
+      }
+      if (vol >= 1000000000) {
+        return (vol / 1000000000).toFixed(1) + 'G';
+      } else if (vol >= 1000000) {
+        return (vol / 1000000).toFixed(1) + 'M';
+      } else if (vol >= 1000) {
+        return (vol / 1000).toFixed(1) + 'k';
+      }
+      return vol.toLocaleString();
+    }
+
+    function renderWatchlist() {
+      const headerContainer = document.getElementById('watchlist-header');
+      const container = document.getElementById('watchlist-items');
+      container.innerHTML = '';
+      
+      const currentGroup = watchlistGroups.find(g => g.groupName === activeTabGroup) || { items: [] };
+      const items = currentGroup.items;
+      document.getElementById('watchlist-count').textContent = items.length;
+
+      let headerHTML = `
+        <div class="w-[18%] text-left truncate pr-0.5">代號</div>
+        <div class="w-[22%] text-left truncate px-0.5">名稱</div>
+        <div class="w-[24%] text-right truncate px-0.5">成交價</div>
+      `;
+      if (columnSettings.change) headerHTML += `<div class="w-[18%] text-right truncate px-0.5">漲跌</div>`;
+      if (columnSettings.percent) headerHTML += `<div class="w-[18%] text-right truncate px-0.5">漲跌%</div>`;
+      if (columnSettings.volume) headerHTML += `<div class="w-[20%] text-right truncate pl-0.5 pr-1">總量</div>`;
+      headerContainer.innerHTML = headerHTML;
+
+      if (items.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-tvTextMuted text-xs font-mono">此分類暫無商品</div>`;
+        return;
+      }
+
+      items.forEach(item => {
+        const hasRef = item.refPrice > 0;
+        const change = hasRef ? (item.price - item.refPrice) : 0;
+        const changePercent = hasRef ? ((change / item.refPrice) * 100).toFixed(2) : '0.00';
+        const isUp = change >= 0;
+        
+        const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+        const isSelected = item.id === selectedSymbolId;
+
+        const row = document.createElement('div');
+        row.id = `watchlist-row-${item.id}`;
+        row.className = `flex items-center px-2 py-2 compact-table-row cursor-pointer hover:bg-tvHover/70 transition-colors group relative w-full ${
+          isSelected ? 'bg-tvHover/90 border-l-2 border-tvAccent' : ''
+        }`;
+        row.onclick = () => selectSymbol(item.id);
+
+        let rowHTML = `
+          <div class="w-[18%] font-mono text-tvTextMuted text-[11px] truncate pr-0.5">${item.code}</div>
+          <div class="w-[22%] font-bold text-white truncate px-0.5">${item.name}</div>
+          <div class="w-[24%] text-right font-mono font-medium text-white truncate px-0.5">
+            ${item.price > 0 ? item.price.toLocaleString(undefined, { minimumFractionDigits: item.price < 1000 ? 2 : 0 }) : '--'}
+          </div>
+        `;
+        if (columnSettings.change) {
+          rowHTML += `
+            <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
+              ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)}` : '--'}
+            </div>
+          `;
+        }
+        if (columnSettings.percent) {
+          rowHTML += `
+            <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
+              ${item.price > 0 ? `${isUp ? '+' : ''}${changePercent}%` : '--'}
+            </div>
+          `;
+        }
+        if (columnSettings.volume) {
+          rowHTML += `
+            <div class="w-[20%] text-right font-mono text-tvTextMuted text-[11px] truncate pl-0.5 pr-1">
+              ${formatSmartVolume(item.volume)}
+            </div>
+          `;
+        }
+
+        row.innerHTML = rowHTML;
+        container.appendChild(row);
+      });
+    }
+
+    function selectSymbol(id) {
+      selectedSymbolId = id;
+      currentCandles = [];
+      const allItems = getAllWatchlistItems();
+      const symbol = allItems.find(s => s.id === id);
+      if (symbol) {
+        renderWatchlist();
+        document.getElementById('active-symbol-title').textContent = `${symbol.name} ${symbol.code}`;
+        updateActivePriceDisplay(symbol);
+        updateDetailCard(symbol);
+        loadHistoryData(symbol.code, currentResolution);
+        fetchAndRenderMiniVix();
+      }
+    }
+
+    function updateActivePriceDisplay(symbol) {
+      const hasRef = symbol.refPrice > 0;
+      const change = hasRef ? (symbol.price - symbol.refPrice) : 0;
+      const changePercent = hasRef ? ((change / symbol.refPrice) * 100).toFixed(2) : '0.00';
+      const isUp = change >= 0;
+
+      const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+      const bgClass = isUp ? 'bg-[#f23645]/20' : 'bg-[#089981]/20';
+
+      const priceElem = document.getElementById('active-price');
+      const changeElem = document.getElementById('active-change');
+
+      priceElem.textContent = symbol.price > 0 ? symbol.price.toLocaleString(undefined, { minimumFractionDigits: symbol.price < 1000 ? 2 : 0 }) : '--';
+      priceElem.className = `text-sm ${colorClass}`;
+
+      changeElem.textContent = symbol.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)} (${isUp ? '+' : ''}${changePercent}%)` : '--';
+      changeElem.className = `text-xs px-1.5 py-0.5 rounded ${bgClass} ${colorClass}`;
+    }
+
+    function updateDetailCard(symbol) {
+      const hasRef = symbol.refPrice > 0;
+      const change = hasRef ? (symbol.price - symbol.refPrice) : 0;
+      const changePercent = hasRef ? ((change / symbol.refPrice) * 100).toFixed(2) : '0.00';
+      const isUp = change >= 0;
+
+      const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+      const bgClass = isUp ? 'bg-[#f23645]/20' : 'bg-[#089981]/20';
+
+      document.getElementById('card-name').textContent = symbol.name;
+      document.getElementById('card-code').textContent = symbol.code;
+      document.getElementById('card-price').textContent = symbol.price > 0 ? symbol.price.toLocaleString(undefined, { minimumFractionDigits: symbol.price < 1000 ? 2 : 0 }) : '--';
+      document.getElementById('card-high').textContent = symbol.high > 0 ? symbol.high.toFixed(1) : '--';
+      document.getElementById('card-low').textContent = symbol.low > 0 ? symbol.low.toFixed(1) : '--';
+      document.getElementById('card-ref').textContent = symbol.refPrice > 0 ? symbol.refPrice.toFixed(1) : '--';
+      document.getElementById('card-vol').textContent = symbol.volume > 0 ? symbol.volume.toLocaleString() : '--';
+
+      const badge = document.getElementById('card-change-badge');
+      badge.textContent = symbol.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)} (${isUp ? '+' : ''}${changePercent}%)` : '--';
+      badge.className = `font-mono text-right font-bold text-xs px-2 py-0.5 rounded ${bgClass} ${colorClass}`;
+    }
+
+    /* 繪製走勢圖：座標文字改為白色 (#ffffff) */
+    async function fetchAndRenderMiniVix() {
+      const allItems = getAllWatchlistItems();
+      const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TAIWANVIX' };
+      const symbolCode = currentSymbol.code;
+      document.getElementById('vix-canvas-title').textContent = `${currentSymbol.name} 走勢圖`;
+
+      try {
+        const response = await fetch(`https://tv-signalr.futures-op.com/history?symbol=${encodeURIComponent(symbolCode)}&resolution=1&ws=true&intraday=true`, { cache: "no-cache" });
+        if (!response.ok) return;
+
+        const json = await response.json();
+        const list = json && Array.isArray(json.bars) ? json.bars : [];
+        if (list.length === 0) return;
+
+        const canvas = document.getElementById('miniVixCanvas');
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
-        const rect = canvas.getBoundingClientRect();
+        const rect = canvas.parentNode.getBoundingClientRect();
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
@@ -701,23 +1411,24 @@
         const maxP = Math.max(...prices);
         const range = (maxP - minP) || 1;
 
-        const paddingLeft = 35;
+        const isUp = prices[prices.length - 1] >= prices[0];
+        const lineColor = isUp ? '#f23645' : '#089981';
+
+        const paddingLeft = 30;
         const paddingRight = 55;
-        const paddingTop = 20;
-        const paddingBottom = 30;
+        const paddingTop = 15;
+        const paddingBottom = 20;
 
         const graphWidth = width - paddingLeft - paddingRight;
         const graphHeight = height - paddingTop - paddingBottom;
 
-        const lineColor = isUp ? '#f23645' : '#089981';
-
-        // 繪製 Y 軸刻度與格線
-        ctx.font = '10px monospace';
+        // 畫格線與 Y 刻度 (改成白色 #ffffff)
+        ctx.font = '9px monospace';
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#2a2e39';
         ctx.lineWidth = 1;
 
-        const ySteps = 4;
+        const ySteps = 2;
         for (let i = 0; i <= ySteps; i++) {
           const val = minP + (range * (ySteps - i) / ySteps);
           const y = paddingTop + (graphHeight / ySteps) * i;
@@ -728,33 +1439,16 @@
           ctx.stroke();
 
           ctx.textAlign = 'left';
-          ctx.fillText(val.toFixed(2), width - paddingRight + 8, y + 3);
+          ctx.fillText(val.toFixed(2), width - paddingRight + 5, y + 3);
         }
 
-        // 繪製 X 軸時間標籤
-        const startTimeMs = list[0].time ? list[0].time : Date.now();
-        const endTimeMs = list[list.length - 1].time ? list[list.length - 1].time : Date.now();
+        // 計算點位
+        const startTimeMs = list[0].time || Date.now();
+        const endTimeMs = list[list.length - 1].time || Date.now();
         const totalDuration = endTimeMs - startTimeMs || 1;
 
-        const xSteps = 4;
-        for (let i = 0; i <= xSteps; i++) {
-          const targetTimeMs = startTimeMs + (totalDuration * (i / xSteps));
-          const targetDate = new Date(targetTimeMs);
-          const timeStr = targetDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
-          const x = paddingLeft + (graphWidth / xSteps) * i;
-
-          ctx.beginPath();
-          ctx.moveTo(x, paddingTop);
-          ctx.lineTo(x, paddingTop + graphHeight);
-          ctx.stroke();
-
-          ctx.textAlign = 'center';
-          ctx.fillText(timeStr, x, height - 8);
-        }
-
-        // 計算點位座標
         const points = prices.map((val, idx) => {
-          const itemTime = list[idx].time ? list[idx].time : startTimeMs;
+          const itemTime = list[idx].time || startTimeMs;
           const ratio = totalDuration === 0 ? 0 : Math.max(0, Math.min(1, (itemTime - startTimeMs) / totalDuration));
           return {
             x: paddingLeft + ratio * graphWidth,
@@ -762,10 +1456,10 @@
           };
         });
 
-        // 繪製折線圖
+        // 畫折線
         ctx.beginPath();
         ctx.strokeStyle = lineColor;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
 
         points.forEach((pt, idx) => {
           if (idx === 0) ctx.moveTo(pt.x, pt.y);
@@ -773,53 +1467,289 @@
         });
         ctx.stroke();
 
-        // 繪製漸層填滿
+        // 畫漸層區域
         const lastPt = points[points.length - 1];
         ctx.lineTo(lastPt.x, paddingTop + graphHeight);
         ctx.lineTo(points[0].x, paddingTop + graphHeight);
         ctx.closePath();
 
         const gradient = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
-        const gradColor = isUp ? 'rgba(242, 54, 69, 0.2)' : 'rgba(8, 153, 129, 0.2)';
-        gradient.addColorStop(0, gradColor);
+        gradient.addColorStop(0, isUp ? 'rgba(242, 54, 69, 0.25)' : 'rgba(8, 153, 129, 0.25)');
         gradient.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // 最高點與最低點標記
-        const highPt = points[highIdx];
-        const lowPt = points[lowIdx];
+      } catch (err) {
+        console.error('Mini VIX Canvas Render error:', err);
+      }
+    }
 
-        ctx.font = 'bold 11px monospace';
+    /* 左右面板寬度調整 */
+    function initPanelResizer() {
+      const resizer = document.getElementById('panel-resizer');
+      const panelWrapper = document.getElementById('watchlist-wrapper');
+      let isResizing = false;
+      let startX = 0;
+      let startWidth = 410;
 
-        ctx.fillStyle = '#f23645';
-        ctx.textAlign = 'left';
-        let highX = highPt.x + 6;
-        let highY = highPt.y - 4;
-        if (highX + 50 > width - paddingRight) highX = highPt.x - 55;
-        ctx.fillText(`▼ ${highVal.toFixed(2)}`, highX, highY);
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = panelWrapper.offsetWidth;
+        document.body.style.cursor = 'ew-resize';
 
-        ctx.fillStyle = '#089981';
-        ctx.textAlign = 'left';
-        let lowX = lowPt.x + 6;
-        let lowY = lowPt.y + 14;
-        if (lowX + 50 > width - paddingRight) lowX = lowPt.x - 55;
-        if (lowY > paddingTop + graphHeight - 10) lowY = lowPt.y - 6;
-        ctx.fillText(`▲ ${lowVal.toFixed(2)}`, lowX, lowY);
+        const onMouseMove = (e) => {
+          if (!isResizing) return;
+          let newWidth = startWidth + (startX - e.clientX);
+          newWidth = Math.max(300, Math.min(newWidth, 680));
+          panelWrapper.style.width = `${newWidth}px`;
+          if (chart) {
+            const container = document.getElementById('chart-container');
+            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+          }
+        };
+
+        const onMouseUp = () => {
+          isResizing = false;
+          document.body.style.cursor = '';
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    /* 下方詳細面板上下高度拖曳調整 */
+    function initBottomResizer() {
+      const resizer = document.getElementById('bottom-resizer');
+      const detailCard = document.getElementById('symbol-detail-card');
+      let isResizing = false;
+      let startY = 0;
+      let startHeight = 290;
+
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = detailCard.offsetHeight;
+        document.body.style.cursor = 'ns-resize';
+
+        const onMouseMove = (e) => {
+          if (!isResizing) return;
+          // 往上拖曳增加下方卡片高度，往下拖曳減少高度
+          let newHeight = startHeight + (startY - e.clientY);
+          const maxHeight = document.getElementById('watchlist-wrapper').clientHeight - 150;
+          newHeight = Math.max(180, Math.min(newHeight, maxHeight));
+          detailCard.style.height = `${newHeight}px`;
+          fetchAndRenderMiniVix(); // 即時重繪 Canvas 走勢圖
+        };
+
+        const onMouseUp = () => {
+          isResizing = false;
+          document.body.style.cursor = '';
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      initPanelResizer();
+      initBottomResizer();
+      renderWatchlist();
+      selectSymbol(selectedSymbolId);
+
+      fetchRealtimeQuotes();
+      setInterval(fetchRealtimeQuotes, 2000);
+
+      /* 三大 Tab 切換事件綁定 */
+      document.querySelectorAll('.group-tab-btn').forEach(tabBtn => {
+        tabBtn.addEventListener('click', (e) => {
+          document.querySelectorAll('.group-tab-btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          activeTabGroup = e.target.getAttribute('data-group');
+          renderWatchlist();
+        });
+      });
+
+      document.querySelectorAll('.ind-tab').forEach(btn => {
+        const indKey = btn.getAttribute('data-ind');
+        if (indicatorStates[indKey]) {
+          btn.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
+        }
+      });
+      updateIndicatorDisplay();
+
+      document.querySelectorAll('.legend-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const lineName = item.getAttribute('data-line');
+          if (lineName === 'filter12') {
+            lineVisibility.filter12 = !lineVisibility.filter12;
+          } else if (lineName === 'ema20' || lineName === 'ema60') {
+            lineVisibility[lineName] = !lineVisibility[lineName];
+          } else if (lineName && lineVisibility.hasOwnProperty(lineName)) {
+            lineVisibility[lineName] = !lineVisibility[lineName];
+          }
+          updateIndicatorDisplay();
+        });
+      });
+
+      const settingsBtn = document.getElementById('btn-settings-3');
+      const settingsDropdown = document.getElementById('settings-dropdown');
+
+      settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsDropdown.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', () => {
+        settingsDropdown.classList.add('hidden');
+      });
+
+      settingsDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      document.getElementById('col-change').addEventListener('change', (e) => {
+        columnSettings.change = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('col-percent').addEventListener('change', (e) => {
+        columnSettings.percent = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('col-volume').addEventListener('change', (e) => {
+        columnSettings.volume = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('vol-mode-select').addEventListener('change', (e) => {
+        columnSettings.volMode = e.target.value;
+        renderWatchlist();
+      });
+
+      const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
+      const watchlistWrapper = document.getElementById('watchlist-wrapper');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const resizer = document.getElementById('panel-resizer');
+      const closeDrawerBtn = document.getElementById('btn-close-drawer');
+
+      function isMobileScreen() {
+        return window.innerWidth < 768;
       }
 
-    } catch (err) {
-      console.error("VIX 資料載入失敗：", err);
+      function toggleWatchlist() {
+        if (isMobileScreen()) {
+          watchlistWrapper.classList.toggle('open');
+          backdrop.classList.toggle('show');
+        } else {
+          watchlistWrapper.classList.toggle('collapsed');
+          toggleWatchlistBtn.classList.toggle('active');
+          if (watchlistWrapper.classList.contains('collapsed')) {
+            if (resizer) resizer.style.display = 'none';
+          } else {
+            if (resizer) resizer.style.display = 'block';
+          }
+        }
+        setTimeout(() => {
+          if (chart) {
+            const container = document.getElementById('chart-container');
+            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+          }
+        }, 220);
+      }
+
+      toggleWatchlistBtn.addEventListener('click', toggleWatchlist);
+      if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', toggleWatchlist);
+      if (backdrop) backdrop.addEventListener('click', toggleWatchlist);
+
+      window.addEventListener('symbolSelected', () => {
+        if (isMobileScreen()) {
+          watchlistWrapper.classList.remove('open');
+          backdrop.classList.remove('show');
+        }
+      });
+
+      document.querySelectorAll('.ind-tab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const indKey = e.target.getAttribute('data-ind');
+          indicatorStates[indKey] = !indicatorStates[indKey];
+
+          if (indicatorStates[indKey]) {
+            e.target.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
+          } else {
+            e.target.className = 'ind-tab text-tvTextMuted hover:text-white transition-colors';
+          }
+
+          updateIndicatorDisplay();
+        });
+      });
+
+      document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const targetRes = e.target.getAttribute('data-res');
+          document.querySelectorAll('.tf-btn').forEach(b => {
+            if (b.getAttribute('data-res') === targetRes) {
+              b.classList.add('bg-tvHover', 'text-white', 'font-medium', 'shadow');
+              b.classList.remove('text-tvTextMuted');
+            } else {
+              b.classList.remove('bg-tvHover', 'text-white', 'font-medium', 'shadow');
+              b.classList.add('text-tvTextMuted');
+            }
+          });
+
+          currentResolution = targetRes;
+          currentCandles = []; 
+          const allItems = getAllWatchlistItems();
+          const symbol = allItems.find(s => s.id === selectedSymbolId);
+          if (symbol) loadHistoryData(symbol.code, currentResolution);
+        });
+      });
+
+      const modal = document.getElementById('add-symbol-modal');
+      const openBtn = document.getElementById('btn-open-modal');
+      const closeBtn = document.getElementById('btn-close-modal');
+      const cancelBtn = document.getElementById('btn-cancel-modal');
+      const form = document.getElementById('add-symbol-form');
+
+      const closeModal = () => modal.classList.add('hidden');
+      openBtn.onclick = () => modal.classList.remove('hidden');
+      closeBtn.onclick = closeModal;
+      cancelBtn.onclick = closeModal;
+
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const groupTarget = document.getElementById('input-group').value;
+        const name = document.getElementById('input-name').value;
+        const code = document.getElementById('input-code').value.toUpperCase();
+        if (name && code) {
+          const newSymbol = { id: Date.now().toString(), name, code, price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'CUSTOM' };
+          const targetGroup = watchlistGroups.find(g => g.groupName === groupTarget);
+          if (targetGroup) targetGroup.items.push(newSymbol);
+
+          activeTabGroup = groupTarget;
+          document.querySelectorAll('.group-tab-btn').forEach(b => {
+            if (b.getAttribute('data-group') === groupTarget) b.classList.add('active');
+            else b.classList.remove('active');
+          });
+
+          renderWatchlist();
+          selectSymbol(newSymbol.id);
+          form.reset();
+          closeModal();
+        }
+      };
+    });
+
+    const originalSelectSymbol = selectSymbol;
+    selectSymbol = function(id) {
+      originalSelectSymbol(id);
+      window.dispatchEvent(new Event('symbolSelected'));
     }
-  }
-
-  fetchQuoteData();
-  fetchAndRenderVIX();
-  setInterval(() => {
-    fetchQuoteData();
-    fetchAndRenderVIX();
-  }, 1000);
-</script>
-
+  </script>
 </body>
 </html>
