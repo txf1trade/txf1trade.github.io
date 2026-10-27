@@ -2,7 +2,7 @@
 <html lang="zh-TW" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Mini TradingDash</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -32,6 +32,15 @@
     }
   </script>
   <style>
+    /* 鎖定頁面與滾動行為，防止手機下拉橡皮筋回彈與上方空白 */
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
     /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 3px; height: 3px; }
     ::-webkit-scrollbar-track { background: #131722; }
@@ -199,6 +208,12 @@
       overflow: hidden;
       flex-shrink: 0;
     }
+
+    /* 上下拖曳霸樣式與觸控專用觸發點 */
+    #bottom-resizer {
+      touch-action: none;
+      user-select: none;
+    }
   </style>
 </head>
 <body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
@@ -363,8 +378,8 @@
       <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full min-h-[100px]"></div>
 
       <!-- 上下垂直拖曳調整霸 -->
-      <div id="bottom-resizer" class="h-1.5 bg-tvBorder hover:bg-tvAccent cursor-ns-resize shrink-0 transition-colors relative z-20 flex items-center justify-center group" title="上下拖曳調整下方詳細面板高度">
-        <div class="w-8 h-0.5 bg-tvTextMuted/50 rounded-full group-hover:bg-white"></div>
+      <div id="bottom-resizer" class="h-3 bg-tvBorder hover:bg-tvAccent cursor-ns-resize shrink-0 transition-colors relative z-20 flex items-center justify-center group" title="上下拖曳調整下方詳細面板高度">
+        <div class="w-10 h-1 bg-tvTextMuted/60 rounded-full group-hover:bg-white"></div>
       </div>
 
       <!-- Bottom Quick Summary Card + 右下角走勢圖 Canvas (支援動態調整高度) -->
@@ -1484,77 +1499,122 @@
       }
     }
 
-    /* 左右面板寬度調整 */
+    /* 左右面板寬度調整 (同時支援 Mouse 及 Touch) */
     function initPanelResizer() {
       const resizer = document.getElementById('panel-resizer');
       const panelWrapper = document.getElementById('watchlist-wrapper');
+      if (!resizer) return;
+
       let isResizing = false;
       let startX = 0;
       let startWidth = 410;
 
-      resizer.addEventListener('mousedown', (e) => {
+      const onStart = (clientX) => {
         isResizing = true;
-        startX = e.clientX;
+        startX = clientX;
         startWidth = panelWrapper.offsetWidth;
         document.body.style.cursor = 'ew-resize';
+      };
 
-        const onMouseMove = (e) => {
-          if (!isResizing) return;
-          let newWidth = startWidth + (startX - e.clientX);
-          newWidth = Math.max(300, Math.min(newWidth, 680));
-          panelWrapper.style.width = `${newWidth}px`;
-          if (chart) {
-            const container = document.getElementById('chart-container');
-            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-          }
+      const onMove = (clientX) => {
+        if (!isResizing) return;
+        let newWidth = startWidth + (startX - clientX);
+        newWidth = Math.max(300, Math.min(newWidth, 680));
+        panelWrapper.style.width = `${newWidth}px`;
+        if (chart) {
+          const container = document.getElementById('chart-container');
+          chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+        }
+      };
+
+      const onEnd = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = '';
+      };
+
+      resizer.addEventListener('mousedown', (e) => {
+        onStart(e.clientX);
+        const handleMouseMove = (e) => onMove(e.clientX);
+        const handleMouseUp = () => {
+          onEnd();
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
         };
-
-        const onMouseUp = () => {
-          isResizing = false;
-          document.body.style.cursor = '';
-          document.removeEventListener('mousemove', onMouseMove);
-          document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
       });
     }
 
-    /* 下方詳細面板上下高度拖曳調整 */
+    /* 下方詳細面板上下高度拖曳調整 (支援 Touch + Mouse，阻止畫面被拖動) */
     function initBottomResizer() {
       const resizer = document.getElementById('bottom-resizer');
       const detailCard = document.getElementById('symbol-detail-card');
+      const watchlistWrapper = document.getElementById('watchlist-wrapper');
+      if (!resizer || !detailCard) return;
+
       let isResizing = false;
       let startY = 0;
       let startHeight = 290;
 
-      resizer.addEventListener('mousedown', (e) => {
+      const handleStart = (clientY) => {
         isResizing = true;
-        startY = e.clientY;
+        startY = clientY;
         startHeight = detailCard.offsetHeight;
         document.body.style.cursor = 'ns-resize';
+      };
 
-        const onMouseMove = (e) => {
-          if (!isResizing) return;
-          // 往上拖曳增加下方卡片高度，往下拖曳減少高度
-          let newHeight = startHeight + (startY - e.clientY);
-          const maxHeight = document.getElementById('watchlist-wrapper').clientHeight - 150;
-          newHeight = Math.max(180, Math.min(newHeight, maxHeight));
-          detailCard.style.height = `${newHeight}px`;
-          fetchAndRenderMiniVix(); // 即時重繪 Canvas 走勢圖
-        };
+      const handleMove = (clientY) => {
+        if (!isResizing) return;
+        let newHeight = startHeight + (startY - clientY);
+        const maxHeight = watchlistWrapper.clientHeight - 130;
+        newHeight = Math.max(160, Math.min(newHeight, maxHeight));
+        detailCard.style.height = `${newHeight}px`;
+        fetchAndRenderMiniVix(); // 即時重繪 Canvas
+      };
 
+      const handleEnd = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = '';
+      };
+
+      // Mouse 事件
+      resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        handleStart(e.clientY);
+
+        const onMouseMove = (e) => handleMove(e.clientY);
         const onMouseUp = () => {
-          isResizing = false;
-          document.body.style.cursor = '';
+          handleEnd();
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
         };
-
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
       });
+
+      // Touch 觸控事件 (手機版專用，徹底阻擋穿透與頁面滾動)
+      resizer.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleStart(e.touches[0].clientY);
+        }
+      }, { passive: false });
+
+      resizer.addEventListener('touchmove', (e) => {
+        if (isResizing && e.touches.length === 1) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleMove(e.touches[0].clientY);
+        }
+      }, { passive: false });
+
+      resizer.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handleEnd();
+      }, { passive: false });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
