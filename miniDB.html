@@ -158,6 +158,47 @@
       opacity: 0.35;
       text-decoration: line-through;
     }
+
+    /* 群組 Tab 按鈕樣式 */
+    .group-tab-btn {
+      position: relative;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #787b86;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .group-tab-btn:hover {
+      color: #d1d4dc;
+    }
+    .group-tab-btn.active {
+      color: #ffffff;
+    }
+    .group-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 15%;
+      width: 70%;
+      height: 3px;
+      background-color: #ffffff;
+      border-radius: 2px 2px 0 0;
+    }
+
+    /* 右下角走勢圖 Canvas 容器 */
+    .vix-mini-canvas-container {
+      width: 100%;
+      height: 140px;
+      position: relative;
+      background: #131722;
+      border-radius: 6px;
+      border: 1px solid #2a2e39;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
@@ -224,26 +265,19 @@
 
       <!-- Lightweight Chart Container & Legend -->
       <div class="flex-1 relative w-full h-full bg-tvBg flex flex-col min-h-0">
-        <!-- 主圖左上角數值即時標籤 (修改為垂直多列 / 換行佈局) -->
+        <!-- 主圖左上角數值即時標籤 -->
         <div id="chart-legend" class="absolute top-2 left-2 z-10 flex flex-col items-start gap-y-1 text-[10px] sm:text-xs font-mono bg-tvPanel/85 px-2.5 py-1.5 rounded border border-tvBorder shadow pointer-events-auto">
-          <!-- 過濾線列 -->
           <div id="legend-row-filter" class="flex items-center gap-x-2">
             <span id="legend-filter-group" data-line="filter12" class="legend-item text-[#df8028]" title="切換過濾線(EMA12)顯示"><span id="label-filter">EMA12</span>: <span id="legend-filter">--</span></span>
           </div>
-
-          <!-- 多頭線列 -->
           <div id="legend-row-ema" class="flex items-center gap-x-2">
             <span id="legend-ema20-group" data-line="ema20" class="legend-item text-[#ffcc66]" title="切換多頭線(EMA20)顯示"><span id="label-ema20">EMA20</span>: <span id="legend-ema20">--</span></span>
             <span id="legend-ema60-group" data-line="ema60" class="legend-item text-[#28c6ee]" title="切換多頭線(EMA60)顯示"><span id="label-ema60">60</span>: <span id="legend-ema60">--</span></span>
           </div>
-
-          <!-- 日週線列 -->
           <div id="legend-row-daily" class="flex items-center gap-x-2">
             <span id="legend-daily-group" data-line="daily" class="legend-item text-[#ee3b76]" title="點擊切換日線(EMA76)顯示"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
             <span id="legend-weekly-group" data-line="weekly" class="legend-item text-[#2186c0]" title="點擊切換週線(EMA380)顯示"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
           </div>
-
-          <!-- ATR趨勢列 -->
           <div id="legend-row-atr" class="flex items-center gap-x-2">
             <span id="legend-atr-group" data-line="atrTrend" class="legend-item text-[#00cbff]" title="點擊切換 ATR 趨勢線顯示"><span id="label-atr">ATR趨勢</span>: <span id="legend-atrval">--</span></span>
           </div>
@@ -315,30 +349,53 @@
         </div>
       </div>
 
+      <!-- 三大群組切換 Tab -->
+      <div id="group-tabs-bar" class="flex items-center border-b border-tvBorder bg-tvBg/60 shrink-0">
+        <button class="group-tab-btn active" data-group="自選股">自選股</button>
+        <button class="group-tab-btn" data-group="海期">海期</button>
+        <button class="group-tab-btn" data-group="股期">股期</button>
+      </div>
+
       <!-- Watchlist Table Header -->
       <div id="watchlist-header" class="flex items-center px-2 py-2 text-[11px] text-tvTextMuted font-medium border-b border-tvBorder shrink-0 bg-tvBg/40 w-full"></div>
 
       <!-- Watchlist Items Container -->
-      <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full"></div>
+      <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full min-h-[100px]"></div>
 
-      <!-- Bottom Quick Summary Card -->
-      <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0">
-        <div class="flex justify-between items-start mb-1.5">
+      <!-- 上下垂直拖曳調整霸 -->
+      <div id="bottom-resizer" class="h-1.5 bg-tvBorder hover:bg-tvAccent cursor-ns-resize shrink-0 transition-colors relative z-20 flex items-center justify-center group" title="上下拖曳調整下方詳細面板高度">
+        <div class="w-8 h-0.5 bg-tvTextMuted/50 rounded-full group-hover:bg-white"></div>
+      </div>
+
+      <!-- Bottom Quick Summary Card + 右下角走勢圖 Canvas (支援動態調整高度) -->
+      <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0 flex flex-col gap-2" style="height: 290px; min-height: 180px; max-height: 75%;">
+        <div class="flex justify-between items-start">
           <div>
             <div id="card-name" class="font-bold text-white text-sm">--</div>
             <div id="card-code" class="text-tvTextMuted text-[10px] bg-tvHover px-1.5 py-0.5 rounded font-mono mt-0.5 inline-block">--</div>
           </div>
           <div id="card-change-badge" class="font-mono text-right font-bold text-xs px-2 py-0.5 rounded bg-tvHover">--</div>
         </div>
-        <div class="flex items-baseline space-x-2 my-1">
+
+        <div class="flex items-baseline space-x-2">
           <span id="card-price" class="text-xl font-bold font-mono text-white">--</span>
           <span class="text-[10px] text-tvTextMuted">TWD</span>
         </div>
-        <div class="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 pt-2 border-t border-tvBorder/30 text-[11px] font-mono">
-          <div class="flex justify-between"><span class="text-tvTextMuted">最高:</span> <span id="card-high" class="text-tvUp">--</span></div>
-          <div class="flex justify-between"><span class="text-tvTextMuted">最低:</span> <span id="card-low" class="text-tvDown">--</span></div>
-          <div class="flex justify-between"><span class="text-tvTextMuted">總量:</span> <span id="card-vol" class="text-white">--</span></div>
-          <div class="flex justify-between"><span class="text-tvTextMuted">昨收:</span> <span id="card-ref" class="text-tvText">--</span></div>
+
+        <div class="grid grid-cols-4 gap-1 pt-1 border-t border-tvBorder/30 text-[11px] font-mono text-center">
+          <div class="bg-tvBg p-1 rounded border border-tvBorder"><span class="text-tvTextMuted block text-[9px]">最高</span><span id="card-high" class="text-tvUp font-bold">--</span></div>
+          <div class="bg-tvBg p-1 rounded border border-tvBorder"><span class="text-tvTextMuted block text-[9px]">最低</span><span id="card-low" class="text-tvDown font-bold">--</span></div>
+          <div class="bg-tvBg p-1 rounded border border-tvBorder"><span class="text-tvTextMuted block text-[9px]">總量</span><span id="card-vol" class="text-white font-bold">--</span></div>
+          <div class="bg-tvBg p-1 rounded border border-tvBorder"><span class="text-tvTextMuted block text-[9px]">昨收</span><span id="card-ref" class="text-tvText font-bold">--</span></div>
+        </div>
+
+        <!-- 右下角即時走勢圖 Canvas (不被高度受限) -->
+        <div class="vix-mini-canvas-container flex-1">
+          <div class="absolute top-1 left-2 z-10 text-[10px] font-bold text-white flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-tvUp"></span>
+            <span id="vix-canvas-title">即時走勢圖</span>
+          </div>
+          <canvas id="miniVixCanvas" class="w-full h-full block"></canvas>
         </div>
       </div>
     </div>
@@ -359,6 +416,14 @@
         <button id="btn-close-modal" class="text-tvTextMuted hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="add-symbol-form" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-tvTextMuted mb-1">分類群組</label>
+          <select id="input-group" class="w-full bg-tvBg border border-tvBorder rounded px-3 py-2 text-white focus:outline-none focus:border-tvAccent">
+            <option value="自選股">自選股</option>
+            <option value="海期">海期</option>
+            <option value="股期">股期</option>
+          </select>
+        </div>
         <div>
           <label class="block text-tvTextMuted mb-1">商品名稱</label>
           <input type="text" id="input-name" required placeholder="例如: 台積電" class="w-full bg-tvBg border border-tvBorder rounded px-3 py-2 text-white focus:outline-none focus:border-tvAccent">
@@ -387,11 +452,11 @@
     updateClock();
 
     const defaultIndicatorSettings = {
-      filter: true,   // 過濾線預設開啟
-      ema: false,     // 多頭線預設關閉
-      daily: true,    // 日週線預設開啟
-      atr: false,     // ATR趨勢預設關閉
-      vol: false      // 成交量預設關閉
+      filter: true,
+      ema: false,
+      daily: true,
+      atr: false,
+      vol: false
     };
 
     let lineVisibility = {
@@ -418,9 +483,11 @@
       return symbolLineConfigs[upper] || symbolLineConfigs['DEFAULT'];
     }
 
+    let activeTabGroup = '自選股';
+
     let watchlistGroups = [
       {
-        groupName: '台股指',
+        groupName: '自選股',
         items: [
           { id: '1', name: '台指期全', code: 'TX-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
           { id: '2', name: '台指期日', code: 'TXAM-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
@@ -775,7 +842,6 @@
       const weeklyGroup = document.getElementById('legend-weekly-group');
       const atrGroup = document.getElementById('legend-atr-group');
 
-      // 1. 過濾線列 (EMA12)
       if (indicatorStates.filter && currentCandles.length > 0) {
         rowFilter.style.display = 'flex';
         if (lineVisibility.filter12) {
@@ -793,7 +859,6 @@
         rowFilter.style.display = 'none';
       }
 
-      // 2. 多頭線列 (EMA20 / EMA60)
       if (indicatorStates.ema && currentCandles.length > 0) {
         rowEma.style.display = 'flex';
 
@@ -824,7 +889,6 @@
         rowEma.style.display = 'none';
       }
 
-      // 3. 日週線列
       if (indicatorStates.daily && currentCandles.length > 0) {
         rowDaily.style.display = 'flex';
 
@@ -855,7 +919,6 @@
         rowDaily.style.display = 'none';
       }
 
-      // 4. ATR 趨勢列
       if (indicatorStates.atr && currentCandles.length > 0) {
         rowAtr.style.display = 'flex';
         if (lineVisibility.atrTrend) {
@@ -1189,8 +1252,10 @@
       const headerContainer = document.getElementById('watchlist-header');
       const container = document.getElementById('watchlist-items');
       container.innerHTML = '';
-      const allItems = getAllWatchlistItems();
-      document.getElementById('watchlist-count').textContent = allItems.length;
+      
+      const currentGroup = watchlistGroups.find(g => g.groupName === activeTabGroup) || { items: [] };
+      const items = currentGroup.items;
+      document.getElementById('watchlist-count').textContent = items.length;
 
       let headerHTML = `
         <div class="w-[18%] text-left truncate pr-0.5">代號</div>
@@ -1202,60 +1267,58 @@
       if (columnSettings.volume) headerHTML += `<div class="w-[20%] text-right truncate pl-0.5 pr-1">總量</div>`;
       headerContainer.innerHTML = headerHTML;
 
-      watchlistGroups.forEach(group => {
-        const groupHeader = document.createElement('div');
-        groupHeader.className = 'px-2 py-1.5 bg-tvBg/80 text-tvTextMuted font-bold text-[11px] border-b border-tvBorder tracking-wide uppercase flex items-center justify-between';
-        groupHeader.innerHTML = `<span>${group.groupName}</span><i class="fa-solid fa-chevron-down text-[10px]"></i>`;
-        container.appendChild(groupHeader);
+      if (items.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-tvTextMuted text-xs font-mono">此分類暫無商品</div>`;
+        return;
+      }
 
-        group.items.forEach(item => {
-          const hasRef = item.refPrice > 0;
-          const change = hasRef ? (item.price - item.refPrice) : 0;
-          const changePercent = hasRef ? ((change / item.refPrice) * 100).toFixed(2) : '0.00';
-          const isUp = change >= 0;
-          
-          const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
-          const isSelected = item.id === selectedSymbolId;
+      items.forEach(item => {
+        const hasRef = item.refPrice > 0;
+        const change = hasRef ? (item.price - item.refPrice) : 0;
+        const changePercent = hasRef ? ((change / item.refPrice) * 100).toFixed(2) : '0.00';
+        const isUp = change >= 0;
+        
+        const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+        const isSelected = item.id === selectedSymbolId;
 
-          const row = document.createElement('div');
-          row.id = `watchlist-row-${item.id}`;
-          row.className = `flex items-center px-2 py-2 compact-table-row cursor-pointer hover:bg-tvHover/70 transition-colors group relative w-full ${
-            isSelected ? 'bg-tvHover/90 border-l-2 border-tvAccent' : ''
-          }`;
-          row.onclick = () => selectSymbol(item.id);
+        const row = document.createElement('div');
+        row.id = `watchlist-row-${item.id}`;
+        row.className = `flex items-center px-2 py-2 compact-table-row cursor-pointer hover:bg-tvHover/70 transition-colors group relative w-full ${
+          isSelected ? 'bg-tvHover/90 border-l-2 border-tvAccent' : ''
+        }`;
+        row.onclick = () => selectSymbol(item.id);
 
-          let rowHTML = `
-            <div class="w-[18%] font-mono text-tvTextMuted text-[11px] truncate pr-0.5">${item.code}</div>
-            <div class="w-[22%] font-bold text-white truncate px-0.5">${item.name}</div>
-            <div class="w-[24%] text-right font-mono font-medium text-white truncate px-0.5">
-              ${item.price > 0 ? item.price.toLocaleString(undefined, { minimumFractionDigits: item.price < 1000 ? 2 : 0 }) : '--'}
+        let rowHTML = `
+          <div class="w-[18%] font-mono text-tvTextMuted text-[11px] truncate pr-0.5">${item.code}</div>
+          <div class="w-[22%] font-bold text-white truncate px-0.5">${item.name}</div>
+          <div class="w-[24%] text-right font-mono font-medium text-white truncate px-0.5">
+            ${item.price > 0 ? item.price.toLocaleString(undefined, { minimumFractionDigits: item.price < 1000 ? 2 : 0 }) : '--'}
+          </div>
+        `;
+        if (columnSettings.change) {
+          rowHTML += `
+            <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
+              ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)}` : '--'}
             </div>
           `;
-          if (columnSettings.change) {
-            rowHTML += `
-              <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
-                ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)}` : '--'}
-              </div>
-            `;
-          }
-          if (columnSettings.percent) {
-            rowHTML += `
-              <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
-                ${item.price > 0 ? `${isUp ? '+' : ''}${changePercent}%` : '--'}
-              </div>
-            `;
-          }
-          if (columnSettings.volume) {
-            rowHTML += `
-              <div class="w-[20%] text-right font-mono text-tvTextMuted text-[11px] truncate pl-0.5 pr-1">
-                ${formatSmartVolume(item.volume)}
-              </div>
-            `;
-          }
+        }
+        if (columnSettings.percent) {
+          rowHTML += `
+            <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
+              ${item.price > 0 ? `${isUp ? '+' : ''}${changePercent}%` : '--'}
+            </div>
+          `;
+        }
+        if (columnSettings.volume) {
+          rowHTML += `
+            <div class="w-[20%] text-right font-mono text-tvTextMuted text-[11px] truncate pl-0.5 pr-1">
+              ${formatSmartVolume(item.volume)}
+            </div>
+          `;
+        }
 
-          row.innerHTML = rowHTML;
-          container.appendChild(row);
-        });
+        row.innerHTML = rowHTML;
+        container.appendChild(row);
       });
     }
 
@@ -1270,6 +1333,7 @@
         updateActivePriceDisplay(symbol);
         updateDetailCard(symbol);
         loadHistoryData(symbol.code, currentResolution);
+        fetchAndRenderMiniVix();
       }
     }
 
@@ -1314,6 +1378,113 @@
       badge.className = `font-mono text-right font-bold text-xs px-2 py-0.5 rounded ${bgClass} ${colorClass}`;
     }
 
+    /* 繪製走勢圖：座標文字改為白色 (#ffffff) */
+    async function fetchAndRenderMiniVix() {
+      const allItems = getAllWatchlistItems();
+      const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TAIWANVIX' };
+      const symbolCode = currentSymbol.code;
+      document.getElementById('vix-canvas-title').textContent = `${currentSymbol.name} 走勢圖`;
+
+      try {
+        const response = await fetch(`https://tv-signalr.futures-op.com/history?symbol=${encodeURIComponent(symbolCode)}&resolution=1&ws=true&intraday=true`, { cache: "no-cache" });
+        if (!response.ok) return;
+
+        const json = await response.json();
+        const list = json && Array.isArray(json.bars) ? json.bars : [];
+        if (list.length === 0) return;
+
+        const canvas = document.getElementById('miniVixCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.parentNode.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+
+        const width = rect.width;
+        const height = rect.height;
+        ctx.clearRect(0, 0, width, height);
+
+        const prices = list.map(item => item.close);
+        const minP = Math.min(...prices);
+        const maxP = Math.max(...prices);
+        const range = (maxP - minP) || 1;
+
+        const isUp = prices[prices.length - 1] >= prices[0];
+        const lineColor = isUp ? '#f23645' : '#089981';
+
+        const paddingLeft = 30;
+        const paddingRight = 55;
+        const paddingTop = 15;
+        const paddingBottom = 20;
+
+        const graphWidth = width - paddingLeft - paddingRight;
+        const graphHeight = height - paddingTop - paddingBottom;
+
+        // 畫格線與 Y 刻度 (改成白色 #ffffff)
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#2a2e39';
+        ctx.lineWidth = 1;
+
+        const ySteps = 2;
+        for (let i = 0; i <= ySteps; i++) {
+          const val = minP + (range * (ySteps - i) / ySteps);
+          const y = paddingTop + (graphHeight / ySteps) * i;
+
+          ctx.beginPath();
+          ctx.moveTo(paddingLeft, y);
+          ctx.lineTo(width - paddingRight, y);
+          ctx.stroke();
+
+          ctx.textAlign = 'left';
+          ctx.fillText(val.toFixed(2), width - paddingRight + 5, y + 3);
+        }
+
+        // 計算點位
+        const startTimeMs = list[0].time || Date.now();
+        const endTimeMs = list[list.length - 1].time || Date.now();
+        const totalDuration = endTimeMs - startTimeMs || 1;
+
+        const points = prices.map((val, idx) => {
+          const itemTime = list[idx].time || startTimeMs;
+          const ratio = totalDuration === 0 ? 0 : Math.max(0, Math.min(1, (itemTime - startTimeMs) / totalDuration));
+          return {
+            x: paddingLeft + ratio * graphWidth,
+            y: paddingTop + graphHeight - ((val - minP) / range) * graphHeight
+          };
+        });
+
+        // 畫折線
+        ctx.beginPath();
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 1.5;
+
+        points.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.stroke();
+
+        // 畫漸層區域
+        const lastPt = points[points.length - 1];
+        ctx.lineTo(lastPt.x, paddingTop + graphHeight);
+        ctx.lineTo(points[0].x, paddingTop + graphHeight);
+        ctx.closePath();
+
+        const gradient = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
+        gradient.addColorStop(0, isUp ? 'rgba(242, 54, 69, 0.25)' : 'rgba(8, 153, 129, 0.25)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+      } catch (err) {
+        console.error('Mini VIX Canvas Render error:', err);
+      }
+    }
+
+    /* 左右面板寬度調整 */
     function initPanelResizer() {
       const resizer = document.getElementById('panel-resizer');
       const panelWrapper = document.getElementById('watchlist-wrapper');
@@ -1350,14 +1521,61 @@
       });
     }
 
+    /* 下方詳細面板上下高度拖曳調整 */
+    function initBottomResizer() {
+      const resizer = document.getElementById('bottom-resizer');
+      const detailCard = document.getElementById('symbol-detail-card');
+      let isResizing = false;
+      let startY = 0;
+      let startHeight = 290;
+
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = detailCard.offsetHeight;
+        document.body.style.cursor = 'ns-resize';
+
+        const onMouseMove = (e) => {
+          if (!isResizing) return;
+          // 往上拖曳增加下方卡片高度，往下拖曳減少高度
+          let newHeight = startHeight + (startY - e.clientY);
+          const maxHeight = document.getElementById('watchlist-wrapper').clientHeight - 150;
+          newHeight = Math.max(180, Math.min(newHeight, maxHeight));
+          detailCard.style.height = `${newHeight}px`;
+          fetchAndRenderMiniVix(); // 即時重繪 Canvas 走勢圖
+        };
+
+        const onMouseUp = () => {
+          isResizing = false;
+          document.body.style.cursor = '';
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       initChart();
       initPanelResizer();
+      initBottomResizer();
       renderWatchlist();
       selectSymbol(selectedSymbolId);
 
       fetchRealtimeQuotes();
       setInterval(fetchRealtimeQuotes, 2000);
+
+      /* 三大 Tab 切換事件綁定 */
+      document.querySelectorAll('.group-tab-btn').forEach(tabBtn => {
+        tabBtn.addEventListener('click', (e) => {
+          document.querySelectorAll('.group-tab-btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          activeTabGroup = e.target.getAttribute('data-group');
+          renderWatchlist();
+        });
+      });
 
       document.querySelectorAll('.ind-tab').forEach(btn => {
         const indKey = btn.getAttribute('data-ind');
@@ -1505,11 +1723,20 @@
 
       form.onsubmit = (e) => {
         e.preventDefault();
+        const groupTarget = document.getElementById('input-group').value;
         const name = document.getElementById('input-name').value;
         const code = document.getElementById('input-code').value.toUpperCase();
         if (name && code) {
           const newSymbol = { id: Date.now().toString(), name, code, price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'CUSTOM' };
-          watchlistGroups[0].items.push(newSymbol);
+          const targetGroup = watchlistGroups.find(g => g.groupName === groupTarget);
+          if (targetGroup) targetGroup.items.push(newSymbol);
+
+          activeTabGroup = groupTarget;
+          document.querySelectorAll('.group-tab-btn').forEach(b => {
+            if (b.getAttribute('data-group') === groupTarget) b.classList.add('active');
+            else b.classList.remove('active');
+          });
+
           renderWatchlist();
           selectSymbol(newSymbol.id);
           form.reset();
