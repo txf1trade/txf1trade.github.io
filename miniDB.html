@@ -216,7 +216,7 @@
 
         <!-- 右側操作按鈕：畫線工具、清除畫線、另存圖片 -->
         <div class="flex items-center space-x-1.5 font-mono shrink-0">
-          <button id="btn-draw-mode" class="px-2 py-1 bg-tvHover hover:bg-tvAccent text-tvText hover:text-white rounded text-[11px] transition-colors flex items-center space-x-1" title="切換畫線模式">
+          <button id="btn-draw-mode" class="px-2 py-1 bg-tvHover hover:bg-tvAccent text-tvText hover:text-white rounded text-[11px] transition-colors flex items-center space-x-1" title="切換畫線或十字線模式">
             <i class="fa-solid fa-pencil text-[10px]"></i><span>畫線工具</span>
           </button>
           <button id="btn-clear-drawings" class="px-2 py-1 bg-tvHover hover:bg-red-600 text-tvTextMuted hover:text-white rounded text-[11px] transition-colors" title="清除所有手繪線條">
@@ -720,6 +720,11 @@
         visible: false,
       });
 
+      // 監聽圖表範圍變動（平移、縮放），讓手繪線條跟著 K 線同步移動
+      chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+        redrawDrawings();
+      });
+
       chart.subscribeCrosshairMove(param => {
         if (!param || !param.time || !currentCandles.length) return;
         const time = param.time;
@@ -764,11 +769,12 @@
       resizeDrawingCanvas();
     }
 
-    // 手繪畫線功能邏輯
+    // 手繪畫線功能邏輯（改為綁定 Time 與 Price，使其能隨圖表移動）
     let isDrawingMode = false;
-    let drawings = [];
+    let drawings = []; // 儲存 { time1, price1, time2, price2 }
     let isDrawing = false;
     let startX = 0, startY = 0;
+    let tempTime1 = null, tempPrice1 = null;
 
     function resizeDrawingCanvas() {
       const container = document.getElementById('chart-container');
@@ -782,17 +788,24 @@
 
     function redrawDrawings() {
       const canvas = document.getElementById('drawing-canvas');
-      if (!canvas) return;
+      if (!canvas || !chart || !candlestickSeries) return;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = '#00cbff';
       ctx.lineWidth = 2;
 
       drawings.forEach(line => {
-        ctx.beginPath();
-        ctx.moveTo(line.x1, line.y1);
-        ctx.lineTo(line.x2, line.y2);
-        ctx.stroke();
+        const x1 = chart.timeScale().timeToCoordinate(line.time1);
+        const y1 = candlestickSeries.priceToCoordinate(line.price1);
+        const x2 = chart.timeScale().timeToCoordinate(line.time2);
+        const y2 = candlestickSeries.priceToCoordinate(line.price2);
+
+        if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
       });
     }
 
@@ -813,11 +826,21 @@
       drawBtn.addEventListener('click', () => {
         isDrawingMode = !isDrawingMode;
         if (isDrawingMode) {
+          drawBtn.innerHTML = '<i class="fa-solid fa-crosshairs text-[10px]"></i><span>切回十字線</span>';
           drawBtn.classList.add('bg-tvAccent', 'text-white');
           canvas.classList.add('active');
+          chart.applyOptions({
+            handleScroll: false,
+            handleScale: false
+          });
         } else {
+          drawBtn.innerHTML = '<i class="fa-solid fa-pencil text-[10px]"></i><span>畫線工具</span>';
           drawBtn.classList.remove('bg-tvAccent', 'text-white');
           canvas.classList.remove('active');
+          chart.applyOptions({
+            handleScroll: { mouseWheel: true, pressedMouseMove: true },
+            handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
+          });
         }
       });
 
@@ -832,6 +855,9 @@
         const rect = canvas.getBoundingClientRect();
         startX = e.clientX - rect.left;
         startY = e.clientY - rect.top;
+
+        tempTime1 = chart.timeScale().coordinateToTime(startX);
+        tempPrice1 = candlestickSeries.coordinateToPrice(startY);
       });
 
       canvas.addEventListener('mousemove', (e) => {
@@ -839,6 +865,7 @@
         const rect = canvas.getBoundingClientRect();
         const currentX = e.clientX - rect.left;
         const currentY = e.clientY - rect.top;
+        
         redrawDrawings();
         const ctx = canvas.getContext('2d');
         ctx.strokeStyle = '#00cbff';
@@ -855,47 +882,43 @@
         const rect = canvas.getBoundingClientRect();
         const endX = e.clientX - rect.left;
         const endY = e.clientY - rect.top;
-        drawings.push({ x1: startX, y1: startY, x2: endX, y2: endY });
+
+        const time2 = chart.timeScale().coordinateToTime(endX);
+        const price2 = candlestickSeries.coordinateToPrice(endY);
+
+        if (tempTime1 !== null && time2 !== null && tempPrice1 !== null && price2 !== null) {
+          drawings.push({
+            time1: tempTime1,
+            price1: tempPrice1,
+            time2: time2,
+            price2: price2
+          });
+        }
         redrawDrawings();
       });
 
-      // 另存圖片功能修正：抓取整張圖表的 canvas 集合進行完整合成
+      // 另存圖片功能：使用官方內建 takeScreenshot API
       document.getElementById('btn-export-img').addEventListener('click', () => {
         if (!chart) return;
-        chart.timeScale().fitContent();
         
         setTimeout(() => {
-          const chartContainerElem = document.getElementById('chart-container');
-          const sourceCanvases = chartContainerElem.querySelectorAll('canvas');
+          const chartCanvas = chart.takeScreenshot();
+          const drawingCanvas = document.getElementById('drawing-canvas');
           
-          if (!sourceCanvases || sourceCanvases.length === 0) {
+          if (!chartCanvas) {
             alert('圖表尚未載入完成');
             return;
           }
 
-          const width = chartContainerElem.clientWidth;
-          const height = chartContainerElem.clientHeight;
-
           const exportCanvas = document.createElement('canvas');
-          exportCanvas.width = width;
-          exportCanvas.height = height;
+          exportCanvas.width = chartCanvas.width;
+          exportCanvas.height = chartCanvas.height;
           const ctx = exportCanvas.getContext('2d');
 
-          // 填入背景色
-          ctx.fillStyle = '#131722';
-          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(chartCanvas, 0, 0);
 
-          // 依序將圖表內部所有的 Canvas 圖層（K線、指標、網格等）疊加合成
-          sourceCanvases.forEach(c => {
-            if (c.width > 0 && c.height > 0) {
-              ctx.drawImage(c, 0, 0, width, height);
-            }
-          });
-
-          // 若有手繪線條一併合成
-          const drawingCanvas = document.getElementById('drawing-canvas');
-          if (drawingCanvas) {
-            ctx.drawImage(drawingCanvas, 0, 0, width, height);
+          if (drawingCanvas && drawings.length > 0) {
+            ctx.drawImage(drawingCanvas, 0, 0, exportCanvas.width, exportCanvas.height);
           }
 
           const link = document.createElement('a');
@@ -1254,6 +1277,7 @@
           const barsCount = currentCandles.length;
           chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, barsCount - 80), to: barsCount - 1 });
           chart.priceScale('right').applyOptions({ autoScale: true });
+          redrawDrawings();
           return;
         }
         throw new Error('API 資料為空');
@@ -1286,6 +1310,7 @@
       const barsCount = currentCandles.length;
       chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, barsCount - 80), to: barsCount - 1 });
       chart.priceScale('right').applyOptions({ autoScale: true });
+      redrawDrawings();
     }
 
     async function fetchRealtimeQuotes() {
