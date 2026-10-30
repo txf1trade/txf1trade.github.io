@@ -46,14 +46,9 @@
       font-size: 14px; 
       color: #ffffff; 
       margin-bottom: -5px; 
-      cursor: pointer;
       display: inline-block;
       padding: 2px 8px;
       border-radius: 4px;
-      transition: opacity 0.2s;
-    }
-    #index-label:hover {
-      opacity: 0.8;
     }
 
     #index-value { font-size: 26px; font-weight: 800; color: #fff; }
@@ -113,7 +108,7 @@
     }
 
     .category-title { display: block; font-weight: bold; margin-bottom: 6px; font-size: 13px; color: #ffffff; }
-    .category-value { display: block; font-size: px; padding: 5px; border-radius: 5px; font-weight: bold; }
+    .category-value { display: block; font-size: 15px; padding: 5px; border-radius: 5px; font-weight: bold; }
 
     #chart-container {
       width: 90%;
@@ -183,24 +178,6 @@
       margin-bottom: 6px;
     }
 
-    .menu-item {
-      background: transparent;
-      border: none;
-      color: #d1d4dc;
-      padding: 7px 10px;
-      text-align: left;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: background 0.2s, color 0.2s;
-      width: 100%;
-    }
-    .menu-item:hover {
-      background: var(--pro-blue-bg);
-      color: #ffffff;
-    }
-
     .slider-group {
       padding: 4px 10px;
       font-size: 12px;
@@ -246,8 +223,8 @@
       gap: 3px;
     }
     .tv-color-cell {
-      width: px;
-      height: px;
+      width: 15px;
+      height: 15px;
       border-radius: 2px;
       cursor: pointer;
       border: 1px solid rgba(0,0,0,0.3);
@@ -270,61 +247,18 @@
       border: 1px solid var(--border-color);
     }
 
-    .chart-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(3px);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-
-    .chart-modal-content {
-      background: var(--container-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      width: 92%;
-      max-width: 880px;
-      padding: px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      position: relative;
-      box-sizing: border-box;
-    }
-
-    .modal-header-row {
+    /* K 線圖區域外層：全面置中 */
+    #converterSectionWrapper {
+      width: 100%;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 8px;
-    }
-
-    .close-modal-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      padding: 0 6px;
-      border-radius: 4px;
-      transition: color 0.2s;
-    }
-    .close-modal-btn:hover {
-      color: #ffffff;
-      background: rgba(255,255,255,0.1);
+      justify-content: center;
+      box-sizing: border-box;
     }
 
     .converter-section {
       width: 90%;
       max-width: 500px; 
-      margin: px auto;
+      margin: 15px auto;
       background: var(--container-bg);
       padding: 10px 12px;
       border-radius: 12px;
@@ -398,7 +332,7 @@
     .reset-zoom-btn {
       background: #1e222d;
       color: #2196f3;
-      border-color: rgba(33, 0, 243, 0.3);
+      border-color: rgba(33, 150, 243, 0.3);
     }
     .reset-zoom-btn:hover {
       background: #2196f3;
@@ -411,7 +345,7 @@
       height: 300px;
     }
 
-    /* 左側工具列：完全透明背景（無底色、無陰影、無模糊） */
+    /* 左側工具列 */
     .left-drawing-toolbar {
       position: absolute;
       top: 36px;
@@ -457,9 +391,9 @@
     }
 
     .icon-draw-btn.active {
-      background: rgba(33, 0, 243, 0.25);
+      background: rgba(33, 150, 243, 0.25);
       color: #2196f3;
-      border-color: rgba(33, 0, 243, 0.5);
+      border-color: rgba(33, 150, 243, 0.5);
     }
 
     .main-chart {
@@ -490,7 +424,7 @@
     .chart-legend-overlay {
       position: absolute;
       top: 8px;
-      left: 42px; /* 避開左側畫線工具列 */
+      left: 42px;
       z-index: 10;
       font-size: 11px;
       font-weight: bold;
@@ -533,7 +467,7 @@
       white-space: nowrap;
     }
 
-    .footer-links { text-align: center; margin-top: px; padding-bottom: 20px; }
+    .footer-links { text-align: center; margin-top: 15px; padding-bottom: 20px; }
     .data-source-btn { color: #888; text-decoration: none; font-size: 11px; border: 1px solid #333; padding: 6px 14px; border-radius: 20px; display: inline-block; }
   </style>
 </head>
@@ -550,20 +484,16 @@
     <div class="menu-container">
       <button class="menu-btn" onclick="toggleMenu(event)">☰</button>
       <div class="menu-dropdown" id="menuDropdown">
-        <div class="menu-header-title">K線圖顯示設定</div>
-        <button class="menu-item" id="menu-inline" onclick="setMode('inline')">📌 固定畫面下方</button>
-        <button class="menu-item" id="menu-popup" onclick="setMode('popup')">🪟 彈出顯示</button>
-        
-        <div class="menu-header-title" style="margin-top: 8px;">均線參數與顯示設定 (Max 400)</div>
+        <div class="menu-header-title">均線參數與顯示設定 (Max 400)</div>
         <div class="slider-group">
           <label>
             <span>
               <input type="checkbox" id="chk-ema1" onchange="onCheckboxChange(1)" checked> 
               EMA 1 <span class="color-preview" id="preview-ema1" onclick="openColorPalette(1, event)"></span>
             </span>
-            <input type="number" id="input-ema1" class="param-input" min="1" max="400" value="20" onchange="updateEmaFromInput('ema1', this.value)" oninput="updateEmaFromInput('ema1', this.value)">
+            <input type="number" id="input-ema1" class="param-input" min="1" max="400" value="76" onchange="updateEmaFromInput('ema1', this.value)" oninput="updateEmaFromInput('ema1', this.value)">
           </label>
-          <input type="range" id="slider-ema1" min="1" max="400" value="20" oninput="updateEmaFromSlider('ema1', this.value)">
+          <input type="range" id="slider-ema1" min="1" max="400" value="76" oninput="updateEmaFromSlider('ema1', this.value)">
         </div>
         <div class="slider-group" style="margin-top: 6px;">
           <label>
@@ -571,9 +501,9 @@
               <input type="checkbox" id="chk-ema2" onchange="onCheckboxChange(2)" checked> 
               EMA 2 <span class="color-preview" id="preview-ema2" onclick="openColorPalette(2, event)"></span>
             </span>
-            <input type="number" id="input-ema2" class="param-input" min="1" max="400" value="60" onchange="updateEmaFromInput('ema2', this.value)" oninput="updateEmaFromInput('ema2', this.value)">
+            <input type="number" id="input-ema2" class="param-input" min="1" max="400" value="380" onchange="updateEmaFromInput('ema2', this.value)" oninput="updateEmaFromInput('ema2', this.value)">
           </label>
-          <input type="range" id="slider-ema2" min="1" max="400" value="60" oninput="updateEmaFromSlider('ema2', this.value)">
+          <input type="range" id="slider-ema2" min="1" max="400" value="380" oninput="updateEmaFromSlider('ema2', this.value)">
         </div>
         <div class="slider-group" style="margin-top: 6px;">
           <label>
@@ -581,14 +511,14 @@
               <input type="checkbox" id="chk-ema3" onchange="onCheckboxChange(3)"> 
               EMA 3 <span class="color-preview" id="preview-ema3" onclick="openColorPalette(3, event)"></span>
             </span>
-            <input type="number" id="input-ema3" class="param-input" min="1" max="400" value="228" onchange="updateEmaFromInput('ema3', this.value)" oninput="updateEmaFromInput('ema3', this.value)">
+            <input type="number" id="input-ema3" class="param-input" min="1" max="400" value="20" onchange="updateEmaFromInput('ema3', this.value)" oninput="updateEmaFromInput('ema3', this.value)">
           </label>
-          <input type="range" id="slider-ema3" min="1" max="400" value="228" oninput="updateEmaFromSlider('ema3', this.value)">
+          <input type="range" id="slider-ema3" min="1" max="400" value="20" oninput="updateEmaFromSlider('ema3', this.value)">
         </div>
       </div>
     </div>
 
-    <div id="index-label" onclick="handleTitleClick()" title="點擊切換K線圖顯示">台指期近月 TX</div> 
+    <div id="index-label">台指期近月 TX</div> 
     <div id="index-value">--</div>
     <div id="highlow-value">開盤 -- | 最高 -- | 最低 -- | 振幅 --</div>
     
@@ -609,21 +539,17 @@
     <canvas id="barChart"></canvas>
   </div>
 
-  <div id="converterSectionWrapper" style="display: none;">
+  <!-- 下方固定 K 線圖區域 -->
+  <div id="converterSectionWrapper">
     <div class="converter-section" id="klineConverterSection">
-      <div class="modal-header-row" id="modalHeaderRow" style="display: none;">
-        <div class="section-title" id="chart-main-title-modal">📊 K線圖 (資料載入中...)</div>
-        <button class="close-modal-btn" onclick="closeChartModal()">✕</button>
-      </div>
-      
       <div class="section-title" id="chart-main-title" style="margin-bottom: 8px;">📊 K線圖 (資料載入中...)</div>
 
       <div class="chart-box">
         <div class="chart-header-container">
           <div class="chart-title" id="sub-chart-label">台指期走勢圖</div>
           <div class="chart-controls-group">
-            <button class="res-btn active" onclick="changeResolution('5', this)">5K</button>
-            <button class="res-btn" onclick="changeResolution('15', this)">15K</button>
+            <button class="res-btn" onclick="changeResolution('5', this)">5K</button>
+            <button class="res-btn active" onclick="changeResolution('15', this)">15K</button>
             <button class="res-btn" onclick="changeResolution('60', this)">60K</button>
             <button class="res-btn" onclick="changeResolution('1D', this)">日K</button>
             <button class="action-btn" onclick="undoLastLine()" title="撤銷上一條線">撤銷</button>
@@ -633,13 +559,11 @@
         </div>
 
         <div class="main-chart-wrapper">
-          <!-- 左側完全透明工具列 -->
+          <!-- 左側繪圖工具列 -->
           <div class="left-drawing-toolbar">
-            <!-- 游標模式 -->
             <button class="icon-draw-btn active" id="btn-draw-pointer" onclick="toggleDrawMode(null)" title="選擇/游標">
               <svg viewBox="0 0 24 24"><path d="M4 3l12 9-5 2 4 8-3 1-4-8-4 4V3z"/></svg>
             </button>
-            <!-- 趨勢線 -->
             <button class="icon-draw-btn" id="btn-draw-trend" onclick="toggleDrawMode('trend')" title="趨勢線">
               <svg viewBox="0 0 24 24">
                 <circle cx="5" cy="19" r="2.5"/>
@@ -647,14 +571,12 @@
                 <line x1="6.8" y1="17.2" x2="17.2" y2="6.8"/>
               </svg>
             </button>
-            <!-- 水平線 -->
             <button class="icon-draw-btn" id="btn-draw-horz" onclick="toggleDrawMode('horizontal')" title="水平線">
               <svg viewBox="0 0 24 24">
                 <line x1="3" y1="12" x2="21" y2="12"/>
                 <circle cx="12" cy="12" r="2.5" fill="#131722"/>
               </svg>
             </button>
-            <!-- 矩形 -->
             <button class="icon-draw-btn" id="btn-draw-rect" onclick="toggleDrawMode('rectangle')" title="矩形框">
               <svg viewBox="0 0 24 24">
                 <rect x="4" y="4" width="16" height="16" rx="1"/>
@@ -668,13 +590,13 @@
 
           <div class="chart-legend-overlay" id="chartLegendOverlay">
             <span class="legend-item" id="legend-ema1-item" onclick="toggleEmaVisibility(1)" title="點擊切換顯示/隱藏">
-              <span id="legend-ema1-txt">EMA20: --</span>
+              <span id="legend-ema1-txt">EMA76: --</span>
             </span>
             <span class="legend-item" id="legend-ema2-item" onclick="toggleEmaVisibility(2)" title="點擊切換顯示/隱藏">
-              <span id="legend-ema2-txt">EMA60: --</span>
+              <span id="legend-ema2-txt">EMA380: --</span>
             </span>
             <span class="legend-item hidden" id="legend-ema3-item" onclick="toggleEmaVisibility(3)" title="點擊切換顯示/隱藏">
-              <span id="legend-ema3-txt">EMA228: --</span>
+              <span id="legend-ema3-txt">EMA20: --</span>
             </span>
           </div>
 
@@ -686,11 +608,6 @@
     </div>
   </div>
 
-  <div class="chart-modal-overlay" id="chartModal" onclick="handleModalOutsideClick(event)">
-    <div class="chart-modal-content" id="modalContentSlot">
-    </div>
-  </div>
-
   <div class="footer-links">
     <a href="https://docs.google.com/spreadsheets/d/1QLAqKWyrpG0uRTN3lwBkQaiXNGivEvRZdM_Er-qg3ZY/edit" target="_blank" class="data-source-btn">📊 數據源 Google Sheets</a>
   </div>
@@ -698,11 +615,8 @@
 <script>
 let chartInstance = null;
 let currentSession = 'auto'; 
-let currentResolution = '5'; 
+let currentResolution = '15'; // 預設 15K
 let txViewer = null;
-
-let displayMode = localStorage.getItem('kline_display_mode') || 'inline';
-let inlineVisible = localStorage.getItem('kline_inline_visible') === 'true' || false;
 
 const defaultParams = {
   '5':  { ema1: 20,  ema2: 60,  ema3: 228 },
@@ -726,10 +640,10 @@ let ema3Color = localStorage.getItem('kline_ema3_color') || '#F00078';
 let activeColorEma = null;
 
 // --- 畫線色彩設定 ---
-const TREND_LINE_COLOR = '#00e5ff'; // 趨勢線顏色：亮藍色
-const HORZ_LINE_COLOR  = '#ffeb3b'; // 水平線顏色：黃色
-const RECT_LINE_COLOR  = '#e91e63'; // 矩形邊框顏色：亮粉紅色
-const RECT_FILL_COLOR  = 'rgba(233, 30, 99, 0.12)'; // 矩形填充顏色：半透明粉色
+const TREND_LINE_COLOR = '#00e5ff'; 
+const HORZ_LINE_COLOR  = '#ffeb3b'; 
+const RECT_LINE_COLOR  = '#e91e63'; 
+const RECT_FILL_COLOR  = 'rgba(233, 30, 99, 0.12)'; 
 
 // TradingView 風格色票矩陣
 const tvColors = [
@@ -741,8 +655,8 @@ const tvColors = [
 ];
 
 // --- 畫線功能狀態管理 ---
-let drawMode = null; // null, 'trend', 'horizontal', 'rectangle'
-let drawnLines = []; // 儲存畫線數據
+let drawMode = null; 
+let drawnLines = []; 
 let tempPoint = null; 
 let mousePos = null;
 
@@ -796,48 +710,14 @@ document.getElementById('menuDropdown').addEventListener('click', (e) => {
   e.stopPropagation();
 });
 
-function setMode(mode) {
-  displayMode = mode;
-  localStorage.setItem('kline_display_mode', mode);
-  initDisplayMode();
-  document.getElementById('menuDropdown').classList.remove('show');
-}
-
 function initDisplayMode() {
-  const modalSlot = document.getElementById('modalContentSlot');
-  const wrapper = document.getElementById('converterSectionWrapper');
-  const section = document.getElementById('klineConverterSection');
-  const modalHeaderRow = document.getElementById('modalHeaderRow');
-  const normalTitle = document.getElementById('chart-main-title');
-
-  const btnInline = document.getElementById('menu-inline');
-  const btnPopup = document.getElementById('menu-popup');
-
   syncParamInputs('ema1', ema1Period);
   syncParamInputs('ema2', ema2Period);
   syncParamInputs('ema3', ema3Period);
   updateCheckboxes();
   updateColorPreviews();
   initColorPaletteGrid();
-
-  if (displayMode === 'popup') {
-    btnPopup.textContent = "✔️ 🪟 彈出顯示";
-    btnInline.textContent = "📌 固定畫面下方";
-    modalHeaderRow.style.display = 'flex';
-    normalTitle.style.display = 'none';
-    wrapper.style.display = 'none'; 
-    modalSlot.appendChild(section);
-  } else {
-    btnInline.textContent = "✔️ 📌 固定畫面下方";
-    btnPopup.textContent = "🪟 彈出顯示";
-    modalHeaderRow.style.display = 'none';
-    normalTitle.style.display = 'block';
-    wrapper.appendChild(section);
-    wrapper.style.display = inlineVisible ? 'block' : 'none';
-  }
-  if (inlineVisible || displayMode === 'popup') {
-    resizeChart();
-  }
+  resizeChart();
 }
 
 function syncParamInputs(type, val) {
@@ -940,35 +820,6 @@ function updateCheckboxes() {
   document.getElementById('chk-ema3').checked = ema3Visible;
 }
 
-function handleTitleClick() {
-  if (displayMode === 'popup') {
-    openChartModal();
-  } else {
-    inlineVisible = !inlineVisible;
-    localStorage.setItem('kline_inline_visible', inlineVisible);
-    const wrapper = document.getElementById('converterSectionWrapper');
-    wrapper.style.display = inlineVisible ? 'block' : 'none';
-    if (inlineVisible) {
-      resizeChart();
-    }
-  }
-}
-
-function openChartModal() {
-  document.getElementById('chartModal').style.display = 'flex';
-  resizeChart();
-}
-
-function closeChartModal() {
-  document.getElementById('chartModal').style.display = 'none';
-}
-
-function handleModalOutsideClick(event) {
-  if (event.target.id === 'chartModal') {
-    closeChartModal();
-  }
-}
-
 function resizeChart() {
   setTimeout(() => {
     if (txViewer && txViewer.mainChart) {
@@ -980,7 +831,7 @@ function resizeChart() {
         redrawLines();
       }
     }
-  }, 60);
+  }, 100);
 }
 
 function checkIsDayTime() {
@@ -1359,7 +1210,6 @@ function initTxChart() {
                 
                 const titleText = `📊 K線圖 (${formatDate(startDate)} ~ ${formatDate(endDate)})`;
                 document.getElementById('chart-main-title').textContent = titleText;
-                document.getElementById('chart-main-title-modal').textContent = titleText;
             }
             redrawLines();
         }
@@ -1475,7 +1325,6 @@ function redrawLines() {
     const timeScale = txViewer.mainChart.timeScale();
     const candleSeries = txViewer.candleSeries;
 
-    // 繪製固定的線條/圖形
     drawnLines.forEach(line => {
         ctx.lineWidth = 2;
         ctx.setLineDash([]);
@@ -1527,7 +1376,6 @@ function redrawLines() {
         }
     });
 
-    // 繪製畫線/圖形中的即時預覽虛線
     if (drawMode && mousePos) {
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 4]);
@@ -1628,6 +1476,7 @@ async function loadTxChartData() {
         })).sort((a,b) => a.time - b.time);
 
         txViewer.setData(bars);
+        resizeChart(); // 資料載入完成後重新校正尺寸
     } catch (e) {
         console.error("載入台指 K 線資料失敗", e);
     }
@@ -1649,6 +1498,9 @@ function changeResolution(resolution, btn) {
 
     loadTxChartData();
 }
+
+window.addEventListener('resize', resizeChart);
+window.addEventListener('load', resizeChart);
 
 initDisplayMode();
 
