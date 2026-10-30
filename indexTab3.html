@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>主力戰情室-籌碼 </title>
+    <title>主力戰情室-籌碼</title>
     <style>
         :root {
             --bg: #0d1117;
@@ -71,7 +71,6 @@
             transform: scale(0.95);
         }
         
-        /* SVG 向量箭頭圖示 */
         .icon-svg {
             width: 13px;
             height: 13px;
@@ -154,7 +153,6 @@
         }
         .spot-grid-value:last-child { border-right: none; }
         
-        /* 漲跌色彩標籤 */
         .positive { color: var(--red); }
         .negative { color: var(--green); }
         .zero { color: var(--gray); }
@@ -166,7 +164,6 @@
             font-size: 12px;
         }
 
-        /* 其它表格與控制通用 */
         table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px; background: var(--card); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
         th { background: var(--header); color: var(--gray); padding: 6px 2px; border: 1px solid var(--border); font-size: 10px; text-align: center; }
         td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
@@ -228,7 +225,7 @@
 <body>
 
 <div class="container">
-    <!-- 頁頭頂部區塊 (使用 SVG 旋轉箭頭) -->
+    <!-- 頁頭頂部區塊 -->
     <div class="top-header">
         <div class="page-title">⚔️主力盤後籌碼</div>
         <button id="quickRefreshBtn" class="refresh-btn" onclick="triggerFullRefresh()">
@@ -264,7 +261,7 @@
         <span id="basis-status" class="basis-tag" style="background: #30363d;">計算中</span>
     </div>
 
-    <!-- 模組：法人現貨買賣超卡片 -->
+    <!-- 法人現貨買賣超卡片 -->
     <div class="collapsible-section">
         <div class="section-title" onclick="toggleSection(this)">
             <span>🏛️ 法人現貨買賣超 (<span id="titleDate">--/--</span>)</span>
@@ -314,7 +311,7 @@
         </div>
     </div>
 
-    <!-- 選擇權曝險區塊 -->
+    <!-- 1. 上方：原本的「選擇權曝險診斷」區塊 -->
     <div class="collapsible-section">
         <div class="section-title" onclick="toggleSection(this)">
              <span>📜 選擇權曝險診斷 <span id="settlement-ui"></span></span>
@@ -323,6 +320,17 @@
         <div class="collapse-content">
             <div id="exposure-summary" class="exposure-info">計算中...</div>
             <div id="opt-data-table">載入中...</div>
+        </div>
+    </div>
+
+    <!-- 2. 下方：選擇權未平倉完整資訊區塊 (雙層表頭對齊 XQ) -->
+    <div class="collapsible-section">
+        <div class="section-title" onclick="toggleSection(this)">
+             <span>📋 選擇權未平倉</span>
+            <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="collapse-content">
+            <div id="opt-detail-table-container">載入中...</div>
         </div>
     </div>
 
@@ -406,12 +414,11 @@
     let globalOpt = { dc: 0, dp: 0, fc: 0, fp: 0, dAmtC: 0, dAmtP: 0, fAmtC: 0, fAmtP: 0 };
     let curTSEC = 0, curFITX = 0;
 
-    /* 一鍵更新後自動重整網頁邏輯 */
     async function triggerFullRefresh() {
         const btn = document.getElementById('quickRefreshBtn');
         const btnText = document.getElementById('refreshBtnText');
         
-        if (btn.classList.contains('spinning')) return; // 避免重複點擊
+        if (btn.classList.contains('spinning')) return;
         
         btn.classList.add('spinning');
         if (btnText) btnText.innerText = "更新數據...";
@@ -473,7 +480,6 @@
 
     setInterval(fetchPrices, 6000);
 
-    /* ================= 法人現貨買賣超卡片模組化邏輯 ================= */
     async function autoFetchSpotData() {
         let targetDate = new Date();
         let attempts = 0;
@@ -585,22 +591,23 @@
         const rawNum = parseFloat(amountStr.replace(/,/g, ''));
         return isNaN(rawNum) ? 0 : rawNum;
     }
-    /* ============================================================= */
 
     async function fetchAllData() {
         fetchPrices();
         autoFetchSpotData();
 
         try {
-            const [txRes, nightRes, optRes] = await Promise.all([
+            const [txRes, nightRes, optRes, optDetailRes] = await Promise.all([
                 fetch(`${apiUrl}?type=tx`), 
                 fetch(`${apiUrl}?type=tx_night`), 
-                fetch(apiUrl)
+                fetch(apiUrl),
+                fetch(`${apiUrl}?type=opt_detail`)
             ]);
             
             const txData = await txRes.json();
             const nightData = await nightRes.json();
             const optData = await optRes.json();
+            const optDetailData = await optDetailRes.json();
 
             let fTX = 0, retailMTX = 0, retailMicro = 0;
             txData.forEach(r => {
@@ -615,6 +622,7 @@
             renderTX(txData);
             renderNightTX(nightData);
             renderOption(optData, fTX, retailMTX, retailMicro);
+            renderOptDetail(optDetailData);
         } catch (e) { console.error("Data fetch error:", e); }
     }
 
@@ -715,7 +723,6 @@
             if(isSell) tagClass = "tag-sell-exposure";
             let exposureTxt = isSell ? "<span class='exposure-text'>(曝險)</span>" : "";
 
-            // 新增平均點數計算: (金額 * 1000) / (口數OI * 50)
             let pts = (oiV !== 0) ? (amtV * 1000 / (oiV * 50)) : 0;
             let ptsStr = (oiV !== 0) ? pts.toFixed(2) : '--';
 
@@ -780,19 +787,92 @@
             tableEl.innerHTML = `<table>
                 <thead><tr><th>權別</th><th>差額</th><th>OI</th><th>金額(千)</th><th>點數</th><th>狀態</th><th>大戶</th></tr></thead>
                 <tbody>
-                    <tr>
-                        <td colspan="7" class="sub-header">🟣 自營商 (周選短線/避險指標)</td>
-                    </tr>
+                    <tr><td colspan="7" class="sub-header">🟣 自營商 (周選短線/避險指標)</td></tr>
                     ${finalDealerRows}
-                    <tr>
-                        <td colspan="7" class="sub-header">🔵 外資 (月選中長線主導)</td>
-                    </tr>
+                    <tr><td colspan="7" class="sub-header">🔵 外資 (月選中長線主導)</td></tr>
                     ${finalForeignRows}
                 </tbody>
             </table>`;
         }
 
         runLocalAnalysis(s, fTX, rMTX, rMicro);
+    }
+
+    function renderOptDetail(opt) {
+        let dealerRowsCount = 0;
+        let foreignRowsCount = 0;
+        let dealerHtml = "";
+        let foreignHtml = "";
+        let lastT = "";
+        let lastId = "";
+
+        opt.slice(1).forEach(r => {
+            let [t, id, diff, bQty, bAmt, sQty, sAmt, oiDiff, amtDiff] = r; 
+            if (t && t.trim() !== "") lastT = t; else t = lastT;
+            if (id && id.trim() !== "") lastId = id; else id = lastId;
+            
+            if(!id || (id !== "自營商" && id !== "外資")) return;
+            
+            const isC = t.includes('買權');
+            const netAmtV = parseFloat(String(amtDiff).replace(/,/g, '')) || 0;
+            const oiDiffV = parseFloat(String(oiDiff).replace(/,/g, '')) || 0;
+
+            let actType = isC ? (netAmtV >= 0 ? "BC" : "SC") : (netAmtV >= 0 ? "BP" : "SP");
+            let tagClass = (actType === "BC" || actType === "SP") ? "tag-bull" : "tag-bear";
+            let isSell = (netAmtV < 0);
+            if(isSell) tagClass = "tag-sell-exposure";
+            let exposureTxt = isSell ? "<span class='exposure-text'>(曝險)</span>" : "";
+
+            let rowStr = `<tr>
+                <td style="color:${isC ? 'var(--red)' : 'var(--green)'}">${t}</td>
+                <td class="num-cell ${parseFloat(diff)>=0?'pos':'neg'}">${diff}</td>
+                <td class="num-cell">${bQty}</td>
+                <td class="num-cell">${bAmt}</td>
+                <td class="num-cell">${sQty}</td>
+                <td class="num-cell">${sAmt}</td>
+                <td class="num-cell ${oiDiffV>=0?'pos':'neg'}">${oiDiff}</td>
+                <td class="num-cell ${netAmtV>=0?'pos':'neg'}">${amtDiff}</td>
+                <td><span class="ai-tag ${tagClass}">${actType}</span>${exposureTxt}</td>
+            </tr>`;
+
+            if(id === "自營商") {
+                dealerHtml += rowStr;
+                dealerRowsCount++;
+            } else {
+                foreignHtml += rowStr;
+                foreignRowsCount++;
+            }
+        });
+
+        const detailContainer = document.getElementById('opt-detail-table-container');
+        if (detailContainer) {
+            detailContainer.innerHTML = `<div style="overflow-x: auto;"><table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">權別</th>
+                        <th rowspan="2">今日差額</th>
+                        <th colspan="2">買方</th>
+                        <th colspan="2">賣方</th>
+                        <th colspan="2">買賣差額</th>
+                        <th rowspan="2">狀態</th>
+                    </tr>
+                    <tr>
+                        <th>口數</th>
+                        <th>契約金額</th>
+                        <th>口數</th>
+                        <th>契約金額</th>
+                        <th>口數</th>
+                        <th>契約金額</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="9" class="sub-header">🟣 自營商 (詳細未平倉)</td></tr>
+                    ${dealerHtml}
+                    <tr><td colspan="9" class="sub-header">🔵 外資 (詳細未平倉)</td></tr>
+                    ${foreignHtml}
+                </tbody>
+            </table></div>`;
+        }
     }
 
     function runLocalAnalysis(s, fTX, rMTX, rMicro) {
@@ -862,6 +942,9 @@
         if (trendEl) { trendEl.innerText = trendLabel; trendEl.style.color = trendColor; }
 
         renderBehaviorBadges(s, fSpot, tSpot, dSpot, fTX, retailTotal);
+        
+        // 🎯 自動動態渲染 AI 交易規劃建議區塊
+        renderTradePlanAdvice(s, fSpot, fTX, retailTotal, clampedScore);
     }
 
     function renderSignal(id, spotVal, score, futVal, opt) {
@@ -929,6 +1012,51 @@
         if (badges.length === 0) badges.push({text: '市場訊號混沌', cls: 'neutral'});
 
         el.innerHTML = badges.map(b => `<span class="behavior-badge ${b.cls}">${b.text}</span>`).join('');
+    }
+
+    // 💡 自動在 AI 評級區塊下方繪製「交易規劃建議」
+    function renderTradePlanAdvice(s, fSpot, fTX, retailTotal, score) {
+        let aiBox = document.querySelector('.ai-box');
+        if (!aiBox) return;
+
+        let adviceEl = document.getElementById('ai-trade-plan');
+        if (!adviceEl) {
+            adviceEl = document.createElement('div');
+            adviceEl.id = 'ai-trade-plan';
+            adviceEl.style.cssText = 'margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 11px;';
+            aiBox.appendChild(adviceEl);
+        }
+
+        let mainTrend = score >= 3 ? "多頭掌控" : score <= -3 ? "空頭壓制" : "震盪格局";
+        let mainCls = score >= 3 ? "var(--red)" : score <= -3 ? "var(--green)" : "var(--gold)";
+
+        let strategyTitle = "";
+        let strategyDesc = "";
+
+        if (retailTotal > 3000 && (fTX < 0 || score <= 0)) {
+            strategyTitle = "🎯 順主力偏空 / 逆散戶追多策略";
+            strategyDesc = "• <b>期貨操作</b>：散戶小微台大幅追多，且外資期空壓陣，反彈至均線或壓力區尋求<b>逢高偏空</b>布局，勿追高多單。<br>" +
+                           "• <b>選擇權策略</b>：可佈局 <b>Sell Call 價差</b> 或 <b>買權賣方</b> 賺取時間價值，防範壓盤洗盤。";
+        } else if (retailTotal < -3000 && (fTX > 0 || score >= 0)) {
+            strategyTitle = "🎯 順主力偏多 / 逆散戶殺空策略";
+            strategyDesc = "• <b>期貨操作</b>：散戶小微台極度看空，主力現期偏多承接，回檔尋求支撐<b>逢低佈多</b>，留意軋空行情。<br>" +
+                           "• <b>選擇權策略</b>：可佈局 <b>Sell Put 價差</b> 或 <b>買權買方 (BC)</b> 順勢卡位。";
+        } else {
+            strategyTitle = "🎯 區間帶狀 / 觀望保險策略";
+            strategyDesc = "• <b>期貨操作</b>：籌碼訊號混沌或多空拉扯，建議縮小口數以<b>日內沖銷</b>為主。<br>" +
+                           "• <b>選擇權策略</b>：採取 <b>賣出雙向價差 (Strangle)</b> 雙向收租，注意嚴設停損。";
+        }
+
+        adviceEl.innerHTML = `
+            <div style="font-size: 11px; font-weight: bold; color: ${mainCls}; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
+                <span>💡 AI 戰術交易規劃</span>
+                <span style="font-size: 9px; padding: 1px 4px; border: 1px solid ${mainCls}; border-radius: 3px;">${mainTrend}</span>
+            </div>
+            <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px; border-left: 3px solid ${mainCls}; line-height: 1.5;">
+                <div style="font-weight: bold; color: #fff; margin-bottom: 3px;">${strategyTitle}</div>
+                <div style="color: #c9d1d9; font-size: 10px;">${strategyDesc}</div>
+            </div>
+        `;
     }
     
     function updateSettlementUI() {
