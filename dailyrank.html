@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>台股熱門股即時報價</title>
   <style>
     :root {
@@ -567,10 +567,17 @@
       const minVal = Math.min(high, open, close, low);
       const range = maxVal - minVal;
 
-      // 如果高低價完全一樣（平盤無波動）
+      // 顏色判定：收 >= 開為紅 (up)，否則為綠 (down)
+      const isUp = close >= open;
+      const color = isUp ? 'var(--up-color)' : 'var(--down-color)';
+      const centerX = svgWidth / 2;
+
+      // 如果高低價完全一樣（平盤無波動，或開盤即漲停鎖死導致無波動範圍）
       if (range === 0) {
+        const midY = svgHeight / 2;
+        const dashWidth = 10; // 控制短槓的寬度大小
         return `<svg width="${svgWidth}" height="${svgHeight}" style="vertical-align: middle;">
-          <line x1="2" y1="${svgHeight/2}" x2="${svgWidth-2}" y2="${svgHeight/2}" stroke="#94a3b8" stroke-width="1.5" />
+          <line x1="${centerX - dashWidth/2}" y1="${midY}" x2="${centerX + dashWidth/2}" y2="${midY}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" />
         </svg>`;
       }
 
@@ -588,10 +595,6 @@
       const bodyBottom = Math.max(openY, closeY);
       const bodyHeight = Math.max(Math.abs(closeY - openY), 1.5); // 確保至少有一點高度
 
-      // 顏色判定：收 >= 開為紅 (up)，否則為綠 (down)
-      const isUp = close >= open;
-      const color = isUp ? 'var(--up-color)' : 'var(--down-color)';
-      const centerX = svgWidth / 2;
       const bodyWidth = 8;
 
       return `<svg width="${svgWidth}" height="${svgHeight}" style="vertical-align: middle;">
