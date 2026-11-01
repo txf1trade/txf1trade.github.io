@@ -13,7 +13,7 @@
   
   <script>
     /* 指標外掛入口：外部指標檔呼叫 TVIndicators.register({...})；主程式就緒前先排隊 */
-    window.TV_INDICATOR_FILES = window.TV_INDICATOR_FILES || [];   // ← 要載入的指標檔，可自行增減
+    window.TV_INDICATOR_FILES = window.TV_INDICATOR_FILES || ['indicators/trend-wave.js'];   // ← 要載入的指標檔，可自行增減
     window.TVIndicators = window.TVIndicators || (function () {
       const q = [], api = { register(d) { api._h ? api._h(d) : q.push(d); }, _attach(h) { api._h = h; q.splice(0).forEach(h); } };
       return api;
@@ -165,6 +165,7 @@
     /* 指標「數值 / 參數」顯示開關（設定選單控制 body 的 class） */
     body.hide-val .lg-val, body.hide-val .lg-sep { display: none !important; }
     body.hide-par .lg-par { display: none !important; }
+    body.hide-name .lg-name { display: none !important; }
     .legend-item {
       cursor: pointer;
       padding: 1px 4px;
@@ -247,13 +248,31 @@
     .mini-chip { cursor:pointer; padding:1px 4px; border-radius:3px; } .mini-chip:hover { background:#2a2e39; } .mini-chip.off { opacity:.35; text-decoration:line-through; }
     #ohlc-bar { display:flex; flex-wrap:wrap; gap:0 8px; }
 
-    /* ===== 版面：K線 → 即時走勢圖 垂直排列；清單改為左下角浮窗 ===== */
-    #watchlist-wrapper { position:fixed !important; left:8px; right:auto !important; top:auto !important; bottom:calc(56px + env(safe-area-inset-bottom,0px) + 8px);
-      width:min(410px,calc(100vw - 16px)) !important; max-width:none !important; height:min(520px,70dvh) !important; transform:none !important;
-      border:1px solid #2a2e39 !important; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,.6); display:none !important; z-index:60; }
-    #watchlist-wrapper.open { display:flex !important; }
-    #settings-dropdown { position:fixed !important; left:8px; right:auto !important; top:auto !important; bottom:calc(56px + env(safe-area-inset-bottom,0px) + 8px); z-index:61; max-height:70dvh; overflow-y:auto; }
-    #bottom-bar > div::-webkit-scrollbar { display:none; }
+    /* ===== 版面：手機＝K線 + (走勢 / 清單 切換) + 底部工具列；電腦＝左K線、右清單+走勢 ===== */
+    #left-col, #right-col { display: contents; }
+    #chart-section { order: 1; flex: 1 1 0; min-height: 0; }
+    #bottom-resizer { order: 2; }
+    #symbol-detail-card { order: 3; height: 36%; min-height: 190px; max-height: 60%; }
+    #watchlist-wrapper { order: 3; position: relative !important; left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+      transform: none !important; width: 100% !important; max-width: none !important; border: none !important; border-top: 1px solid #2a2e39 !important;
+      box-shadow: none !important; border-radius: 0 !important; display: none !important; height: 42% !important; min-height: 200px; flex-shrink: 0; z-index: auto; }
+    #bottom-bar { order: 4; }
+    body.show-list #watchlist-wrapper { display: flex !important; }
+    body.show-list #symbol-detail-card, body.show-list #bottom-resizer { display: none !important; }
+    .mob-only { display: flex; }
+    #drawer-backdrop, #btn-close-drawer { display: none !important; }
+    #settings-dropdown { position: fixed !important; left: 8px; right: auto !important; top: auto !important; bottom: calc(56px + env(safe-area-inset-bottom,0px) + 8px); z-index: 61; max-height: 70dvh; overflow-y: auto; }
+    #bottom-bar > div::-webkit-scrollbar { display: none; }
+    @media (min-width: 768px) {
+      .mob-only { display: none !important; }
+      #app-main { flex-direction: row !important; }
+      #left-col { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+      #right-col { display: flex; flex-direction: column; width: 420px; flex-shrink: 0; min-height: 0; border-left: 1px solid #2a2e39; background: #1e222d; }
+      #bottom-bar { order: 2; }
+      #watchlist-wrapper { display: flex !important; flex: 1; height: auto !important; min-height: 0; order: 1; border-top: none !important; }
+      #bottom-resizer { order: 2; }
+      #symbol-detail-card { order: 3; height: 250px; min-height: 170px; max-height: 70%; }
+    }
   </style>
 </head>
 <body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
@@ -281,10 +300,11 @@
   </header>
 
   <!-- Main Grid Content -->
-  <div class="flex-1 flex flex-col overflow-hidden relative min-h-0">
+  <div id="app-main" class="flex-1 flex flex-col overflow-hidden relative min-h-0">
+  <div id="left-col">
     
     <!-- Left Section: Chart Area -->
-    <div class="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-tvBg">
+    <div id="chart-section" class="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-tvBg">
       <!-- Active Symbol Info Bar -->
       <div class="h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 text-xs shrink-0">
         <div class="flex items-center space-x-2 truncate">
@@ -369,12 +389,12 @@
 
         <div id="chart-container" class="flex-1 w-full relative min-h-0 overflow-hidden"></div>
         <div id="vol-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:22%;min-height:90px;max-height:35%">
-          <div class="absolute top-1 left-2 z-10 text-[11px] text-tvTextMuted pointer-events-none">成交量</div>
+          <div class="absolute top-1 left-2 z-10 text-[11px] text-tvTextMuted pointer-events-none lg-name">成交量</div>
           <div id="vol-container" class="w-full h-full overflow-hidden"></div>
         </div>
         <div id="mcdx-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:30%;min-height:130px;max-height:42%">
           <div class="absolute top-1 left-2 right-2 z-10 flex items-center gap-2 text-[11px] font-mono">
-            <span class="text-white font-bold pointer-events-none">MCDX</span>
+            <span class="text-white font-bold pointer-events-none lg-name">MCDX</span>
             <select id="mcdx-len" class="lg-par bg-tvBg border border-tvBorder rounded text-[10px] text-tvText px-1 py-0 focus:outline-none">
               <option value="auto">自動</option><option value="50">50</option><option value="100">100</option></select>
             <span id="mcdx-legend" class="pointer-events-none"></span>
@@ -388,21 +408,42 @@
       </div>
     </div>
 
-      <div id="bottom-resizer" class="h-3 bg-tvBorder hover:bg-tvAccent cursor-ns-resize shrink-0 transition-colors relative z-20 flex items-center justify-center group" title="上下拖曳調整下方詳細面板高度">
+    <!-- 畫面最下方：清單 / 設定 / 指標列 -->
+  <div id="bottom-bar" class="bg-tvPanel border-t border-tvBorder flex items-center shrink-0 z-[65] font-mono select-none" style="height:56px;box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px)">
+    <div class="flex items-center gap-1 pl-2 pr-1 shrink-0">
+      <button id="toggle-watchlist-btn" class="sidebar-btn mob-only" title="自選商品清單"><i class="fa-solid fa-bookmark text-sm"></i></button>
+      <button id="btn-trend" class="sidebar-btn mob-only active" title="走勢圖"><i class="fa-solid fa-chart-line text-sm"></i></button>
+      <button id="btn-settings-3" class="sidebar-btn" title="設定：欄位與指標顯示"><i class="fa-solid fa-sliders text-sm"></i></button>
+    </div>
+    <div class="w-px h-6 bg-tvBorder shrink-0"></div>
+    <div class="flex-1 min-w-0 flex items-center space-x-5 px-3 text-sm overflow-x-auto whitespace-nowrap">
+          <button data-ind="filter" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">過濾線</button>
+          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">多頭線</button>
+          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
+          <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR</button>
+          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
+          <button id="tab-vwap" class="py-2 px-1" title="VWAP（依交易日重置，日K為累積）">VWAP</button>
+          <button id="tab-mcdx" class="py-2 px-1" title="MCDX 籌碼副圖">MCDX</button>
+    </div>
+          <div class="flex items-center gap-1 text-xs">
+            <button id="sc-pct" class="scale-btn" title="百分比座標">%</button>
+            <button id="sc-log" class="scale-btn" title="對數座標">log</button>
+            <button id="sc-auto" class="scale-btn" title="自動縮放並回到最新">自動</button>
+          </div>
+  </div>
+        <!-- 設定三：下拉選單 -->
+  </div>
+  <div id="right-col">
+    <div id="bottom-resizer" class="h-3 bg-tvBorder hover:bg-tvAccent cursor-ns-resize shrink-0 transition-colors relative z-20 flex items-center justify-center group" title="上下拖曳調整下方詳細面板高度">
         <div class="w-10 h-1 bg-tvTextMuted/60 rounded-full group-hover:bg-white"></div>
       </div>
-      <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0 flex flex-col gap-2" style="height: 36%; min-height: 190px; max-height: 60%;">
-        <div class="flex justify-between items-start">
-          <div>
-            <div id="card-name" class="font-bold text-white text-sm">--</div>
-            <div id="card-code" class="text-tvTextMuted text-[10px] bg-tvHover px-1.5 py-0.5 rounded font-mono mt-0.5 inline-block">--</div>
-          </div>
-          <div id="card-change-badge" class="font-mono text-right font-bold text-xs px-2 py-0.5 rounded bg-tvHover">--</div>
-        </div>
-
-        <div class="flex items-baseline space-x-2">
-          <span id="card-price" class="text-xl font-bold font-mono text-white">--</span>
-          <span class="text-[10px] text-tvTextMuted">TWD</span>
+      <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0 flex flex-col gap-2" >
+        <div class="flex items-center gap-2 min-w-0 whitespace-nowrap">
+          <div id="card-name" class="font-bold text-white text-sm truncate">--</div>
+          <div id="card-code" class="text-tvTextMuted text-[10px] bg-tvHover px-1.5 py-0.5 rounded font-mono shrink-0">--</div>
+          <span id="card-price" class="text-lg font-bold font-mono text-white shrink-0">--</span>
+          <span class="text-[10px] text-tvTextMuted shrink-0">TWD</span>
+          <div id="card-change-badge" class="ml-auto font-mono text-right font-bold text-xs px-2 py-0.5 rounded bg-tvHover shrink-0">--</div>
         </div>
 
         <div class="flex items-center justify-between gap-2 pt-1 border-t border-tvBorder/30 text-[11px] font-mono whitespace-nowrap overflow-hidden">
@@ -466,29 +507,7 @@
 
     </div>
   </div>
-  <!-- 畫面最下方：清單 / 設定 / 指標列 -->
-  <div id="bottom-bar" class="bg-tvPanel border-t border-tvBorder flex items-center shrink-0 z-[65] font-mono select-none" style="height:56px;box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px)">
-    <div class="flex items-center gap-1 pl-2 pr-1 shrink-0">
-      <button id="toggle-watchlist-btn" class="sidebar-btn" title="自選商品清單"><i class="fa-solid fa-bookmark text-sm"></i></button>
-      <button id="btn-settings-3" class="sidebar-btn" title="設定：欄位與指標顯示"><i class="fa-solid fa-sliders text-sm"></i></button>
-    </div>
-    <div class="w-px h-6 bg-tvBorder shrink-0"></div>
-    <div class="flex-1 min-w-0 flex items-center space-x-5 px-3 text-sm overflow-x-auto whitespace-nowrap">
-          <button data-ind="filter" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">過濾線</button>
-          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">多頭線</button>
-          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
-          <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR</button>
-          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
-          <button id="tab-vwap" class="py-2 px-1" title="VWAP（依交易日重置，日K為累積）">VWAP</button>
-          <button id="tab-mcdx" class="py-2 px-1" title="MCDX 籌碼副圖">MCDX</button>
-    </div>
-          <div class="flex items-center gap-1 text-xs">
-            <button id="sc-pct" class="scale-btn" title="百分比座標">%</button>
-            <button id="sc-log" class="scale-btn" title="對數座標">log</button>
-            <button id="sc-auto" class="scale-btn" title="自動縮放並回到最新">自動</button>
-          </div>
   </div>
-        <!-- 設定三：下拉選單 -->
         <div id="settings-dropdown" class="absolute top-11 right-2 bg-tvPanel border border-tvBorder rounded shadow-xl p-3 z-50 hidden text-xs w-52 space-y-2.5">
           <div class="font-bold text-white border-b border-tvBorder pb-1 mb-1">顯示欄位設定</div>
           <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
@@ -513,6 +532,10 @@
           <div class="border-t border-tvBorder pt-2 mt-1 space-y-2">
             <div class="text-tvTextMuted text-[10px]">指標顯示</div>
             <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+              <input type="checkbox" id="ind-show-name" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+              <span>顯示指標名稱</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
               <input type="checkbox" id="ind-show-val" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
               <span>顯示指標數值</span>
             </label>
@@ -520,6 +543,7 @@
               <input type="checkbox" id="ind-show-par" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
               <span>顯示指標參數</span>
             </label>
+            <button id="ind-only-val" type="button" class="w-full mt-1 text-[11px] py-1 rounded border border-tvBorder text-tvTextMuted hover:text-white hover:bg-tvHover">只顯示數值</button>
           </div>
         </div>
 
@@ -588,7 +612,7 @@
       trendWave: false  // 台指順勢波段副圖
     };
     /* 指標文字顯示偏好：數值預設開、參數預設關 */
-    let uiPrefs = { showValues: true, showParams: false };
+    let uiPrefs = { showNames: true, showValues: true, showParams: false };
     /* 底部分頁 ↔ 指標線 對應 */
     const IND_TAB_LINES = { filter: ['filter12'], ema: ['ema20', 'ema60'], daily: ['daily', 'weekly'], atr: ['atrTrend'], vol: ['vol'], vwap: ['vwap'], mcdx: ['mcdx'], trendWave: ['trendWave'] };
 
@@ -608,7 +632,8 @@
 
     /* ---- 價格顯示：K線/報價依商品跳動點決定小數位；均價與指標一律取整數 ---- */
     function curCode() { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); return it ? it.code : 'TX-1'; }
-    function tickOf(code, price) { const S = window.TV_SETTINGS; return S && S.tickSize ? S.tickSize(code, price) : ((price || 0) < 1000 ? 0.01 : 1); }
+    const _T = { 'TX-1': 1, 'TXAM-1': 1, 'TWN-1': 0.05, 'NQ-1': 0.25, 'GC-1': 0.1, 'NK-1': 5, 'BTCUSDT': 0.01 };   // 備援；正式設定在 trend-wave.js
+    function tickOf(code, price) { const S = window.TV_SETTINGS; if (S && S.tickSize) return S.tickSize(code, price); return _T[String(code).toUpperCase()] || ((price || 0) < 1000 ? 0.01 : 1); }
     function decOf(code, price) { const t = tickOf(code, price); if (t >= 1) return 0; const s = String(t); return s.includes('.') ? s.split('.')[1].length : 0; }
     function priceOf(code) { const it = getAllWatchlistItems().find(s => s.code === code); return (it && it.price) || (currentCandles.length ? currentCandles[currentCandles.length - 1].close : 0); }
     function curDec() { const c = curCode(); return decOf(c, priceOf(c)); }
@@ -683,6 +708,7 @@
       Object.keys(IND_TAB_LINES).forEach(k => { indicatorStates[k] = IND_TAB_LINES[k].some(l => lineVisibility[l]); });
     })();
     function applyUiPrefs() {
+      document.body.classList.toggle('hide-name', !uiPrefs.showNames);
       document.body.classList.toggle('hide-val', !uiPrefs.showValues);
       document.body.classList.toggle('hide-par', !uiPrefs.showParams);
     }
@@ -1714,6 +1740,28 @@
         ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(miniFmtT(miniT[hv]), tx + tw / 2, H - 5);
       }
 
+      // 十字游標資訊框：時間 / 價 / 相對昨收漲跌 / 均價 / 高低 / 量（滑鼠移動或手指按住時顯示）
+      if (hv != null && miniList[hv]) {
+        const b = miniList[hv], cur = getAllWatchlistItems().find(s => s.id === selectedSymbolId) || {}, ref = cur.refPrice, dec = curDec();
+        const chg = ref > 0 ? closes[hv] - ref : null, sg = chg >= 0 ? '+' : '';
+        const rows = [
+          [miniFmtT(miniT[hv]), '#9aa0ad'],
+          ['價 ' + closes[hv].toFixed(dec), '#ffffff'],
+          chg != null ? ['漲跌 ' + sg + chg.toFixed(dec) + ' (' + sg + (chg / ref * 100).toFixed(2) + '%)', chg >= 0 ? '#f23645' : '#089981'] : null,
+          miniShow.vwap ? ['均價 ' + fmtInt(miniVw[hv]), '#e040fb'] : null,
+          b.high != null && b.low != null ? ['高 ' + b.high.toFixed(dec) + '  低 ' + b.low.toFixed(dec), '#d1d4dc'] : null,
+          b.volume > 0 ? ['量 ' + Number(b.volume).toLocaleString(), '#d1d4dc'] : null
+        ].filter(Boolean);
+        ctx.font = '10px monospace';
+        const bw = Math.max(...rows.map(r => ctx.measureText(r[0]).width)) + 14, bh = rows.length * 13 + 8;
+        let tx = hx + 14; if (tx + bw > pl + gw) tx = hx - 14 - bw; tx = Math.max(pl + 2, tx);
+        const ty = pt + 4;
+        ctx.fillStyle = 'rgba(30,34,45,0.92)'; ctx.fillRect(tx, ty, bw, bh);
+        ctx.strokeStyle = '#363a45'; ctx.lineWidth = 1; ctx.strokeRect(tx + 0.5, ty + 0.5, bw - 1, bh - 1);
+        ctx.textAlign = 'left';
+        rows.forEach((r, i) => { ctx.fillStyle = r[1]; ctx.fillText(r[0], tx + 7, ty + 15 + i * 13); });
+      }
+
       // 右側價格標籤 (成本 / VWAP)
       const tag = (v, col) => {
         const y = Math.max(pt + 6, Math.min(pt + gh - 6, yOf(v))), x = pl + gw + 2;
@@ -2009,12 +2057,17 @@
 
       /* 指標顯示偏好（數值 / 參數） */
       const cbVal = document.getElementById('ind-show-val'), cbPar = document.getElementById('ind-show-par');
-      cbVal.checked = uiPrefs.showValues; cbPar.checked = uiPrefs.showParams; applyUiPrefs();
+      const cbName = document.getElementById('ind-show-name');
+      cbName.checked = uiPrefs.showNames; cbVal.checked = uiPrefs.showValues; cbPar.checked = uiPrefs.showParams; applyUiPrefs();
+      cbName.addEventListener('change', e => { uiPrefs.showNames = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
+      document.getElementById('ind-only-val').addEventListener('click', () => {
+        uiPrefs.showNames = false; uiPrefs.showParams = false; uiPrefs.showValues = true;
+        cbName.checked = false; cbPar.checked = false; cbVal.checked = true; applyUiPrefs(); saveIndPrefs();
+      });
       cbVal.addEventListener('change', e => { uiPrefs.showValues = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
       cbPar.addEventListener('change', e => { uiPrefs.showParams = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
 
       const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
-      toggleWatchlistBtn.classList.remove('active');
       const watchlistWrapper = document.getElementById('watchlist-wrapper');
       const backdrop = document.getElementById('drawer-backdrop');
       const resizer = document.getElementById('panel-resizer');
@@ -2024,24 +2077,23 @@
         return window.innerWidth < 768;
       }
 
-      function toggleWatchlist(force) {
-        const open = typeof force === 'boolean' ? force : !watchlistWrapper.classList.contains('open');
-        watchlistWrapper.classList.toggle('open', open);
-        toggleWatchlistBtn.classList.toggle('active', open);
-        backdrop.classList.toggle('show', open && isMobileScreen());
-        if (open) settingsDropdown.classList.add('hidden');
+      const trendBtn = document.getElementById('btn-trend');
+      function toggleWatchlist(force) {          // 手機：下方區塊在「走勢」與「清單」間切換
+        const on = typeof force === 'boolean' ? force : !document.body.classList.contains('show-list');
+        document.body.classList.toggle('show-list', on);
+        toggleWatchlistBtn.classList.toggle('active', on);
+        trendBtn.classList.toggle('active', !on);
+        if (on) settingsDropdown.classList.add('hidden');
+        setTimeout(() => { try { renderMini(); } catch (e) {} }, 60);
       }
+      trendBtn.addEventListener('click', () => toggleWatchlist(false));
 
       toggleWatchlistBtn.addEventListener('click', toggleWatchlist);
       if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', toggleWatchlist);
       if (backdrop) backdrop.addEventListener('click', toggleWatchlist);
 
       window.addEventListener('symbolSelected', () => {
-        if (isMobileScreen()) {
-          toggleWatchlistBtn.classList.remove('active');
-          watchlistWrapper.classList.remove('open');
-          backdrop.classList.remove('show');
-        }
+        if (isMobileScreen()) toggleWatchlist(false);
       });
 
       document.querySelectorAll('.ind-tab').forEach(btn => {
@@ -2647,7 +2699,7 @@
         pane.style.cssText = `height:${def.height || '18%'};min-height:${def.minHeight || '100px'};max-height:40%`;
         const head = document.createElement('div');
         head.className = 'absolute top-1 left-2 right-2 z-10 flex items-center gap-2 text-[11px] font-mono pointer-events-none';
-        const title = document.createElement('span'); title.className = 'text-white font-bold'; title.textContent = def.name;
+        const title = document.createElement('span'); title.className = 'text-white font-bold lg-name'; title.textContent = def.name;
         const legend = document.createElement('span'); head.append(title, legend);
         const box = document.createElement('div'); box.className = 'w-full h-full overflow-hidden';
         pane.append(head, box);
@@ -2751,11 +2803,16 @@
       const files = [].concat(window.TV_INDICATOR_FILES || []);
       /* 只允許本站 indicators/ 底下的檔，避免被惡意連結載入外部程式 */
       try { const q = new URLSearchParams(location.search).get('ind'); if (q) files.push(...q.split(',').map(x => x.trim()).filter(x => /^indicators\/[\w.-]+\.js$/.test(x))); } catch (e) {}
-      files.forEach(f => {
+      const loadFile = (f, retry) => {
+        if (/trend-wave\.js$/.test(f) && mounted['trend-wave']) return;      // <head> 已載入成功就不重複載入
         const sc = document.createElement('script'); sc.src = f;
-        sc.onerror = () => console.warn('找不到指標檔：' + f);
+        sc.onerror = () => {
+          console.warn('找不到指標檔：' + f);
+          if (retry && f.indexOf('/') > -1) loadFile(f.split('/').pop(), false);   // 備援：與網頁同一資料夾
+        };
         document.body.appendChild(sc);
-      });
+      };
+      files.forEach(f => loadFile(f, true));
     })();
 
     /* ================= 繪圖工具 ================= */
