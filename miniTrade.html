@@ -268,6 +268,13 @@
     /* 隱藏指標：收起底部指標列，並隱藏圖上的指標名稱 / 參數 / 數值與圖例 */
     body.ind-hidden #ind-tabs-wrap { visibility: hidden; }
     body.ind-hidden #chart-legend, body.ind-hidden #mcdx-table, body.ind-hidden .lg-name, body.ind-hidden .lg-par, body.ind-hidden .lg-val, body.ind-hidden .lg-sep { display: none !important; }
+    /* 手機：走勢圖按鈕未點亮 → 隱藏走勢圖，K 線佔滿整個畫面 */
+    @media (max-width: 767px) { body.hide-trend #symbol-detail-card { display: none !important; } }
+    /* 副圖上緣可拖曳的高度調整把手 */
+    .pane-resizer { position:absolute; left:0; right:0; top:-4px; height:11px; z-index:30; cursor:ns-resize; touch-action:none; display:flex; align-items:center; justify-content:center; }
+    .pane-resizer::after { content:''; width:36px; height:3px; border-radius:2px; background:#434651; transition:background .15s; }
+    .pane-resizer:hover::after, .pane-resizer.dragging::after { background:#2962ff; }
+    body.ind-hidden .pane-resizer { display:none; }
     @media (min-width: 768px) {
       .mob-only { display: none !important; }
       #app-main { flex-direction: row !important; }
@@ -393,11 +400,11 @@
         </div>
 
         <div id="chart-container" class="flex-1 w-full relative min-h-0 overflow-hidden"></div>
-        <div id="vol-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:22%;min-height:90px;max-height:35%">
+        <div id="vol-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:14%;min-height:56px;max-height:60%">
           <div class="absolute top-1 left-2 z-10 text-[11px] text-tvTextMuted pointer-events-none lg-name">成交量</div>
           <div id="vol-container" class="w-full h-full overflow-hidden"></div>
         </div>
-        <div id="mcdx-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:30%;min-height:130px;max-height:42%">
+        <div id="mcdx-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:19%;min-height:84px;max-height:60%">
           <div class="absolute top-1 left-2 right-2 z-10 flex items-center gap-2 text-[11px] font-mono">
             <span class="text-white font-bold pointer-events-none lg-name">MCDX</span>
             <select id="mcdx-len" class="lg-par bg-tvBg border border-tvBorder rounded text-[10px] text-tvText px-1 py-0 focus:outline-none">
@@ -2174,15 +2181,29 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
       }
 
       const trendBtn = document.getElementById('btn-trend');
-      function toggleWatchlist(force) {          // 手機：下方區塊在「走勢」與「清單」間切換
+      /* 手機：走勢圖按鈕點亮＝K 線 + 走勢圖；未點亮＝K 線佔滿整個畫面；清單按鈕＝顯示自選清單 */
+      let trendOn = true;
+      try { trendOn = localStorage.getItem('tvTrendOn') !== '0'; } catch (e) {}
+      function applyMobileView() {
+        const list = document.body.classList.contains('show-list');
+        document.body.classList.toggle('hide-trend', !trendOn);
+        toggleWatchlistBtn.classList.toggle('active', list);
+        trendBtn.classList.toggle('active', trendOn && !list);
+        if (list) settingsDropdown.classList.add('hidden');
+        setTimeout(() => { try { renderMini(); } catch (e) {} window.dispatchEvent(new Event('resize')); }, 60);
+      }
+      function toggleWatchlist(force) {
         const on = typeof force === 'boolean' ? force : !document.body.classList.contains('show-list');
         document.body.classList.toggle('show-list', on);
-        toggleWatchlistBtn.classList.toggle('active', on);
-        trendBtn.classList.toggle('active', !on);
-        if (on) settingsDropdown.classList.add('hidden');
-        setTimeout(() => { try { renderMini(); } catch (e) {} }, 60);
+        applyMobileView();
       }
-      trendBtn.addEventListener('click', () => toggleWatchlist(false));
+      trendBtn.addEventListener('click', () => {
+        if (document.body.classList.contains('show-list')) { trendOn = true; document.body.classList.remove('show-list'); }
+        else trendOn = !trendOn;
+        try { localStorage.setItem('tvTrendOn', trendOn ? '1' : '0'); } catch (e) {}
+        applyMobileView();
+      });
+      applyMobileView();
 
       const indBtn = document.getElementById('btn-ind-toggle');
       function applyIndHidden(v) {
@@ -2472,6 +2493,28 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
     const paneState = { vol: false, mcdx: false };
     const extraPanes = [];                       // 外掛指標副圖 {id, on, chart}（依畫面由上到下排列）
     let vchartRef = null, mchartRef = null;
+    /* 副圖高度拖曳：把手在副圖上緣，往上拖變高、往下拖變矮；高度依副圖 key 記住 */
+    function attachPaneResizer(pane, key) {
+      if (!pane || pane.querySelector(':scope > .pane-resizer')) return;
+      const h = document.createElement('div');
+      h.className = 'pane-resizer'; h.title = '上下拖曳調整副圖高度（雙擊還原）';
+      pane.insertBefore(h, pane.firstChild);
+      const LS = 'tvPaneH_' + key, defH = pane.style.height;
+      try { const v = parseInt(localStorage.getItem(LS), 10); if (v >= 40) pane.style.height = v + 'px'; } catch (e) {}
+      let sy = 0, sh = 0, drag = false;
+      const limits = () => { const par = pane.parentElement; return [parseInt(pane.style.minHeight, 10) || 56, Math.max(80, (par ? par.clientHeight : 600) * 0.6)]; };
+      h.addEventListener('pointerdown', e => { drag = true; sy = e.clientY; sh = pane.offsetHeight; h.classList.add('dragging'); try { h.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); });
+      h.addEventListener('pointermove', e => {
+        if (!drag) return;
+        const [mn, mx] = limits();
+        pane.style.height = Math.round(Math.max(mn, Math.min(mx, sh + (sy - e.clientY)))) + 'px';
+      });
+      const end = () => { if (!drag) return; drag = false; h.classList.remove('dragging'); try { localStorage.setItem(LS, parseInt(pane.style.height, 10)); } catch (e) {} };
+      h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
+      h.addEventListener('dblclick', () => { pane.style.height = defH; try { localStorage.removeItem(LS); } catch (e) {} });
+    }
+    attachPaneResizer($('vol-pane'), 'vol');
+    attachPaneResizer($('mcdx-pane'), 'mcdx');
     function layoutAxes() {
       const order = [['vol', paneState.vol, vchartRef], ['mcdx', paneState.mcdx, mchartRef], ...extraPanes.map(p => [p.id, p.on, p.chart])];
       const lastOn = order.filter(o => o[1]).pop();
@@ -2802,13 +2845,14 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         /* --- DOM：副圖 + 底部分頁按鈕 --- */
         const pane = document.createElement('div');
         pane.className = 'hidden relative border-t border-tvBorder shrink-0';
-        pane.style.cssText = `height:${def.height || '18%'};min-height:${def.minHeight || '100px'};max-height:40%`;
+        pane.style.cssText = `height:${def.height || '12%'};min-height:${def.minHeight || '56px'};max-height:60%`;
         const head = document.createElement('div');
         head.className = 'absolute top-1 left-2 right-2 z-10 flex items-center gap-2 text-[11px] font-mono pointer-events-none';
         const title = document.createElement('span'); title.className = 'text-white font-bold lg-name'; title.textContent = def.name;
         const legend = document.createElement('span'); head.append(title, legend);
         const box = document.createElement('div'); box.className = 'w-full h-full overflow-hidden';
         pane.append(head, box);
+        attachPaneResizer(pane, id);
         paneAnchor.insertAdjacentElement('afterend', pane); paneAnchor = pane;
         const btn = document.createElement('button');
         btn.className = TAB_OFF; btn.textContent = def.tab || def.name; btn.title = def.name;
