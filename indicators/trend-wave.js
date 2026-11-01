@@ -1,4 +1,34 @@
 /* ============================================================
+ * 指標與商品設定中心 (indicators/trend-wave.js)
+ * 主網頁於 <head> 先載入本檔，再讀取 window.TV_SETTINGS：
+ *   lines    : 各商品的均線長度 (過濾線 / 多頭線 / 日線 / 週線)
+ *   tickSize : 各商品最小跳動點 → 決定 K 線與報價的小數位數
+ * 規則：K 線、報價依跳動點顯示；均線、VWAP、指標數值一律取整數
+ * 新增商品或修改均線長度，只需改這裡，不必動主網頁。
+ * ============================================================ */
+(function () {
+  const lines = {
+    'TX-1':    { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 },
+    'TXAM-1':  { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 },
+    'TWN-1':   { filter: 12, ema20: 20, ema60: 60, daily: 80, weekly: 400 },
+    'NQ-1':    { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },
+    'GC-1':    { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },
+    'NK-1':    { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },
+    'BTCUSDT': { filter: 12, ema20: 20, ema60: 60, daily: 96, weekly: 480 },
+    'DEFAULT': { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 }
+  };
+  const TICKS = { 'TX-1': 1, 'TXAM-1': 1, 'TWN-1': 0.05, 'NQ-1': 0.25, 'GC-1': 0.1, 'NK-1': 5,
+                  'BTCUSDT': 0.01, 'TSEA': 0.01, 'OTCA': 0.01, 'TAIWANVIX': 0.01 };
+  function tickSize(code, price) {
+    const c = String(code || '').toUpperCase();
+    if (c in TICKS) return TICKS[c];
+    const p = price || 0;                                   // 個股 / 股期：台股升降單位
+    return p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
+  }
+  window.TV_SETTINGS = { lines, tickSize };
+})();
+
+/* ============================================================
  * 台指順勢波段  (由 Pine Script v5 移植)
  * 規則：15 分K 收盤價「連續 confirmBars 根」都在 EMA(emaLength) 之上 → 多(紅 +1)
  *       連續 confirmBars 根都在 EMA 之下 → 空(綠 -1)；其餘維持前一狀態
