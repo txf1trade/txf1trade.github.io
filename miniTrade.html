@@ -13,12 +13,13 @@
   
   <script>
     /* 指標外掛入口：外部指標檔呼叫 TVIndicators.register({...})；主程式就緒前先排隊 */
-    window.TV_INDICATOR_FILES = window.TV_INDICATOR_FILES || ['indicators/trend-wave.js'];   // ← 要載入的指標檔，可自行增減
+    window.TV_INDICATOR_FILES = window.TV_INDICATOR_FILES || [];   // ← 要載入的指標檔，可自行增減
     window.TVIndicators = window.TVIndicators || (function () {
       const q = [], api = { register(d) { api._h ? api._h(d) : q.push(d); }, _attach(h) { api._h = h; q.splice(0).forEach(h); } };
       return api;
     })();
   </script>
+  <script src="indicators/trend-wave.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -237,7 +238,22 @@
     .scale-btn.on { color:#2962ff; background:rgba(41,98,255,.15); }
     .tb-icon { width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#b2b5be; }
     .tb-icon:hover { background:#2a2e39; color:#fff; }
-    #watchlist-wrapper.collapsed { width: 0 !important; min-width: 0 !important; border-left: none !important; }\n    @media (max-width: 767px) { #watchlist-wrapper { width: 100% !important; } }\n    #mcdx-table table { border-collapse:collapse; font-size:10px; font-family:monospace; text-align:center; opacity:.92; }\n    #mcdx-table td { padding:1px 6px; color:#000; border:1px solid rgba(128,128,128,.35); min-width:34px; }\n    #mcdx-table td.h { background:#363a45; color:#fff; }\n    #mcdx-table td.s { color:#787b86; border:none; padding:0 4px; }\n    .mini-chip { cursor:pointer; padding:1px 4px; border-radius:3px; } .mini-chip:hover { background:#2a2e39; } .mini-chip.off { opacity:.35; text-decoration:line-through; }\n    #ohlc-bar { display:flex; flex-wrap:wrap; gap:0 8px; }
+    #watchlist-wrapper.collapsed { width: 0 !important; min-width: 0 !important; border-left: none !important; }
+    @media (max-width: 767px) { #watchlist-wrapper { width: 100% !important; } }
+    #mcdx-table table { border-collapse:collapse; font-size:10px; font-family:monospace; text-align:center; opacity:.92; }
+    #mcdx-table td { padding:1px 6px; color:#000; border:1px solid rgba(128,128,128,.35); min-width:34px; }
+    #mcdx-table td.h { background:#363a45; color:#fff; }
+    #mcdx-table td.s { color:#787b86; border:none; padding:0 4px; }
+    .mini-chip { cursor:pointer; padding:1px 4px; border-radius:3px; } .mini-chip:hover { background:#2a2e39; } .mini-chip.off { opacity:.35; text-decoration:line-through; }
+    #ohlc-bar { display:flex; flex-wrap:wrap; gap:0 8px; }
+
+    /* ===== 版面：K線 → 即時走勢圖 垂直排列；清單改為左下角浮窗 ===== */
+    #watchlist-wrapper { position:fixed !important; left:8px; right:auto !important; top:auto !important; bottom:calc(56px + env(safe-area-inset-bottom,0px) + 8px);
+      width:min(410px,calc(100vw - 16px)) !important; max-width:none !important; height:min(520px,70dvh) !important; transform:none !important;
+      border:1px solid #2a2e39 !important; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,.6); display:none !important; z-index:60; }
+    #watchlist-wrapper.open { display:flex !important; }
+    #settings-dropdown { position:fixed !important; left:8px; right:auto !important; top:auto !important; bottom:calc(56px + env(safe-area-inset-bottom,0px) + 8px); z-index:61; max-height:70dvh; overflow-y:auto; }
+    #bottom-bar > div::-webkit-scrollbar { display:none; }
   </style>
 </head>
 <body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
@@ -265,10 +281,10 @@
   </header>
 
   <!-- Main Grid Content -->
-  <div class="flex-1 flex overflow-hidden relative">
+  <div class="flex-1 flex flex-col overflow-hidden relative min-h-0">
     
     <!-- Left Section: Chart Area -->
-    <div class="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden border-r border-tvBorder bg-tvBg max-h-[65vh] sm:max-h-none">
+    <div class="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-tvBg">
       <!-- Active Symbol Info Bar -->
       <div class="h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 text-xs shrink-0">
         <div class="flex items-center space-x-2 truncate">
@@ -368,109 +384,14 @@
           <div id="mcdx-container" class="w-full h-full overflow-hidden"></div>
         </div>
 
-        <!-- 畫面下方的底部指標切換列 -->
-        <div class="h-14 bg-tvPanel border-t border-tvBorder flex items-center px-4 space-x-6 text-sm shrink-0 z-20 font-mono select-none overflow-x-auto whitespace-nowrap">
-          <button data-ind="filter" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">過濾線</button>
-          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">多頭線</button>
-          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
-          <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR</button>
-          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
-          <button id="tab-vwap" class="py-2 px-1" title="VWAP（依交易日重置，日K為累積）">VWAP</button>
-          <button id="tab-mcdx" class="py-2 px-1" title="MCDX 籌碼副圖">MCDX</button>
-          <div class="ml-auto flex items-center gap-1 text-xs">
-            <button id="sc-pct" class="scale-btn" title="百分比座標">%</button>
-            <button id="sc-log" class="scale-btn" title="對數座標">log</button>
-            <button id="sc-auto" class="scale-btn" title="自動縮放並回到最新">自動</button>
-          </div>
-        </div>
       </div>
       </div>
     </div>
 
-    <!-- Resizer Drag Handle Bar -->
-    <div id="panel-resizer" class="hidden md:block w-1 bg-tvBorder hover:bg-tvAccent cursor-ew-resize shrink-0 transition-colors z-30 select-none relative group" title="拖曳調整面板寬度">
-      <div class="absolute inset-y-0 -left-1 -right-1 cursor-ew-resize"></div>
-    </div>
-
-    <!-- 手機抽屜背景遮罩 -->
-    <div id="drawer-backdrop"></div>
-
-    <!-- 右側自選面板 Wrapper -->
-    <div id="watchlist-wrapper">
-      <!-- Watchlist Header -->
-      <div class="h-10 px-3 border-b border-tvBorder flex items-center justify-between shrink-0 relative">
-        <div class="flex items-center space-x-2">
-          <span class="font-bold text-sm text-white">自選商品群組</span>
-          <span class="text-xs bg-tvHover px-2 py-0.5 rounded text-tvTextMuted font-mono" id="watchlist-count">0</span>
-        </div>
-        <div class="flex items-center space-x-1">
-          <button id="btn-settings-3" class="p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white relative" title="設定三：欄位與總量顯示設定">
-            <i class="fa-solid fa-sliders text-xs"></i>
-          </button>
-          <button id="btn-open-modal" class="p-1.5 hover:bg-tvHover rounded text-tvText hover:text-white" title="新增自選商品">
-            <i class="fa-solid fa-plus text-xs"></i>
-          </button>
-          <button id="btn-close-drawer" class="md:hidden p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <!-- 設定三：下拉選單 -->
-        <div id="settings-dropdown" class="absolute top-11 right-2 bg-tvPanel border border-tvBorder rounded shadow-xl p-3 z-50 hidden text-xs w-52 space-y-2.5">
-          <div class="font-bold text-white border-b border-tvBorder pb-1 mb-1">顯示欄位設定</div>
-          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
-            <input type="checkbox" id="col-change" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
-            <span>漲跌 (點數)</span>
-          </label>
-          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
-            <input type="checkbox" id="col-percent" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
-            <span>漲跌幅 (%)</span>
-          </label>
-          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
-            <input type="checkbox" id="col-volume" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
-            <span>總量顯示</span>
-          </label>
-          <div class="border-t border-tvBorder pt-2 mt-1">
-            <div class="text-tvTextMuted mb-1 text-[10px]">總量單位模式</div>
-            <select id="vol-mode-select" class="w-full bg-tvBg border border-tvBorder rounded px-2 py-1 text-white focus:outline-none focus:border-tvAccent">
-              <option value="auto">自動 (K/M 縮寫或完整)</option>
-              <option value="full">完整顯示數字</option>
-            </select>
-          </div>
-          <div class="border-t border-tvBorder pt-2 mt-1 space-y-2">
-            <div class="text-tvTextMuted text-[10px]">指標顯示</div>
-            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
-              <input type="checkbox" id="ind-show-val" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
-              <span>顯示指標數值</span>
-            </label>
-            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
-              <input type="checkbox" id="ind-show-par" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
-              <span>顯示指標參數</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- 三大群組切換 Tab -->
-      <div id="group-tabs-bar" class="flex items-center border-b border-tvBorder bg-tvBg/60 shrink-0">
-        <button class="group-tab-btn active" data-group="自選股">自選股</button>
-        <button class="group-tab-btn" data-group="海期">海期</button>
-        <button class="group-tab-btn" data-group="股期">股期</button>
-      </div>
-
-      <!-- Watchlist Table Header -->
-      <div id="watchlist-header" class="flex items-center px-2 py-2 text-[11px] text-tvTextMuted font-medium border-b border-tvBorder shrink-0 bg-tvBg/40 w-full"></div>
-
-      <!-- Watchlist Items Container -->
-      <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full min-h-[100px]"></div>
-
-      <!-- 上下垂直拖曳調整霸 -->
       <div id="bottom-resizer" class="h-3 bg-tvBorder hover:bg-tvAccent cursor-ns-resize shrink-0 transition-colors relative z-20 flex items-center justify-center group" title="上下拖曳調整下方詳細面板高度">
         <div class="w-10 h-1 bg-tvTextMuted/60 rounded-full group-hover:bg-white"></div>
       </div>
-
-      <!-- Bottom Quick Summary Card + 右下角走勢圖 Canvas (支援動態調整高度) -->
-      <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0 flex flex-col gap-2" style="height: 380px; min-height: 180px; max-height: 75%;">
+      <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0 flex flex-col gap-2" style="height: 36%; min-height: 190px; max-height: 60%;">
         <div class="flex justify-between items-start">
           <div>
             <div id="card-name" class="font-bold text-white text-sm">--</div>
@@ -509,15 +430,98 @@
           </div>
         </div>
       </div>
-    </div>
+    <!-- 手機抽屜背景遮罩 -->
+    <div id="drawer-backdrop"></div>
+    <!-- 清單浮窗面板（點左下角清單鈕顯示/隱藏） -->
+    <div id="watchlist-wrapper">
+      <!-- Watchlist Header -->
+      <div class="h-10 px-3 border-b border-tvBorder flex items-center justify-between shrink-0 relative">
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-sm text-white">自選商品群組</span>
+          <span class="text-xs bg-tvHover px-2 py-0.5 rounded text-tvTextMuted font-mono" id="watchlist-count">0</span>
+        </div>
+        <div class="flex items-center space-x-1">
+          <button id="btn-open-modal" class="p-1.5 hover:bg-tvHover rounded text-tvText hover:text-white" title="新增自選商品">
+            <i class="fa-solid fa-plus text-xs"></i>
+          </button>
+          <button id="btn-close-drawer" class="p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
 
-    <!-- 最右側官方圖示側邊欄 -->
-    <div id="sidebar-icons">
-      <button class="sidebar-btn active" id="toggle-watchlist-btn" title="自選商品清單">
-        <i class="fa-solid fa-bookmark text-sm"></i>
-      </button>
+      </div>
+
+      <!-- 三大群組切換 Tab -->
+      <div id="group-tabs-bar" class="flex items-center border-b border-tvBorder bg-tvBg/60 shrink-0">
+        <button class="group-tab-btn active" data-group="自選股">自選股</button>
+        <button class="group-tab-btn" data-group="海期">海期</button>
+        <button class="group-tab-btn" data-group="股期">股期</button>
+      </div>
+
+      <!-- Watchlist Table Header -->
+      <div id="watchlist-header" class="flex items-center px-2 py-2 text-[11px] text-tvTextMuted font-medium border-b border-tvBorder shrink-0 bg-tvBg/40 w-full"></div>
+
+      <!-- Watchlist Items Container -->
+      <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full min-h-[100px]"></div>
+
     </div>
   </div>
+  <!-- 畫面最下方：清單 / 設定 / 指標列 -->
+  <div id="bottom-bar" class="bg-tvPanel border-t border-tvBorder flex items-center shrink-0 z-[65] font-mono select-none" style="height:56px;box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px)">
+    <div class="flex items-center gap-1 pl-2 pr-1 shrink-0">
+      <button id="toggle-watchlist-btn" class="sidebar-btn" title="自選商品清單"><i class="fa-solid fa-bookmark text-sm"></i></button>
+      <button id="btn-settings-3" class="sidebar-btn" title="設定：欄位與指標顯示"><i class="fa-solid fa-sliders text-sm"></i></button>
+    </div>
+    <div class="w-px h-6 bg-tvBorder shrink-0"></div>
+    <div class="flex-1 min-w-0 flex items-center space-x-5 px-3 text-sm overflow-x-auto whitespace-nowrap">
+          <button data-ind="filter" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">過濾線</button>
+          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">多頭線</button>
+          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
+          <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR</button>
+          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
+          <button id="tab-vwap" class="py-2 px-1" title="VWAP（依交易日重置，日K為累積）">VWAP</button>
+          <button id="tab-mcdx" class="py-2 px-1" title="MCDX 籌碼副圖">MCDX</button>
+    </div>
+          <div class="flex items-center gap-1 text-xs">
+            <button id="sc-pct" class="scale-btn" title="百分比座標">%</button>
+            <button id="sc-log" class="scale-btn" title="對數座標">log</button>
+            <button id="sc-auto" class="scale-btn" title="自動縮放並回到最新">自動</button>
+          </div>
+  </div>
+        <!-- 設定三：下拉選單 -->
+        <div id="settings-dropdown" class="absolute top-11 right-2 bg-tvPanel border border-tvBorder rounded shadow-xl p-3 z-50 hidden text-xs w-52 space-y-2.5">
+          <div class="font-bold text-white border-b border-tvBorder pb-1 mb-1">顯示欄位設定</div>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-change" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>漲跌 (點數)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-percent" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>漲跌幅 (%)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-volume" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>總量顯示</span>
+          </label>
+          <div class="border-t border-tvBorder pt-2 mt-1">
+            <div class="text-tvTextMuted mb-1 text-[10px]">總量單位模式</div>
+            <select id="vol-mode-select" class="w-full bg-tvBg border border-tvBorder rounded px-2 py-1 text-white focus:outline-none focus:border-tvAccent">
+              <option value="auto">自動 (K/M 縮寫或完整)</option>
+              <option value="full">完整顯示數字</option>
+            </select>
+          </div>
+          <div class="border-t border-tvBorder pt-2 mt-1 space-y-2">
+            <div class="text-tvTextMuted text-[10px]">指標顯示</div>
+            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+              <input type="checkbox" id="ind-show-val" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+              <span>顯示指標數值</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+              <input type="checkbox" id="ind-show-par" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+              <span>顯示指標參數</span>
+            </label>
+          </div>
+        </div>
 
   <!-- Add Symbol Modal -->
   <div id="add-symbol-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
@@ -598,6 +602,29 @@
       'BTCUSDT':   { filter: 12, ema20: 20, ema60: 60, daily: 96, weekly: 480 },
       'DEFAULT':{ filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 }                         
     };
+
+
+    if (window.TV_SETTINGS && window.TV_SETTINGS.lines) Object.assign(symbolLineConfigs, window.TV_SETTINGS.lines);   // 均線參數統一由 indicators/trend-wave.js 提供
+
+    /* ---- 價格顯示：K線/報價依商品跳動點決定小數位；均價與指標一律取整數 ---- */
+    function curCode() { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); return it ? it.code : 'TX-1'; }
+    function tickOf(code, price) { const S = window.TV_SETTINGS; return S && S.tickSize ? S.tickSize(code, price) : ((price || 0) < 1000 ? 0.01 : 1); }
+    function decOf(code, price) { const t = tickOf(code, price); if (t >= 1) return 0; const s = String(t); return s.includes('.') ? s.split('.')[1].length : 0; }
+    function priceOf(code) { const it = getAllWatchlistItems().find(s => s.code === code); return (it && it.price) || (currentCandles.length ? currentCandles[currentCandles.length - 1].close : 0); }
+    function curDec() { const c = curCode(); return decOf(c, priceOf(c)); }
+    function fmtPx(v, code) { if (v == null || isNaN(v)) return '--'; const d = decOf(code, v); return Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+    const fmtInt = v => (v == null || isNaN(v)) ? '--' : Math.round(v).toLocaleString('en-US');
+    const INT_FMT = { type: 'price', precision: 0, minMove: 1 };
+    let _pxKey = '';
+    function applyPxFormat() {
+      try {
+        const c = curCode(), p = priceOf(c), t = tickOf(c, p), k = c + '|' + t;
+        if (k === _pxKey || !candlestickSeries) return; _pxKey = k;
+        const f = { type: 'price', precision: decOf(c, p), minMove: t };
+        candlestickSeries.applyOptions({ priceFormat: f });
+        if (window.__altSeries) Object.values(window.__altSeries).forEach(s => s.applyOptions({ priceFormat: f }));
+      } catch (e) {}
+    }
 
     function getLineParams(code) {
       const upper = (code || '').toUpperCase();
@@ -923,6 +950,7 @@
         visible: false,
       });
 
+      [filter12Series, ema20Series, ema60Series, dailySeries, weeklySeries, atrTrendSeries].forEach(s => s.applyOptions({ priceFormat: INT_FMT }));
       chart.subscribeCrosshairMove(param => {
         if (!param || !param.time || !currentCandles.length) return;
         const time = param.time;
@@ -945,27 +973,29 @@
         const matchAtr = atrData.find(d => d.time === time);
 
         if (indicatorStates.filter) {
-          document.getElementById('legend-filter').textContent = matchFilter ? matchFilter.value.toFixed(2) : '--';
+          document.getElementById('legend-filter').textContent = matchFilter ? matchFilter.value.toFixed(0) : '--';
         }
         if (indicatorStates.ema) {
-          document.getElementById('legend-ema20').textContent = match20 ? match20.value.toFixed(2) : '--';
-          document.getElementById('legend-ema60').textContent = match60 ? match60.value.toFixed(2) : '--';
+          document.getElementById('legend-ema20').textContent = match20 ? match20.value.toFixed(0) : '--';
+          document.getElementById('legend-ema60').textContent = match60 ? match60.value.toFixed(0) : '--';
         }
         if (indicatorStates.daily) {
-          document.getElementById('legend-dailyval').textContent = matchDaily ? matchDaily.value.toFixed(2) : '--';
-          document.getElementById('legend-weeklyval').textContent = matchWeekly ? matchWeekly.value.toFixed(2) : '--';
+          document.getElementById('legend-dailyval').textContent = matchDaily ? matchDaily.value.toFixed(0) : '--';
+          document.getElementById('legend-weeklyval').textContent = matchWeekly ? matchWeekly.value.toFixed(0) : '--';
         }
         if (indicatorStates.atr) {
-          document.getElementById('legend-atrval').textContent = matchAtr ? matchAtr.value.toFixed(2) : '--';
+          document.getElementById('legend-atrval').textContent = matchAtr ? matchAtr.value.toFixed(0) : '--';
         }
       });
 
       window.addEventListener('resize', () => {
         chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
       });
+      if (window.ResizeObserver) new ResizeObserver(() => chart.applyOptions({ width: container.clientWidth, height: container.clientHeight })).observe(container);
     }
 
     function updateIndicatorDisplay() {
+      applyPxFormat();
       const allItems = getAllWatchlistItems();
       const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TX-1' };
       const params = getLineParams(currentSymbol.code);
@@ -1163,18 +1193,18 @@
             const lastAtr = calculateAtrTrend(currentCandles);
 
             if (indicatorStates.filter && lastFilter.length > 0) {
-              document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(2);
+              document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(0);
             }
             if (indicatorStates.ema && last20.length > 0) {
-              document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(2);
-              document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(2);
+              document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(0);
+              document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(0);
             }
             if (indicatorStates.daily && lastDaily.length > 0) {
-              document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(2);
-              document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(2);
+              document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(0);
+              document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(0);
             }
             if (indicatorStates.atr && lastAtr.length > 0) {
-              document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(2);
+              document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(0);
             }
           }
 
@@ -1221,18 +1251,18 @@
         const lastAtr = calculateAtrTrend(currentCandles);
 
         if (indicatorStates.filter && lastFilter.length > 0) {
-          document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(2);
+          document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(0);
         }
         if (indicatorStates.ema && last20.length > 0) {
-          document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(2);
-          document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(2);
+          document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(0);
+          document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(0);
         }
         if (indicatorStates.daily && lastDaily.length > 0) {
-          document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(2);
-          document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(2);
+          document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(0);
+          document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(0);
         }
         if (indicatorStates.atr && lastAtr.length > 0) {
-          document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(2);
+          document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(0);
         }
       }
 
@@ -1305,7 +1335,7 @@
                   const filterData = calculateEMA(currentCandles, params.filter);
                   if (filterData.length > 0) {
                     filter12Series.update(filterData[filterData.length - 1]);
-                    document.getElementById('legend-filter').textContent = filterData[filterData.length - 1].value.toFixed(2);
+                    document.getElementById('legend-filter').textContent = filterData[filterData.length - 1].value.toFixed(0);
                   }
                 }
                 if (indicatorStates.ema) {
@@ -1313,14 +1343,14 @@
                     const e20Data = calculateEMA(currentCandles, params.ema20);
                     if (e20Data.length > 0) {
                       ema20Series.update(e20Data[e20Data.length - 1]);
-                      document.getElementById('legend-ema20').textContent = e20Data[e20Data.length - 1].value.toFixed(2);
+                      document.getElementById('legend-ema20').textContent = e20Data[e20Data.length - 1].value.toFixed(0);
                     }
                   }
                   if (lineVisibility.ema60) {
                     const e60Data = calculateEMA(currentCandles, params.ema60);
                     if (e60Data.length > 0) {
                       ema60Series.update(e60Data[e60Data.length - 1]);
-                      document.getElementById('legend-ema60').textContent = e60Data[e60Data.length - 1].value.toFixed(2);
+                      document.getElementById('legend-ema60').textContent = e60Data[e60Data.length - 1].value.toFixed(0);
                     }
                   }
                 }
@@ -1329,14 +1359,14 @@
                     const dailyData = calculateEMA(currentCandles, params.daily);
                     if (dailyData.length > 0) {
                       dailySeries.update(dailyData[dailyData.length - 1]);
-                      document.getElementById('legend-dailyval').textContent = dailyData[dailyData.length - 1].value.toFixed(2);
+                      document.getElementById('legend-dailyval').textContent = dailyData[dailyData.length - 1].value.toFixed(0);
                     }
                   }
                   if (lineVisibility.weekly) {
                     const weeklyData = calculateEMA(currentCandles, params.weekly);
                     if (weeklyData.length > 0) {
                       weeklySeries.update(weeklyData[weeklyData.length - 1]);
-                      document.getElementById('legend-weeklyval').textContent = weeklyData[weeklyData.length - 1].value.toFixed(2);
+                      document.getElementById('legend-weeklyval').textContent = weeklyData[weeklyData.length - 1].value.toFixed(0);
                     }
                   }
                 }
@@ -1344,7 +1374,7 @@
                   const atrData = calculateAtrTrend(currentCandles);
                   if (atrData.length > 0) {
                     atrTrendSeries.update(atrData[atrData.length - 1]);
-                    document.getElementById('legend-atrval').textContent = atrData[atrData.length - 1].value.toFixed(2);
+                    document.getElementById('legend-atrval').textContent = atrData[atrData.length - 1].value.toFixed(0);
                   }
                 }
               }
@@ -1438,13 +1468,13 @@
           <div class="w-[18%] font-mono text-tvTextMuted text-[11px] truncate pr-0.5">${item.code}</div>
           <div class="w-[22%] font-bold text-white truncate px-0.5">${item.name}</div>
           <div class="w-[24%] text-right font-mono font-medium text-white truncate px-0.5">
-            ${item.price > 0 ? item.price.toLocaleString(undefined, { minimumFractionDigits: item.price < 1000 ? 2 : 0 }) : '--'}
+            ${item.price > 0 ? fmtPx(item.price, item.code) : '--'}
           </div>
         `;
         if (columnSettings.change) {
           rowHTML += `
             <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
-              ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)}` : '--'}
+              ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(decOf(item.code, item.price))}` : '--'}
             </div>
           `;
         }
@@ -1495,10 +1525,10 @@
       const priceElem = document.getElementById('active-price');
       const changeElem = document.getElementById('active-change');
 
-      priceElem.textContent = symbol.price > 0 ? symbol.price.toLocaleString(undefined, { minimumFractionDigits: symbol.price < 1000 ? 2 : 0 }) : '--';
+      priceElem.textContent = symbol.price > 0 ? fmtPx(symbol.price, symbol.code) : '--';
       priceElem.className = `text-sm ${colorClass}`;
 
-      changeElem.textContent = symbol.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)} (${isUp ? '+' : ''}${changePercent}%)` : '--';
+      changeElem.textContent = symbol.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(decOf(symbol.code, symbol.price))} (${isUp ? '+' : ''}${changePercent}%)` : '--';
       changeElem.className = `text-xs px-1.5 py-0.5 rounded ${bgClass} ${colorClass}`;
     }
 
@@ -1513,14 +1543,14 @@
 
       document.getElementById('card-name').textContent = symbol.name;
       document.getElementById('card-code').textContent = symbol.code;
-      document.getElementById('card-price').textContent = symbol.price > 0 ? symbol.price.toLocaleString(undefined, { minimumFractionDigits: symbol.price < 1000 ? 2 : 0 }) : '--';
-      document.getElementById('card-high').textContent = symbol.high > 0 ? symbol.high.toFixed(1) : '--';
-      document.getElementById('card-low').textContent = symbol.low > 0 ? symbol.low.toFixed(1) : '--';
-      document.getElementById('card-ref').textContent = symbol.refPrice > 0 ? symbol.refPrice.toFixed(1) : '--';
+      document.getElementById('card-price').textContent = symbol.price > 0 ? fmtPx(symbol.price, symbol.code) : '--';
+      document.getElementById('card-high').textContent = symbol.high > 0 ? fmtPx(symbol.high, symbol.code) : '--';
+      document.getElementById('card-low').textContent = symbol.low > 0 ? fmtPx(symbol.low, symbol.code) : '--';
+      document.getElementById('card-ref').textContent = symbol.refPrice > 0 ? fmtPx(symbol.refPrice, symbol.code) : '--';
       document.getElementById('card-vol').textContent = symbol.volume > 0 ? symbol.volume.toLocaleString() : '--';
 
       const badge = document.getElementById('card-change-badge');
-      badge.textContent = symbol.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(1)} (${isUp ? '+' : ''}${changePercent}%)` : '--';
+      badge.textContent = symbol.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(decOf(symbol.code, symbol.price))} (${isUp ? '+' : ''}${changePercent}%)` : '--';
       badge.className = `font-mono text-right font-bold text-xs px-2 py-0.5 rounded ${bgClass} ${colorClass}`;
     }
 
@@ -1551,7 +1581,7 @@
     try { Object.assign(miniShow, JSON.parse(localStorage.getItem('miniShow') || '{}')); } catch (e) {}
     const MINI_GEO = { pl: 30, pr: 58, pt: 16, pb: 18 };
     const miniFmtT = ms => new Date(ms).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
-    const miniNum = v => Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const miniNum = v => fmtPx(v, curCode());
 
     async function fetchAndRenderMiniVix() {
       const cur = getAllWatchlistItems().find(s => s.id === selectedSymbolId) || { code: 'TAIWANVIX', name: '' };
@@ -1596,7 +1626,7 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
 
       const n = miniList.length;
-      const setChip = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v == null ? '--' : miniNum(v); };
+      const setChip = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v == null ? '--' : fmtInt(v); };
       if (!n) { setChip('card-vwap', null); setChip('card-cost', null); return; }
 
       const { pl, pr, pt, pb } = MINI_GEO, gw = W - pl - pr, gh = H - pt - pb;
@@ -1629,7 +1659,7 @@
       for (let i = 0; i <= ySteps; i++) {
         const val = minP + range * (ySteps - i) / ySteps, y = pt + gh / ySteps * i;
         ctx.strokeStyle = '#2a2e39'; ctx.beginPath(); ctx.moveTo(pl, y); ctx.lineTo(pl + gw, y); ctx.stroke();
-        ctx.fillStyle = '#d1d4dc'; ctx.fillText(val.toFixed(2), pl + gw + 5, y + 3);
+        ctx.fillStyle = '#d1d4dc'; ctx.fillText(val.toFixed(curDec()), pl + gw + 5, y + 3);
       }
       // X 時間刻度
       ctx.fillStyle = '#787b86'; ctx.textAlign = 'center';
@@ -1678,7 +1708,7 @@
         ctx.font = '9px monospace'; ctx.fillStyle = '#2a2e39';
         const py = Math.max(pt + 6, Math.min(pt + gh - 6, hy));
         ctx.fillRect(pl + gw + 2, py - 6, pr - 3, 12);
-        ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(closes[hv].toFixed(2), pl + gw + 4, py + 3);
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(closes[hv].toFixed(curDec()), pl + gw + 4, py + 3);
         const tw = 36, tx = Math.max(pl, Math.min(pl + gw - tw, hx - tw / 2));
         ctx.fillStyle = '#2a2e39'; ctx.fillRect(tx, H - pb + 1, tw, 13);
         ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(miniFmtT(miniT[hv]), tx + tw / 2, H - 5);
@@ -1688,7 +1718,7 @@
       const tag = (v, col) => {
         const y = Math.max(pt + 6, Math.min(pt + gh - 6, yOf(v))), x = pl + gw + 2;
         ctx.fillStyle = col; ctx.fillRect(x, y - 6, pr - 3, 12);
-        ctx.fillStyle = '#fff'; ctx.font = '9px monospace'; ctx.textAlign = 'left'; ctx.fillText(v.toFixed(2), x + 2, y + 3);
+        ctx.fillStyle = '#fff'; ctx.font = '9px monospace'; ctx.textAlign = 'left'; ctx.fillText(fmtInt(v), x + 2, y + 3);
       };
       if (miniShow.cost) tag(cost, '#c27a1a');
       if (miniShow.vwap) tag(miniVw[n - 1], '#a21fb5');
@@ -1696,7 +1726,7 @@
       // 滑鼠懸停資訊（右上）
       ctx.font = '9px monospace'; ctx.textAlign = 'right'; ctx.fillStyle = '#d1d4dc';
       const k = hv != null ? hv : n - 1;
-      ctx.fillText(`${miniFmtT(miniT[k])}  ${miniNum(closes[k])}` + (miniShow.vwap ? `  VWAP ${miniNum(miniVw[k])}` : ''), pl + gw, pt - 5);
+      ctx.fillText(`${miniFmtT(miniT[k])}  ${miniNum(closes[k])}` + (miniShow.vwap ? `  VWAP ${fmtInt(miniVw[k])}` : ''), pl + gw, pt - 5);
 
       setChip('card-vwap', miniVw[n - 1]); setChip('card-cost', cost);
     }
@@ -1850,7 +1880,7 @@
       const handleMove = (clientY) => {
         if (!isResizing) return;
         let newHeight = startHeight + (startY - clientY);
-        const maxHeight = watchlistWrapper.clientHeight - 130;
+        const maxHeight = detailCard.parentNode.clientHeight - 160;
         newHeight = Math.max(160, Math.min(newHeight, maxHeight));
         detailCard.style.height = `${newHeight}px`;
         renderMini(); // 即時重繪 Canvas
@@ -1948,6 +1978,7 @@
 
       settingsBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        toggleWatchlist(false);
         settingsDropdown.classList.toggle('hidden');
       });
 
@@ -1983,6 +2014,7 @@
       cbPar.addEventListener('change', e => { uiPrefs.showParams = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
 
       const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
+      toggleWatchlistBtn.classList.remove('active');
       const watchlistWrapper = document.getElementById('watchlist-wrapper');
       const backdrop = document.getElementById('drawer-backdrop');
       const resizer = document.getElementById('panel-resizer');
@@ -1992,25 +2024,12 @@
         return window.innerWidth < 768;
       }
 
-      function toggleWatchlist() {
-        if (isMobileScreen()) {
-          watchlistWrapper.classList.toggle('open');
-          backdrop.classList.toggle('show');
-        } else {
-          watchlistWrapper.classList.toggle('collapsed');
-          toggleWatchlistBtn.classList.toggle('active');
-          if (watchlistWrapper.classList.contains('collapsed')) {
-            if (resizer) resizer.style.display = 'none';
-          } else {
-            if (resizer) resizer.style.display = 'block';
-          }
-        }
-        setTimeout(() => {
-          if (chart) {
-            const container = document.getElementById('chart-container');
-            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-          }
-        }, 220);
+      function toggleWatchlist(force) {
+        const open = typeof force === 'boolean' ? force : !watchlistWrapper.classList.contains('open');
+        watchlistWrapper.classList.toggle('open', open);
+        toggleWatchlistBtn.classList.toggle('active', open);
+        backdrop.classList.toggle('show', open && isMobileScreen());
+        if (open) settingsDropdown.classList.add('hidden');
       }
 
       toggleWatchlistBtn.addEventListener('click', toggleWatchlist);
@@ -2019,6 +2038,7 @@
 
       window.addEventListener('symbolSelected', () => {
         if (isMobileScreen()) {
+          toggleWatchlistBtn.classList.remove('active');
           watchlistWrapper.classList.remove('open');
           backdrop.classList.remove('show');
         }
@@ -2132,7 +2152,7 @@
 
   const S = () => (chartType === 'candle' ? candlestickSeries : alt[chartType]);
   const toLine = c => ({ time: c.time, value: c.close });
-  const fmt = v => (v == null || isNaN(v)) ? '--' : Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = v => (v == null || isNaN(v)) ? '--' : Number(v).toLocaleString('en-US', { minimumFractionDigits: curDec(), maximumFractionDigits: curDec() });
 
   function initTV() {
     const ts = chart.timeScale();
@@ -2155,6 +2175,7 @@
     alt.bar  = chart.addBarSeries({ upColor: UP, downColor: DOWN, visible: false });
     alt.line = chart.addLineSeries({ color: '#2962ff', lineWidth: 2, visible: false });
     alt.area = chart.addAreaSeries({ lineColor: '#2962ff', topColor: 'rgba(41,98,255,.35)', bottomColor: 'rgba(41,98,255,0)', lineWidth: 2, visible: false });
+    window.__altSeries = alt;
     const sd = candlestickSeries.setData.bind(candlestickSeries);
     const su = candlestickSeries.update.bind(candlestickSeries);
     candlestickSeries.setData = d => { sd(d); alt.bar.setData(d); const l = d.map(toLine); alt.line.setData(l); alt.area.setData(l); };
@@ -2201,7 +2222,7 @@
 
 
     /* ---------- VWAP ---------- */
-    const vwapSeries = chart.addLineSeries({ color: '#e040fb', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, title: 'VWAP' });
+    const vwapSeries = chart.addLineSeries({ color: '#e040fb', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, title: 'VWAP', priceFormat: INT_FMT });
     let vwapOn = !!lineVisibility.vwap, vwapMap = new Map();
     const sig = {}, prev = {};
     /* 交易日分組：夜盤(15:00起)與隔日日盤同一組；日K不重置 */
@@ -2261,7 +2282,7 @@
         `<span class="text-tvTextMuted">收</span><span style="color:${col}">${fmt(c.close)}</span>` +
         `<span style="color:${col}">${s}${fmt(chg)} (${s}${pct.toFixed(2)}%)</span>` +
         (c.volume != null ? `<span class="text-tvTextMuted">量</span><span style="color:${col}">${Number(c.volume).toLocaleString()}</span>` : '') +
-        (vwapOn && vwapMap.has(c.time) ? `<span style="color:#e040fb"><span class="lg-name">VWAP</span><span class="lg-val"> ${fmt(vwapMap.get(c.time))}</span></span>` : '');
+        (vwapOn && vwapMap.has(c.time) ? `<span style="color:#e040fb"><span class="lg-name">VWAP</span><span class="lg-val"> ${fmtInt(vwapMap.get(c.time))}</span></span>` : '');
     }
     let fromMini = false;
     chart.subscribeCrosshairMove(p => {
