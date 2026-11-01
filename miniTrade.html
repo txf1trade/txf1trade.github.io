@@ -251,11 +251,11 @@
     /* ===== 版面：手機＝K線 + (走勢 / 清單 切換) + 底部工具列；電腦＝左K線、右清單+走勢 ===== */
     #left-col, #right-col { display: contents; }
     #chart-section { order: 1; flex: 1 1 0; min-height: 0; }
-    #bottom-resizer { order: 2; }
-    #symbol-detail-card { order: 3; height: 36%; min-height: 190px; max-height: 60%; }
+    #bottom-resizer { order: 2; display: none !important; }
+    #symbol-detail-card { order: 3; flex: 1 1 0; height: auto; min-height: 190px; max-height: none; }
     #watchlist-wrapper { order: 3; position: relative !important; left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
       transform: none !important; width: 100% !important; max-width: none !important; border: none !important; border-top: 1px solid #2a2e39 !important;
-      box-shadow: none !important; border-radius: 0 !important; display: none !important; height: 42% !important; min-height: 200px; flex-shrink: 0; z-index: auto; }
+      box-shadow: none !important; border-radius: 0 !important; display: none !important; height: auto !important; flex: 1 1 0; min-height: 200px; z-index: auto; }
     #bottom-bar { order: 4; }
     body.show-list #watchlist-wrapper { display: flex !important; }
     body.show-list #symbol-detail-card, body.show-list #bottom-resizer { display: none !important; }
@@ -263,6 +263,9 @@
     #drawer-backdrop, #btn-close-drawer { display: none !important; }
     #settings-dropdown { position: fixed !important; left: 8px; right: auto !important; top: auto !important; bottom: calc(56px + env(safe-area-inset-bottom,0px) + 8px); z-index: 61; max-height: 70dvh; overflow-y: auto; }
     #bottom-bar > div::-webkit-scrollbar { display: none; }
+    /* 隱藏指標：收起底部指標列，並隱藏圖上的指標名稱 / 參數 / 數值與圖例 */
+    body.ind-hidden #ind-tabs-wrap { visibility: hidden; }
+    body.ind-hidden #chart-legend, body.ind-hidden #mcdx-table, body.ind-hidden .lg-name, body.ind-hidden .lg-par, body.ind-hidden .lg-val, body.ind-hidden .lg-sep { display: none !important; }
     @media (min-width: 768px) {
       .mob-only { display: none !important; }
       #app-main { flex-direction: row !important; }
@@ -270,8 +273,8 @@
       #right-col { display: flex; flex-direction: column; width: 420px; flex-shrink: 0; min-height: 0; border-left: 1px solid #2a2e39; background: #1e222d; }
       #bottom-bar { order: 2; }
       #watchlist-wrapper { display: flex !important; flex: 1; height: auto !important; min-height: 0; order: 1; border-top: none !important; }
-      #bottom-resizer { order: 2; }
-      #symbol-detail-card { order: 3; height: 250px; min-height: 170px; max-height: 70%; }
+      #bottom-resizer { order: 2; display: flex !important; }
+      #symbol-detail-card { order: 3; flex: none; height: 250px; min-height: 170px; max-height: 70%; display: flex !important; }
     }
   </style>
 </head>
@@ -414,9 +417,10 @@
       <button id="toggle-watchlist-btn" class="sidebar-btn mob-only" title="自選商品清單"><i class="fa-solid fa-bookmark text-sm"></i></button>
       <button id="btn-trend" class="sidebar-btn mob-only active" title="走勢圖"><i class="fa-solid fa-chart-line text-sm"></i></button>
       <button id="btn-settings-3" class="sidebar-btn" title="設定：欄位與指標顯示"><i class="fa-solid fa-sliders text-sm"></i></button>
+      <button id="btn-ind-toggle" class="sidebar-btn" title="顯示/隱藏指標列與指標名稱"><i class="fa-solid fa-eye text-sm"></i></button>
     </div>
     <div class="w-px h-6 bg-tvBorder shrink-0"></div>
-    <div class="flex-1 min-w-0 flex items-center space-x-5 px-3 text-sm overflow-x-auto whitespace-nowrap">
+    <div id="ind-tabs-wrap" class="flex-1 min-w-0 flex items-center space-x-5 px-3 text-sm overflow-x-auto whitespace-nowrap">
           <button data-ind="filter" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">過濾線</button>
           <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">多頭線</button>
           <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
@@ -2088,12 +2092,22 @@
       }
       trendBtn.addEventListener('click', () => toggleWatchlist(false));
 
+      const indBtn = document.getElementById('btn-ind-toggle');
+      function applyIndHidden(v) {
+        document.body.classList.toggle('ind-hidden', v);
+        indBtn.classList.toggle('active', v);
+        indBtn.querySelector('i').className = 'fa-solid ' + (v ? 'fa-eye-slash' : 'fa-eye') + ' text-sm';
+        try { localStorage.setItem('tvIndHidden', v ? '1' : '0'); } catch (e) {}
+      }
+      indBtn.addEventListener('click', () => applyIndHidden(!document.body.classList.contains('ind-hidden')));
+      try { applyIndHidden(localStorage.getItem('tvIndHidden') === '1'); } catch (e) {}
+
       toggleWatchlistBtn.addEventListener('click', toggleWatchlist);
       if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', toggleWatchlist);
       if (backdrop) backdrop.addEventListener('click', toggleWatchlist);
 
       window.addEventListener('symbolSelected', () => {
-        if (isMobileScreen()) toggleWatchlist(false);
+        /* 手機：選商品後留在清單，點「走勢」才切換到走勢圖 */
       });
 
       document.querySelectorAll('.ind-tab').forEach(btn => {
