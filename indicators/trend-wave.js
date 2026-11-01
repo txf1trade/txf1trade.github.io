@@ -102,8 +102,8 @@
     legend(t, res) {
       const p = res.col.find(x => x.time === t) || res.col[res.col.length - 1];
       if (!p) return '';
-      return `<span style="color:${p.value === 1 ? '#f23645' : '#089981'}">${p.value === 1 ? '多方 ▲' : '空方 ▼'}</span>` +
-             `<span style="color:#787b86">EMA${res.cfg.emaLength} · ${res.cfg.tf}分 · 連續${res.cfg.confirmBars}根</span>`;
+      return `<span class="lg-val" style="color:${p.value === 1 ? '#f23645' : '#089981'}">${p.value === 1 ? '多方 ▲' : '空方 ▼'}</span>` +
+             `<span class="lg-par" style="color:#787b86">EMA${res.cfg.emaLength} · ${res.cfg.tf}分 · 連續${res.cfg.confirmBars}根</span>`;
     }
   });
 })();
