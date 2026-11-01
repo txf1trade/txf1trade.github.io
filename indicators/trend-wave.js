@@ -15,7 +15,7 @@
     'GC-1':    { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },
     'NK-1':    { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },
     'BTCUSDT': { filter: 12, ema20: 20, ema60: 60, daily: 96, weekly: 480 },
-    'DEFAULT': { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 }
+    'DEFAULT': { filter: 12, ema20: 20, ema60: 60, daily: 20, weekly: 60 }
   };
   const TICKS = { 'TX-1': 1, 'TXAM-1': 1, 'TWN-1': 0.05, 'NQ-1': 0.25, 'GC-1': 0.1, 'NK-1': 5,
                   'BTCUSDT': 0.01, 'TSEA': 0.01, 'OTCA': 0.01, 'TAIWANVIX': 0.01 };
@@ -38,9 +38,17 @@
  * 修改參數只需改下面 PARAMS，不必動主網頁。
  * ============================================================ */
 (function () {
-  const PARAMS = { emaLength: 76, confirmBars: 2, tf: '15' };
+  const PARAMS = { confirmBars: 2, tf: '15', useLine: 'daily' };   // useLine: 'daily' 或 'weekly'，EMA 長度依商品由 TV_SETTINGS.lines 決定
 
-  let cache = { code: '', from: 0, at: 0, bars: [], ema: [] };
+  /* 依商品代碼取得均線長度；查不到的商品 (個股等) 使用 DEFAULT */
+  function emaLenFor(code, key) {
+    const L = (window.TV_SETTINGS && window.TV_SETTINGS.lines) || {};
+    const c = String(code || '').toUpperCase();
+    const row = L[c] || L['DEFAULT'] || {};
+    return row[key] || row.daily || 76;
+  }
+
+  let cache = { code: '', len: 0, from: 0, at: 0, bars: [], ema: [] };
 
   /* 二分搜尋：最後一個 time <= t 的索引 (找不到 -1) */
   function lastLE(arr, t) {
@@ -60,13 +68,14 @@
     series: [{ key: 'col', type: 'histogram', options: { priceFormat: { type: 'price', precision: 0, minMove: 1 } } }],
 
     async compute(candles, host, force) {
-      const { emaLength, confirmBars, tf } = PARAMS, tfSec = host.resSeconds(tf), alpha = 2 / (emaLength + 1);
+      const { confirmBars, tf, useLine } = PARAMS, tfSec = host.resSeconds(tf);
       const code = host.symbol(); if (!code) return { col: [] };
-      const from = candles[0].time - 7 * 86400;             // 多抓 7 天讓 EMA 暖機
+      const emaLength = emaLenFor(code, useLine), alpha = 2 / (emaLength + 1);   // 依商品自動適應
+      const from = candles[0].time - Math.max(7, Math.ceil(emaLength / 26) + 3) * 86400;   // 依均線長度多抓天數讓 EMA 暖機
       const stale = Date.now() - cache.at > 10000;
-      if (cache.code !== code || from < cache.from || (force && stale)) {
+      if (cache.code !== code || cache.len !== emaLength || from < cache.from || (force && stale)) {
         const bars = await host.fetchBars(code, tf, from);
-        cache = { code, from, at: Date.now(), bars, ema: host.ema(bars.map(b => b.close), emaLength) };
+        cache = { code, len: emaLength, from, at: Date.now(), bars, ema: host.ema(bars.map(b => b.close), emaLength) };
       }
       const B = cache.bars, E = cache.ema;
       if (!B.length) return { col: [] };
@@ -96,7 +105,7 @@
         }
         out.push({ time: c.time, value: state, color: state === 1 ? host.UP : host.DOWN });   // 紅=多、綠=空
       });
-      return { col: out, cfg: { ...PARAMS } };
+      return { col: out, cfg: { ...PARAMS, emaLength } };
     },
 
     legend(t, res) {
