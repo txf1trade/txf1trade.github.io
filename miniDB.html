@@ -12,6 +12,14 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <script>
+    /* 指標外掛入口：外部指標檔呼叫 TVIndicators.register({...})；主程式就緒前先排隊 */
+    window.TV_INDICATOR_FILES = window.TV_INDICATOR_FILES || ['indicators/trend-wave.js'];   // ← 要載入的指標檔，可自行增減
+    window.TVIndicators = window.TVIndicators || (function () {
+      const q = [], api = { register(d) { api._h ? api._h(d) : q.push(d); }, _attach(h) { api._h = h; q.splice(0).forEach(h); } };
+      return api;
+    })();
+  </script>
+  <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
@@ -153,6 +161,9 @@
       #drawer-backdrop { display: none !important; }
     }
 
+    /* 指標「數值 / 參數」顯示開關（設定選單控制 body 的 class） */
+    body.hide-val .lg-val, body.hide-val .lg-sep { display: none !important; }
+    body.hide-par .lg-par { display: none !important; }
     .legend-item {
       cursor: pointer;
       padding: 1px 4px;
@@ -325,18 +336,18 @@
         <div id="ohlc-bar" class="absolute top-2 left-2 z-10 text-[11px] font-mono pointer-events-none"></div>
         <div id="chart-legend" class="absolute top-8 left-2 z-10 flex flex-col items-start gap-y-1 text-[10px] sm:text-xs font-mono bg-tvPanel/85 px-2.5 py-1.5 rounded border border-tvBorder shadow pointer-events-auto">
           <div id="legend-row-filter" class="flex items-center gap-x-2">
-            <span id="legend-filter-group" data-line="filter12" class="legend-item text-[#df8028]" title="切換過濾線(EMA12)顯示"><span id="label-filter">EMA12</span>: <span id="legend-filter">--</span></span>
+            <span id="legend-filter-group" data-line="filter12" class="legend-item text-[#df8028]" title="切換過濾線(EMA12)顯示"><span id="label-filter"><span class="lg-name">過濾線</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-filter">--</span></span>
           </div>
           <div id="legend-row-ema" class="flex items-center gap-x-2">
-            <span id="legend-ema20-group" data-line="ema20" class="legend-item text-[#ffcc66]" title="切換多頭線(EMA20)顯示"><span id="label-ema20">EMA20</span>: <span id="legend-ema20">--</span></span>
-            <span id="legend-ema60-group" data-line="ema60" class="legend-item text-[#28c6ee]" title="切換多頭線(EMA60)顯示"><span id="label-ema60">60</span>: <span id="legend-ema60">--</span></span>
+            <span id="legend-ema20-group" data-line="ema20" class="legend-item text-[#ffcc66]" title="切換多頭線(EMA20)顯示"><span id="label-ema20"><span class="lg-name">多頭線(短)</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-ema20">--</span></span>
+            <span id="legend-ema60-group" data-line="ema60" class="legend-item text-[#28c6ee]" title="切換多頭線(EMA60)顯示"><span id="label-ema60"><span class="lg-name">多頭線(長)</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-ema60">--</span></span>
           </div>
           <div id="legend-row-daily" class="flex items-center gap-x-2">
-            <span id="legend-daily-group" data-line="daily" class="legend-item text-[#ee3b76]" title="點擊切換日線(EMA76)顯示"><span id="label-daily">EMA76</span>: <span id="legend-dailyval">--</span></span>
-            <span id="legend-weekly-group" data-line="weekly" class="legend-item text-[#2186c0]" title="點擊切換週線(EMA380)顯示"><span id="label-weekly">EMA380</span>: <span id="legend-weeklyval">--</span></span>
+            <span id="legend-daily-group" data-line="daily" class="legend-item text-[#ee3b76]" title="點擊切換日線(EMA76)顯示"><span id="label-daily"><span class="lg-name">日線</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-dailyval">--</span></span>
+            <span id="legend-weekly-group" data-line="weekly" class="legend-item text-[#2186c0]" title="點擊切換週線(EMA380)顯示"><span id="label-weekly"><span class="lg-name">週線</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-weeklyval">--</span></span>
           </div>
           <div id="legend-row-atr" class="flex items-center gap-x-2">
-            <span id="legend-atr-group" data-line="atrTrend" class="legend-item text-[#00cbff]" title="點擊切換 ATR 趨勢線顯示"><span id="label-atr">ATR趨勢</span>: <span id="legend-atrval">--</span></span>
+            <span id="legend-atr-group" data-line="atrTrend" class="legend-item text-[#00cbff]" title="點擊切換 ATR 趨勢線顯示"><span id="label-atr"><span class="lg-name">ATR趨勢</span><span class="lg-par"> (14,2)</span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-atrval">--</span></span>
           </div>
         </div>
 
@@ -348,7 +359,7 @@
         <div id="mcdx-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:30%;min-height:130px;max-height:42%">
           <div class="absolute top-1 left-2 right-2 z-10 flex items-center gap-2 text-[11px] font-mono">
             <span class="text-white font-bold pointer-events-none">MCDX</span>
-            <select id="mcdx-len" class="bg-tvBg border border-tvBorder rounded text-[10px] text-tvText px-1 py-0 focus:outline-none">
+            <select id="mcdx-len" class="lg-par bg-tvBg border border-tvBorder rounded text-[10px] text-tvText px-1 py-0 focus:outline-none">
               <option value="auto">自動</option><option value="50">50</option><option value="100">100</option></select>
             <span id="mcdx-legend" class="pointer-events-none"></span>
             <button id="mcdx-tbl-btn" class="ml-auto text-tvTextMuted hover:text-white text-[10px] border border-tvBorder rounded px-1.5" title="顯示/隱藏多週期表格">表格</button>
@@ -425,6 +436,17 @@
               <option value="auto">自動 (K/M 縮寫或完整)</option>
               <option value="full">完整顯示數字</option>
             </select>
+          </div>
+          <div class="border-t border-tvBorder pt-2 mt-1 space-y-2">
+            <div class="text-tvTextMuted text-[10px]">指標顯示</div>
+            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+              <input type="checkbox" id="ind-show-val" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+              <span>顯示指標數值</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+              <input type="checkbox" id="ind-show-par" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+              <span>顯示指標參數</span>
+            </label>
           </div>
         </div>
       </div>
@@ -544,18 +566,27 @@
       filter: true,
       ema: false,
       daily: true,
-      atr: false,
+      atr: true,
       vol: false
     };
 
+    /* 所有指標統一在這裡管理顯示（預設開啟：filter12 / daily / weekly / atrTrend） */
     let lineVisibility = {
       filter12: true,
-      ema20: true,
-      ema60: true,
+      ema20: false,
+      ema60: false,
       daily: true,
       weekly: true,
-      atrTrend: true
+      atrTrend: true,
+      vol: false,       // 成交量副圖
+      vwap: false,      // VWAP
+      mcdx: false,      // MCDX 副圖
+      trendWave: false  // 台指順勢波段副圖
     };
+    /* 指標文字顯示偏好：數值預設開、參數預設關 */
+    let uiPrefs = { showValues: true, showParams: false };
+    /* 底部分頁 ↔ 指標線 對應 */
+    const IND_TAB_LINES = { filter: ['filter12'], ema: ['ema20', 'ema60'], daily: ['daily', 'weekly'], atr: ['atrTrend'], vol: ['vol'], vwap: ['vwap'], mcdx: ['mcdx'], trendWave: ['trendWave'] };
 
     const symbolLineConfigs = {
       'TX-1':   { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 },                           
@@ -610,6 +641,30 @@
     let chart, candlestickSeries, filter12Series, ema20Series, ema60Series, dailySeries, weeklySeries, atrTrendSeries, volumeSeries;
 
     let indicatorStates = { ...defaultIndicatorSettings };
+
+    /* ---- 指標偏好：第一次載入用預設值，之後記住使用者的選擇 ---- */
+    const IND_PREF_KEY = 'tvIndPrefs_v1';
+    function saveIndPrefs() {
+      try { localStorage.setItem(IND_PREF_KEY, JSON.stringify({ lineVisibility, uiPrefs, indicatorStates })); } catch (e) {}
+    }
+    (function loadIndPrefs() {
+      try {
+        const st = JSON.parse(localStorage.getItem(IND_PREF_KEY) || 'null');
+        if (st) { Object.assign(lineVisibility, st.lineVisibility); Object.assign(uiPrefs, st.uiPrefs); Object.assign(indicatorStates, st.indicatorStates); return; }
+      } catch (e) {}
+      // 第一次：依 lineVisibility 推導各分頁是否開啟
+      Object.keys(IND_TAB_LINES).forEach(k => { indicatorStates[k] = IND_TAB_LINES[k].some(l => lineVisibility[l]); });
+    })();
+    function applyUiPrefs() {
+      document.body.classList.toggle('hide-val', !uiPrefs.showValues);
+      document.body.classList.toggle('hide-par', !uiPrefs.showParams);
+    }
+    /* 其他程式註冊「重新計算」函式，載入完成後統一跑一次 */
+    window.__indRefreshers = [];
+    window.runAllIndicators = function () {
+      try { updateIndicatorDisplay(); } catch (e) { console.error(e); }
+      window.__indRefreshers.forEach(f => { try { f(); } catch (e) { console.error(e); } });
+    };
 
     let columnSettings = {
       change: true,
@@ -915,11 +970,11 @@
       const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TX-1' };
       const params = getLineParams(currentSymbol.code);
 
-      document.getElementById('label-filter').textContent = `EMA${params.filter}`;
-      document.getElementById('label-ema20').textContent = `EMA${params.ema20}`;
-      document.getElementById('label-ema60').textContent = `EMA${params.ema60}`;
-      document.getElementById('label-daily').textContent = `EMA${params.daily}`;
-      document.getElementById('label-weekly').textContent = `EMA${params.weekly}`;
+      document.querySelector('#label-filter .lg-par').textContent = ` EMA${params.filter}`;
+      document.querySelector('#label-ema20 .lg-par').textContent = ` EMA${params.ema20}`;
+      document.querySelector('#label-ema60 .lg-par').textContent = ` EMA${params.ema60}`;
+      document.querySelector('#label-daily .lg-par').textContent = ` EMA${params.daily}`;
+      document.querySelector('#label-weekly .lg-par').textContent = ` EMA${params.weekly}`;
 
       const rowFilter = document.getElementById('legend-row-filter');
       const rowEma = document.getElementById('legend-row-ema');
@@ -1471,7 +1526,27 @@
 
     /* 繪製走勢圖：座標文字改為白色 (#ffffff) */
     /* ===================== 右下走勢小圖：資料 / 繪製 / 縮放 ===================== */
-    let miniList = [], miniT = [], miniVw = [], miniCode = '', miniView = null, miniHoverX = null;
+    let miniList = [], miniT = [], miniVw = [], miniCode = '', miniView = null, miniHoverX = null, miniExtT = null;
+    /* 與主圖 K 線十字游標同步：
+       主圖 → 走勢圖：window.__miniSync.set(毫秒時間 | null)
+       走勢圖 → 主圖：window.__onMiniHover(毫秒時間 | null)  (由主圖端實作) */
+    let miniExtRaf = 0;
+    window.__miniSync = {
+      set(ms) {
+        if (miniHoverX != null) return;                 // 滑鼠正在走勢圖上時，以自己的游標為主
+        if (miniExtT === ms) return;
+        miniExtT = ms;
+        if (miniExtRaf) return;
+        miniExtRaf = requestAnimationFrame(() => { miniExtRaf = 0; renderMini(); });
+      }
+    };
+    // 二分搜尋：找最接近 ms 的走勢資料索引
+    function miniNearest(ms) {
+      const n = miniT.length; if (!n) return -1;
+      let lo = 0, hi = n - 1;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (miniT[m] < ms) lo = m + 1; else hi = m; }
+      return (lo > 0 && Math.abs(miniT[lo - 1] - ms) <= Math.abs(miniT[lo] - ms)) ? lo - 1 : lo;
+    }
     const miniShow = { vwap: true, cost: true };
     try { Object.assign(miniShow, JSON.parse(localStorage.getItem('miniShow') || '{}')); } catch (e) {}
     const MINI_GEO = { pl: 30, pr: 58, pt: 16, pb: 18 };
@@ -1584,16 +1659,30 @@
         pts.forEach((p, k) => { const y = yOf(miniVw[p.i]); k ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke();
       }
       // 十字線
-      let hv = null;
+      // 十字線：來源可能是本圖滑鼠，或主圖 K 線 (miniExtT)
+      let hv = null, hx = 0, hy = 0;
       if (miniHoverX != null && miniHoverX >= pl && miniHoverX <= pl + gw) {
-        const ht = v0 + (miniHoverX - pl) / gw * span; let bi = i0;
-        for (let i = i0; i <= i1; i++) if (Math.abs(miniT[i] - ht) < Math.abs(miniT[bi] - ht)) bi = i;
-        hv = bi; const hx = xOf(miniT[bi]);
+        hv = miniNearest(v0 + (miniHoverX - pl) / gw * span);
+      } else if (miniHoverX == null && miniExtT != null) {
+        const bi = miniNearest(miniExtT);
+        if (bi >= 0 && miniT[bi] >= v0 && miniT[bi] <= v1) hv = bi;   // 不在可視範圍就不畫
+      }
+      if (hv != null) {
+        hx = xOf(miniT[hv]); hy = yOf(closes[hv]);
         ctx.strokeStyle = '#758696'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(hx, pt); ctx.lineTo(hx, pt + gh); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = lineColor; ctx.beginPath(); ctx.arc(hx, yOf(closes[bi]), 3, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(hx, pt); ctx.lineTo(hx, pt + gh); ctx.moveTo(pl, hy); ctx.lineTo(pl + gw, hy); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = lineColor; ctx.beginPath(); ctx.arc(hx, hy, 3, 0, 7); ctx.fill();
       }
       ctx.restore();
+      if (hv != null) {               // 價格 / 時間標籤 (類似主圖十字線)
+        ctx.font = '9px monospace'; ctx.fillStyle = '#2a2e39';
+        const py = Math.max(pt + 6, Math.min(pt + gh - 6, hy));
+        ctx.fillRect(pl + gw + 2, py - 6, pr - 3, 12);
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(closes[hv].toFixed(2), pl + gw + 4, py + 3);
+        const tw = 36, tx = Math.max(pl, Math.min(pl + gw - tw, hx - tw / 2));
+        ctx.fillStyle = '#2a2e39'; ctx.fillRect(tx, H - pb + 1, tw, 13);
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(miniFmtT(miniT[hv]), tx + tw / 2, H - 5);
+      }
 
       // 右側價格標籤 (成本 / VWAP)
       const tag = (v, col) => {
@@ -1632,6 +1721,16 @@
         setView(ft - ns * ratio, ft - ns * ratio + ns);
       }
       const relX = e => (e.touches ? e.touches[0].clientX : e.clientX) - box.getBoundingClientRect().left;
+      // 通知主圖 K 線：游標目前對應的時間 (毫秒)，null = 離開
+      const emitHover = () => {
+        if (!window.__onMiniHover) return;
+        let ms = null;
+        const gw = gwOf();
+        if (miniHoverX != null && miniT.length && miniHoverX >= MINI_GEO.pl && miniHoverX <= MINI_GEO.pl + gw) {
+          const v = curView(); ms = miniT[miniNearest(v.a + (miniHoverX - MINI_GEO.pl) / gw * (v.b - v.a))];
+        }
+        try { window.__onMiniHover(ms); } catch (e) {}
+      };
 
       box.addEventListener('wheel', e => { e.preventDefault(); zoomAt(relX(e), e.deltaY < 0 ? 0.8 : 1.25); }, { passive: false });
       let drag = null;
@@ -1640,8 +1739,8 @@
       window.addEventListener('mousemove', e => {
         if (drag) { const dt = -(e.clientX - drag.x) / gwOf() * (drag.v.b - drag.v.a); setView(drag.v.a + dt, drag.v.b + dt); }
       });
-      box.addEventListener('mousemove', e => { miniHoverX = relX(e); if (!drag) renderMini(); });
-      box.addEventListener('mouseleave', () => { miniHoverX = null; renderMini(); });
+      box.addEventListener('mousemove', e => { miniHoverX = relX(e); if (!drag) { renderMini(); emitHover(); } });
+      box.addEventListener('mouseleave', () => { miniHoverX = null; renderMini(); emitHover(); });
       box.addEventListener('dblclick', () => { miniView = null; renderMini(); });
 
       // 觸控：單指平移 / 雙指縮放
@@ -1650,7 +1749,7 @@
       box.addEventListener('touchstart', e => {
         const r = box.getBoundingClientRect();
         if (e.touches.length === 2) tch = { d: dist(e.touches), mid: (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, v: curView() };
-        else if (e.touches.length === 1) { tch = { x: e.touches[0].clientX, v: curView() }; miniHoverX = relX(e); }
+        else if (e.touches.length === 1) { tch = { x: e.touches[0].clientX, v: curView() }; miniHoverX = relX(e); emitHover(); }
       }, { passive: true });
       box.addEventListener('touchmove', e => {
         if (!tch) return; e.preventDefault();
@@ -1658,10 +1757,10 @@
           const f = tch.d / dist(e.touches), v = tch.v, span = v.b - v.a, ratio = Math.max(0, Math.min(1, (tch.mid - MINI_GEO.pl) / gwOf())), ft = v.a + span * ratio, ns = span * f;
           setView(ft - ns * ratio, ft - ns * ratio + ns);
         } else if (e.touches.length === 1 && tch.x != null) {
-          const dt = -(e.touches[0].clientX - tch.x) / gwOf() * (tch.v.b - tch.v.a); miniHoverX = relX(e); setView(tch.v.a + dt, tch.v.b + dt);
+          const dt = -(e.touches[0].clientX - tch.x) / gwOf() * (tch.v.b - tch.v.a); miniHoverX = relX(e); setView(tch.v.a + dt, tch.v.b + dt); emitHover();
         }
       }, { passive: false });
-      box.addEventListener('touchend', () => { tch = null; miniHoverX = null; renderMini(); });
+      box.addEventListener('touchend', () => { tch = null; miniHoverX = null; renderMini(); emitHover(); });
 
       // 按鈕：放大 / 縮小 / 重設
       const mid = () => MINI_GEO.pl + gwOf() / 2;
@@ -1839,6 +1938,7 @@
           } else if (lineName && lineVisibility.hasOwnProperty(lineName)) {
             lineVisibility[lineName] = !lineVisibility[lineName];
           }
+          saveIndPrefs();
           updateIndicatorDisplay();
         });
       });
@@ -1875,6 +1975,12 @@
         columnSettings.volMode = e.target.value;
         renderWatchlist();
       });
+
+      /* 指標顯示偏好（數值 / 參數） */
+      const cbVal = document.getElementById('ind-show-val'), cbPar = document.getElementById('ind-show-par');
+      cbVal.checked = uiPrefs.showValues; cbPar.checked = uiPrefs.showParams; applyUiPrefs();
+      cbVal.addEventListener('change', e => { uiPrefs.showValues = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
+      cbPar.addEventListener('change', e => { uiPrefs.showParams = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
 
       const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
       const watchlistWrapper = document.getElementById('watchlist-wrapper');
@@ -1922,6 +2028,10 @@
         btn.addEventListener('click', (e) => {
           const indKey = e.target.getAttribute('data-ind');
           indicatorStates[indKey] = !indicatorStates[indKey];
+          const grp = IND_TAB_LINES[indKey] || [];
+          if (grp.length === 1) lineVisibility[grp[0]] = indicatorStates[indKey];
+          else if (indicatorStates[indKey] && !grp.some(l => lineVisibility[l])) grp.forEach(l => lineVisibility[l] = true);   // 全部被關掉時，打開分頁就全部重新顯示
+          saveIndPrefs();
 
           if (indicatorStates[indKey]) {
             e.target.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
@@ -2009,6 +2119,14 @@
   const alt = {};
   let chartType = 'candle', scaleMode = 0, hovering = false;
 
+  /* 第一次歷史資料載入完成後，自動把所有已開啟的指標更新一次 */
+  const _loadHistory = loadHistoryData; let firstRun = false;
+  loadHistoryData = async function () {
+    const r = await _loadHistory.apply(this, arguments);
+    if (!firstRun && currentCandles.length) { firstRun = true; window.runAllIndicators(); }
+    return r;
+  };
+
   const _initChart = initChart;
   initChart = function () { _initChart(); try { initTV(); } catch (e) { console.error('TV UI init failed', e); } };
 
@@ -2084,7 +2202,7 @@
 
     /* ---------- VWAP ---------- */
     const vwapSeries = chart.addLineSeries({ color: '#e040fb', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, title: 'VWAP' });
-    let vwapOn = true, vwapMap = new Map();
+    let vwapOn = !!lineVisibility.vwap, vwapMap = new Map();
     const sig = {}, prev = {};
     /* 交易日分組：夜盤(15:00起)與隔日日盤同一組；日K不重置 */
     const sess = t => Math.floor((t - 7 * 3600) / 86400);
@@ -2125,7 +2243,8 @@
       const b = $(id); b.className = get() ? TAB_ON : TAB_OFF;
       b.onclick = () => { set(!get()); b.className = get() ? TAB_ON : TAB_OFF; refreshOverlays(); };
     };
-    bindTab('tab-vwap', () => vwapOn, v => vwapOn = v);
+    bindTab('tab-vwap', () => vwapOn, v => { vwapOn = v; lineVisibility.vwap = v; saveIndPrefs(); });
+    window.__indRefreshers.push(refreshOverlays);
     setInterval(refreshOverlays, 500);
 
     /* ---------- OHLC 資訊列 ---------- */
@@ -2142,24 +2261,43 @@
         `<span class="text-tvTextMuted">收</span><span style="color:${col}">${fmt(c.close)}</span>` +
         `<span style="color:${col}">${s}${fmt(chg)} (${s}${pct.toFixed(2)}%)</span>` +
         (c.volume != null ? `<span class="text-tvTextMuted">量</span><span style="color:${col}">${Number(c.volume).toLocaleString()}</span>` : '') +
-        (vwapOn && vwapMap.has(c.time) ? `<span style="color:#e040fb">VWAP ${fmt(vwapMap.get(c.time))}</span>` : '');
+        (vwapOn && vwapMap.has(c.time) ? `<span style="color:#e040fb"><span class="lg-name">VWAP</span><span class="lg-val"> ${fmt(vwapMap.get(c.time))}</span></span>` : '');
     }
+    let fromMini = false;
     chart.subscribeCrosshairMove(p => {
-      if (!p || !p.time) { hovering = false; return; }
+      const has = !!(p && p.time);
+      // K 線 → 走勢圖：同步十字游標時間 (K 線時間為秒，走勢圖為毫秒)
+      if (!fromMini && window.__miniSync) window.__miniSync.set(has ? p.time * 1000 : null);
+      if (!has) { hovering = false; return; }
       hovering = true;
       showOhlc(currentCandles.find(c => c.time === p.time));
     });
+    // 走勢圖 → K 線：找出包含該時間的那一根 K 棒，並移動十字游標 (副圖成交量 / MCDX 會跟著同步)
+    window.__onMiniHover = ms => {
+      fromMini = true;
+      try {
+        let c = null;
+        if (ms != null && currentCandles.length) {
+          const t = ms / 1000; let lo = 0, hi = currentCandles.length - 1;
+          while (lo < hi) { const m = (lo + hi + 1) >> 1; if (currentCandles[m].time <= t) lo = m; else hi = m - 1; }
+          if (currentCandles[lo].time <= t) c = currentCandles[lo];
+        }
+        if (c) chart.setCrosshairPosition(c.close, c.time, S()); else chart.clearCrosshairPosition();
+      } catch (e) {}
+      fromMini = false;
+    };
     setInterval(() => { if (!hovering && currentCandles.length) showOhlc(currentCandles[currentCandles.length - 1]); }, 500);
 
 
     /* ---------- 副圖共用：時間軸只顯示在最下方的圖 ---------- */
     const paneState = { vol: false, mcdx: false };
+    const extraPanes = [];                       // 外掛指標副圖 {id, on, chart}（依畫面由上到下排列）
     let vchartRef = null, mchartRef = null;
     function layoutAxes() {
-      const last = paneState.mcdx ? 'mcdx' : paneState.vol ? 'vol' : 'main';
-      chart.applyOptions({ timeScale: { visible: last === 'main' } });
-      if (vchartRef) vchartRef.applyOptions({ timeScale: { visible: last === 'vol' } });
-      if (mchartRef) mchartRef.applyOptions({ timeScale: { visible: last === 'mcdx' } });
+      const order = [['vol', paneState.vol, vchartRef], ['mcdx', paneState.mcdx, mchartRef], ...extraPanes.map(p => [p.id, p.on, p.chart])];
+      const lastOn = order.filter(o => o[1]).pop();
+      chart.applyOptions({ timeScale: { visible: !lastOn } });   // 時間軸只顯示在最下方的圖
+      order.forEach(([id, , c]) => c && c.applyOptions({ timeScale: { visible: !!lastOn && lastOn[0] === id } }));
     }
 
     /* ================= 成交量副圖 (獨立 pane，與主圖時間軸/十字線同步) ================= */
@@ -2306,7 +2444,7 @@
       const lRet  = mchart.addLineSeries({ ...fix, color: C.rtMA, lineWidth: 2, crosshairMarkerVisible: false });
       [[25, 1], [50, 2], [75, 1]].forEach(([p, w]) => sBank.createPriceLine({ price: p, color: '#5d606b', lineWidth: w, lineStyle: 0, axisLabelVisible: true, title: '' }));
 
-      let on = false, tblOn = true, res = null, idx = new Map(), lastSig = '';
+      let on = false, tblOn = false, res = null, idx = new Map(), lastSig = '';
       const sync = () => { const r = chart.timeScale().getVisibleLogicalRange(); if (r) try { mchart.timeScale().setVisibleLogicalRange(r); } catch (e) {} };
       chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && on) try { mchart.timeScale().setVisibleLogicalRange(r); } catch (e) {} });
       new ResizeObserver(() => {
@@ -2319,7 +2457,8 @@
       function setLegend(i) {
         if (!res || i == null || res.pc[i] == null) { legend.textContent = ''; return; }
         const pc = Math.round(res.pc[i]), fc = res.fc[i];
-        legend.innerHTML = `<span style="color:#f52f2f">莊家 ${pc}%</span> <span style="color:#fcf52d">游資 ${Math.round(Math.max(fc - res.pc[i], 0))}%</span> <span style="color:#8ed984">散戶 ${Math.round(100 - fc)}%</span>`;
+        const part = (col, name, v) => `<span style="color:${col}"><span class="lg-name">${name}</span><span class="lg-val"> ${v}%</span></span>`;
+        legend.innerHTML = part('#f52f2f', '莊家', pc) + ' ' + part('#fcf52d', '游資', Math.round(Math.max(fc - res.pc[i], 0))) + ' ' + part('#8ed984', '散戶', Math.round(100 - fc));
       }
       let xl = false;
       chart.subscribeCrosshairMove(p => {
@@ -2403,6 +2542,7 @@
       /* ---- 開關 / 設定 ---- */
       function setOn(v) {
         on = v; pane.classList.toggle('hidden', !on);
+        lineVisibility.mcdx = v; indicatorStates.mcdx = v; saveIndPrefs();
         paneState.mcdx = on; layoutAxes();
         const b = $('tab-mcdx'); b.className = on ? TAB_ON : TAB_OFF;
         if (on) { lastSig = ''; requestAnimationFrame(() => { sync(); refreshMain(true); }); loadTf(); }
@@ -2412,9 +2552,189 @@
       $('mcdx-tbl-btn').onclick = () => { tblOn = !tblOn; renderTable(); };
       $('mcdx-len').onchange = e => { CFG.lenMode = e.target.value; refreshMain(true); loadTf(); };
       $('tab-mcdx').className = TAB_OFF;
+      window.__indRefreshers.push(() => { if (on) { refreshMain(true); loadTf(); } });
+      if (lineVisibility.mcdx) setOn(true);          // 依設定自動開啟
       setInterval(() => refreshMain(false), 600);
       setInterval(() => { if (on) loadTf(); }, 20000);
       setInterval(() => { if (on) { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); if (it && it.code !== tfKey) loadTf(); } }, 1500);
+    })();
+
+    /* ================= 指標外掛框架 =================
+       指標程式放在獨立 .js 檔 (indicators/*.js)，用 TVIndicators.register({...}) 註冊。
+       框架負責：副圖建立、底部分頁按鈕、時間軸/十字游標同步、定時重算、記住開關狀態。 */
+    (function initIndicatorHost() {
+      let tabAnchor = $('tab-mcdx'), paneAnchor = $('mcdx-pane');
+      const mounted = {};
+
+      const host = {
+        LightweightCharts, UP, DOWN,
+        candles: () => currentCandles,
+        resolution: () => currentResolution,
+        symbol: () => { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); return it ? it.code : null; },
+        resSeconds: r => (r === '1D' ? 86400 : (Number(r) || 1) * 60),
+        /* Pine 風格 EMA：前 len-1 根為 null，第 len 根以 SMA 起算 */
+        ema(values, len) {
+          const out = Array(values.length).fill(null), a = 2 / (len + 1); let prev = null, sum = 0, cnt = 0;
+          for (let i = 0; i < values.length; i++) {
+            const v = values[i]; if (v == null) continue;
+            if (prev == null) { sum += v; cnt++; if (cnt === len) { prev = sum / len; out[i] = prev; } }
+            else { prev = a * v + (1 - a) * prev; out[i] = prev; }
+          }
+          return out;
+        },
+        /* 抓取其他週期的 K 棒 → [{time(秒), open, high, low, close, volume}] */
+        async fetchBars(code, res, from, to) {
+          to = to || Math.floor(Date.now() / 1000);
+          const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(code)}&resolution=${res}&from=${Math.floor(from)}&to=${to}&ws=true&metaData=true`;
+          const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json(), arr = Array.isArray(j) ? j : (j.bars || []);
+          return arr.map(b => {
+            const raw = b.time || new Date(b.datetime).getTime(); let t = raw > 1e10 ? Math.floor(raw / 1000) : raw;
+            if (res === '1D') t -= 86400;
+            return { time: t, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume };
+          }).sort((a, b) => a.time - b.time);
+        }
+      };
+
+      const paneOptions = () => ({
+        layout: { background: { type: 'solid', color: '#131722' }, textColor: '#b2b5be', fontSize: 11 },
+        grid: { vertLines: { color: 'rgba(42,46,57,.5)' }, horzLines: { color: 'rgba(42,46,57,.5)' } },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+          vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
+          horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' }
+        },
+        rightPriceScale: { borderColor: '#2a2e39', minimumWidth: 72, scaleMargins: { top: 0.1, bottom: 0.1 } },
+        timeScale: {
+          borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 8, barSpacing: 8, visible: false,
+          tickMarkFormatter: t => {
+            const d = new Date(t * 1000);
+            return currentResolution === '1D' ? `${d.getMonth() + 1}/${d.getDate()}` : d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
+          }
+        },
+        localization: { locale: 'zh-TW' },
+        handleScroll: false, handleScale: false
+      });
+
+      function mount(def) {
+        if (!def || !def.id || mounted[def.id] || typeof def.compute !== 'function') { console.warn('指標註冊失敗', def); return; }
+        const id = def.id, vk = def.visKey || id;
+        if (!(vk in lineVisibility)) lineVisibility[vk] = false;
+        /* --- DOM：副圖 + 底部分頁按鈕 --- */
+        const pane = document.createElement('div');
+        pane.className = 'hidden relative border-t border-tvBorder shrink-0';
+        pane.style.cssText = `height:${def.height || '18%'};min-height:${def.minHeight || '100px'};max-height:40%`;
+        const head = document.createElement('div');
+        head.className = 'absolute top-1 left-2 right-2 z-10 flex items-center gap-2 text-[11px] font-mono pointer-events-none';
+        const title = document.createElement('span'); title.className = 'text-white font-bold'; title.textContent = def.name;
+        const legend = document.createElement('span'); head.append(title, legend);
+        const box = document.createElement('div'); box.className = 'w-full h-full overflow-hidden';
+        pane.append(head, box);
+        paneAnchor.insertAdjacentElement('afterend', pane); paneAnchor = pane;
+        const btn = document.createElement('button');
+        btn.className = TAB_OFF; btn.textContent = def.tab || def.name; btn.title = def.name;
+        tabAnchor.insertAdjacentElement('afterend', btn); tabAnchor = btn;
+
+        /* --- 副圖 chart 與 series --- */
+        const c = LightweightCharts.createChart(box, paneOptions());
+        const ser = {};
+        (def.series || []).forEach(sd => {
+          const opt = Object.assign({ priceLineVisible: false, lastValueVisible: false }, sd.options || {});
+          if (def.yRange) opt.autoscaleInfoProvider = () => ({ priceRange: { minValue: def.yRange[0], maxValue: def.yRange[1] } });
+          ser[sd.key] = sd.type === 'line' ? c.addLineSeries(opt) : c.addHistogramSeries(opt);
+        });
+        const firstKey = (def.series && def.series[0] && def.series[0].key);
+        (def.priceLines || []).forEach(pl => ser[firstKey].createPriceLine(Object.assign({ lineWidth: 1, lineStyle: 2, color: '#5d606b', axisLabelVisible: true, title: '' }, pl)));
+
+        const st = { id, on: false, chart: c };
+        extraPanes.push(st);
+        mounted[id] = st;
+
+        /* --- 時間軸同步 (主圖 → 副圖) --- */
+        const sync = () => { const r = chart.timeScale().getVisibleLogicalRange(); if (r) try { c.timeScale().setVisibleLogicalRange(r); } catch (e) {} };
+        chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && st.on) try { c.timeScale().setVisibleLogicalRange(r); } catch (e) {} });
+        new ResizeObserver(() => {
+          const w = box.clientWidth, h = box.clientHeight;
+          if (w > 0 && h > 0) { c.applyOptions({ width: w, height: h }); sync(); }
+        }).observe(box);
+
+        /* --- 計算 / 套用 --- */
+        let result = null, tmap = new Map(), busy = false, lastSig = '', lastKey = '', shown = {};
+        const setLegend = t => {
+          let html = '';
+          try { if (def.legend && result) html = def.legend(t != null ? t : (currentCandles.length ? currentCandles[currentCandles.length - 1].time : null), result) || ''; } catch (e) {}
+          legend.innerHTML = html;
+        };
+        function apply(res, full) {
+          Object.keys(ser).forEach(k => {
+            const arr = res[k] || [], n = arr.length, p = shown[k];
+            if (!full && p && n && p.n === n && p.f === arr[0].time && p.t === arr[n - 1].time) ser[k].update(arr[n - 1]);
+            else if (!full && p && n && p.n + 1 === n && p.f === arr[0].time && p.t === arr[n - 2].time) ser[k].update(arr[n - 1]);
+            else ser[k].setData(arr);
+            shown[k] = n ? { n, f: arr[0].time, t: arr[n - 1].time } : null;
+          });
+          result = res;
+          tmap = new Map(((res[firstKey]) || []).map(p => [p.time, p.value]));
+          if (!hovering) setLegend(null);
+        }
+        async function refresh(force) {
+          if (!st.on || busy || !currentCandles.length) return;
+          const last = currentCandles[currentCandles.length - 1];
+          const sig = currentCandles.length + '|' + last.time + '|' + last.close + '|' + curKey();
+          if (!force && sig === lastSig) return;
+          busy = true; const key0 = curKey();
+          try {
+            const res = await def.compute(currentCandles, host, !!force);
+            if (res && curKey() === key0 && st.on) { apply(res, !!force || lastKey !== key0); lastSig = sig; lastKey = key0; }
+          } catch (e) { console.error('[指標 ' + id + ']', e); }
+          busy = false;
+        }
+
+        /* --- 十字游標同步 --- */
+        let xl = false;
+        chart.subscribeCrosshairMove(p => {
+          if (!st.on) return;
+          setLegend(p && p.time ? p.time : null);
+          if (xl) return; xl = true;
+          try {
+            if (p && p.time && tmap.has(p.time)) c.setCrosshairPosition(tmap.get(p.time), p.time, ser[firstKey]);
+            else c.clearCrosshairPosition();
+          } catch (e) {}
+          xl = false;
+        });
+        c.subscribeCrosshairMove(p => {
+          if (xl || !st.on) return; xl = true;
+          try {
+            if (p && p.time) { const k = currentCandles.find(q => q.time === p.time); if (k) chart.setCrosshairPosition(k.close, k.time, S()); }
+            else chart.clearCrosshairPosition();
+          } catch (e) {}
+          xl = false;
+        });
+
+        /* --- 開關 --- */
+        function setOn(v) {
+          st.on = v; pane.classList.toggle('hidden', !v); btn.className = v ? TAB_ON : TAB_OFF;
+          lineVisibility[vk] = v; indicatorStates[vk] = v; saveIndPrefs(); layoutAxes();
+          if (v) { lastSig = ''; requestAnimationFrame(() => { sync(); refresh(true); }); }
+        }
+        btn.onclick = () => setOn(!st.on);
+        setInterval(() => refresh(false), 600);
+        setInterval(() => refresh(true), def.refreshMs || 15000);
+        window.__indRefreshers.push(() => refresh(true));
+        if (lineVisibility[vk]) setOn(true);          // 依設定自動開啟
+      }
+
+      window.TVIndicators._attach(def => { try { mount(def); } catch (e) { console.error('指標載入失敗', def && def.id, e); } });
+
+      /* --- 載入外部指標檔 (indicators/*.js)；也可用網址參數 ?ind=a.js,b.js 追加 --- */
+      const files = [].concat(window.TV_INDICATOR_FILES || []);
+      /* 只允許本站 indicators/ 底下的檔，避免被惡意連結載入外部程式 */
+      try { const q = new URLSearchParams(location.search).get('ind'); if (q) files.push(...q.split(',').map(x => x.trim()).filter(x => /^indicators\/[\w.-]+\.js$/.test(x))); } catch (e) {}
+      files.forEach(f => {
+        const sc = document.createElement('script'); sc.src = f;
+        sc.onerror = () => console.warn('找不到指標檔：' + f);
+        document.body.appendChild(sc);
+      });
     })();
 
     /* ================= 繪圖工具 ================= */
