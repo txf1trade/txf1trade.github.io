@@ -105,6 +105,12 @@
                         <span id="syncStatusText">🟢 連線中</span>
                     </div>
 
+                    <!-- 螢幕顯示模式切換按鈕 -->
+                    <button id="viewModeBtn" onclick="cycleViewMode()" title="點擊切換 螢幕顯示模式 (自動 / 強制手機 / 強制電腦)" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5">
+                        <i id="viewModeIcon" class="fa-solid fa-display text-emerald-400"></i>
+                        <span id="viewModeLabel">自動 (電腦)</span>
+                    </button>
+
                     <button id="colorModeBtn" title="切換漲跌顏色習慣" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
                         <span id="colorModeLabel">台股</span>
                     </button>
@@ -153,7 +159,8 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            <!-- 主佈局網格 (id="mainLayoutGrid" 用於動態手機/電腦版切換) -->
+            <div id="mainLayoutGrid" class="grid grid-cols-1 lg:grid-cols-12 gap-3">
 
                 <!-- 左側欄位：輸入與部位管理 (5 欄) -->
                 <div class="lg:col-span-5 space-y-3">
@@ -185,6 +192,34 @@
                                     <input type="number" id="feesAndTaxes" value="0" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="calculate()" class="w-full px-3 py-2 bg-[#0f131a] border border-slate-700 rounded-lg font-mono text-sm text-slate-200 focus:outline-none">
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 存提款 / 出入金區塊 -->
+                    <div id="card-cashflow" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
+                        <div onclick="toggleSection('cashflow')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
+                            <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
+                                <i id="icon-cashflow" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                                <i class="fa-solid fa-money-bill-transfer text-sky-400 mr-2"></i>存提款 / 出入金
+                            </h2>
+                            <span class="text-xs text-slate-400 font-mono">淨存提 <span id="netCashFlowHeader">0</span></span>
+                        </div>
+                        <div id="body-cashflow" class="p-3.5 space-y-2.5">
+                            <div class="grid grid-cols-5 gap-2">
+                                <select id="cashFlowType" class="col-span-2 bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-2 text-xs font-bold text-white focus:outline-none">
+                                    <option value="DEPOSIT">💰 存入 (入金)</option>
+                                    <option value="WITHDRAW">💸 提領 (出金)</option>
+                                </select>
+                                <div class="relative col-span-3">
+                                    <span class="absolute left-3 top-2.5 text-xs font-bold text-slate-500">NT$</span>
+                                    <input type="number" id="cashFlowAmount" placeholder="金額" step="1000" min="0" onfocus="this.select()" onkeydown="if(event.key==='Enter'){event.preventDefault();requestCashFlow();}" class="w-full pl-11 pr-3 py-2 bg-[#0f131a] border border-slate-700 rounded-lg font-mono font-bold text-sm text-sky-300 focus:outline-none">
+                                </div>
+                            </div>
+                            <button onclick="requestCashFlow()" class="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-check"></i>確認存提（自動加減權益數）
+                            </button>
+                            <div id="cashFlowMsg" class="text-[11px] font-mono min-h-[16px] text-slate-400"></div>
+                            <div id="cashFlowHistoryContainer" class="space-y-1.5 custom-scrollbar max-h-[180px] overflow-y-auto pr-0.5 text-xs"></div>
                         </div>
                     </div>
 
@@ -337,6 +372,11 @@
                                             <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">當日所有平倉損益加總</td>
                                         </tr>
                                         <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">存提淨額 (已自動計入權益)</td>
+                                            <td id="outNetCashFlow" class="py-2 px-2.5 text-right font-bold font-mono text-sky-300">NT$ 0</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">累計存入 − 累計提領</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30">
                                             <td class="py-2 px-2.5 text-slate-300">本日餘額 (基幣餘額)</td>
                                             <td id="outTodayBalance" class="py-2 px-2.5 text-right font-bold font-mono text-white">NT$ 1,000,000</td>
                                             <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">預設權益 + 已平倉損益 - 手續費/稅</td>
@@ -433,12 +473,15 @@
             apiSymbol: 'TX-1',
             latestLivePrice: null,
             pollTimer: null,
+            layoutMode: 'auto', // 'auto' | 'mobile' | 'desktop'
             collapsedCards: {},
-            collapsedSections: { cash: false, positions: false, 'closed-history': false, specs: false, risk: false, matrix: false, triggers: false },
+            collapsedSections: { cash: false, cashflow: false, positions: false, 'closed-history': false, specs: false, risk: false, matrix: false, triggers: false },
             positions: [
                 { id: 1, symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: 47340.35, currentPrice: 47500 }
             ],
             closedHistory: [],
+            cashFlowHistory: [],
+            availableCash: 0,
             scenarioTargets: { safe200: null, safe150: null, warning100: null, maintCall: null, danger25: null },
             canAddPosition: true
         };
@@ -475,6 +518,9 @@
             if (Array.isArray(config.closedHistory)) {
                 state.closedHistory = config.closedHistory;
             }
+            if (Array.isArray(config.cashFlowHistory)) {
+                state.cashFlowHistory = config.cashFlowHistory;
+            }
         }
 
         function loadConfigFromStorage() {
@@ -502,7 +548,8 @@
                 microMaint: parseFloat(microMaintInput.value) || 26900,
                 apiSymbol: state.apiSymbol,
                 positions: state.positions,
-                closedHistory: state.closedHistory
+                closedHistory: state.closedHistory,
+                cashFlowHistory: state.cashFlowHistory
             };
             const jsonStr = JSON.stringify(config, null, 2);
             localStorage.setItem(STORAGE_KEY, jsonStr);
@@ -538,6 +585,7 @@
                             applyConfigObject(config);
                             renderPositions();
                             renderClosedHistory();
+                            renderCashFlow();
                             calculate();
                         }
                     } catch (readErr) {
@@ -551,9 +599,12 @@
                         statusEl.innerText = `🟢 JSON檔連線中 (${fileHandle.name})`;
                         statusEl.className = 'text-[10px] text-emerald-400 font-mono font-bold';
                     }
-                    alert(`已成功連結本機設定檔「${fileHandle.name}」！\n之後所有操作與平倉將自動背景存檔。`);
                 } else {
-                    alert('您的瀏覽器不支援本機檔案直接讀寫，將使用 LocalStorage 自動記憶。');
+                    const st = document.getElementById('fileAutoSyncStatus');
+                    if (st) {
+                        st.innerText = '🟡 瀏覽器不支援檔案讀寫，使用 LocalStorage';
+                        st.className = 'text-[10px] text-amber-400 font-mono';
+                    }
                 }
             } catch (err) {
                 if (err.name !== 'AbortError') {
@@ -561,6 +612,54 @@
                 }
             }
         }
+
+        // 螢幕佈局模式控制
+        function cycleViewMode() {
+            if (state.layoutMode === 'auto') {
+                state.layoutMode = 'mobile';
+            } else if (state.layoutMode === 'mobile') {
+                state.layoutMode = 'desktop';
+            } else {
+                state.layoutMode = 'auto';
+            }
+            updateLayoutMode();
+        }
+
+        function updateLayoutMode() {
+            const grid = document.getElementById('mainLayoutGrid');
+            const btnLabel = document.getElementById('viewModeLabel');
+            const btnIcon = document.getElementById('viewModeIcon');
+            const isWide = window.innerWidth >= 1024;
+
+            let forceMobile = false;
+            if (state.layoutMode === 'mobile') {
+                forceMobile = true;
+                btnLabel.innerText = '強制手機版';
+                btnIcon.className = 'fa-solid fa-mobile-screen text-amber-400';
+            } else if (state.layoutMode === 'desktop') {
+                forceMobile = false;
+                btnLabel.innerText = '強制電腦版';
+                btnIcon.className = 'fa-solid fa-desktop text-blue-400';
+            } else {
+                forceMobile = !isWide;
+                btnLabel.innerText = isWide ? '自動 (電腦)' : '自動 (手機)';
+                btnIcon.className = 'fa-solid fa-display text-emerald-400';
+            }
+
+            if (forceMobile) {
+                grid.classList.remove('lg:grid-cols-12');
+                grid.classList.add('grid-cols-1');
+            } else {
+                grid.classList.add('lg:grid-cols-12');
+                grid.classList.remove('grid-cols-1');
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            if (state.layoutMode === 'auto') {
+                updateLayoutMode();
+            }
+        });
 
         function handleEnterKey(e) {
             if (e.key === 'Enter') {
@@ -607,7 +706,7 @@
         }
 
         function toggleAllCards(collapse) {
-            ['cash', 'positions', 'closed-history', 'specs', 'risk', 'matrix', 'triggers'].forEach(key => {
+            ['cash', 'cashflow', 'positions', 'closed-history', 'specs', 'risk', 'matrix', 'triggers'].forEach(key => {
                 state.collapsedSections[key] = collapse;
                 const bodyEl = document.getElementById(`body-${key}`);
                 const iconEl = document.getElementById(`icon-${key}`);
@@ -715,6 +814,7 @@
                 { id: Date.now(), symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: 47340.35, currentPrice: state.latestLivePrice || 47500 }
             ];
             state.closedHistory = [];
+            state.cashFlowHistory = [];
             defaultEquityInput.value = 1000000;
             closedPnLInput.value = 0;
             feesAndTaxesInput.value = 0;
@@ -726,6 +826,7 @@
             microMaintInput.value = 26900;
             renderPositions();
             renderClosedHistory();
+            renderCashFlow();
             calculate();
         }
 
@@ -845,7 +946,7 @@
                             <span id="pos-label-side-${pos.id}" class="px-2 py-0.5 rounded text-[10px] font-bold ${sideBadgeClass}">
                                 ${sideText}
                             </span>
-                            <!-- 直接放在部位標籤（例如 空2口）正右側的均價顯示區 -->
+                            <!-- 直接放在部位標籤正右側的均價顯示區 -->
                             <span id="pos-header-avg-${pos.id}" class="text-[11px] font-mono font-semibold text-slate-400">
                                 @<span id="pos-header-cost-${pos.id}">${pos.costPrice.toLocaleString()}</span>
                             </span>
@@ -980,7 +1081,7 @@
                         <div class="flex items-center gap-1.5 font-bold">
                             <span class="text-slate-400 text-[10px]">${item.time}</span>
                             <span class="text-white">${item.symbolName}</span>
-                            <span class="px-1.5 py-0.2 rounded text-[9px] ${item.sideName === '多' ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${item.sideName} ${item.qty}口</span>
+                            <span class="px-1.5 py-0.2 rounded text-[9px] ${item.sideName === '多單' ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${item.sideName} ${item.qty}口</span>
                         </div>
                         <div class="text-[10px] text-slate-400 font-mono">
                             均價 ${item.costPrice.toLocaleString()} ➔ 平倉 ${item.closePrice.toLocaleString()} (${item.pts >= 0 ? '+' : ''}${item.pts.toFixed(1)}點)
@@ -998,6 +1099,104 @@
             state.closedHistory = [];
             renderClosedHistory();
             saveConfigToStorage();
+        }
+
+        // ===== 存提款 / 出入金 =====
+        function getNetCashFlow() {
+            return state.cashFlowHistory.reduce((acc, r) => acc + (r.type === 'DEPOSIT' ? r.amount : -r.amount), 0);
+        }
+
+        function requestCashFlow() {
+            const type = document.getElementById('cashFlowType').value;
+            const amtInput = document.getElementById('cashFlowAmount');
+            const amt = Math.round(parseFloat(amtInput.value));
+
+            if (!amt || isNaN(amt) || amt <= 0) {
+                showCashFlowMsg('⚠️ 請輸入大於 0 的金額', 'warn');
+                return;
+            }
+
+            const isDeposit = type === 'DEPOSIT';
+            const currentEquityBase = parseFloat(defaultEquityInput.value) || 0;
+
+            // 提領限制：不得超過可用餘額（避免提領後低於原始保證金）
+            if (!isDeposit && amt > state.availableCash) {
+                showCashFlowMsg(`⚠️ 提領金額超過可用餘額（可用 ${formatNTD(state.availableCash)}），無法出金`, 'warn');
+                return;
+            }
+
+            const after = currentEquityBase + (isDeposit ? amt : -amt);
+
+            defaultEquityInput.value = after;
+            state.cashFlowHistory.unshift({
+                id: Date.now(),
+                time: new Date().toLocaleString('zh-TW', { hour12: false }),
+                type: type,
+                amount: amt
+            });
+            amtInput.value = '';
+            renderCashFlow();
+            calculate();
+            showCashFlowMsg(`✅ 已${isDeposit ? '存入' : '提領'} ${formatNTD(amt)}，預設權益數 ${formatNTD(currentEquityBase)} → ${formatNTD(after)}`, 'ok');
+        }
+
+        function showCashFlowMsg(text, kind) {
+            const el = document.getElementById('cashFlowMsg');
+            if (!el) return;
+            el.innerText = text;
+            el.className = 'text-[11px] font-mono min-h-[16px] ' + (kind === 'ok' ? 'text-emerald-400' : 'text-amber-400');
+        }
+
+        function undoCashFlow(id) {
+            const rec = state.cashFlowHistory.find(r => r.id === id);
+            if (!rec) return;
+            const isDeposit = rec.type === 'DEPOSIT';
+
+            // 撤銷「存入」等於扣款，需檢查可用餘額
+            if (isDeposit && rec.amount > state.availableCash) {
+                showCashFlowMsg('⚠️ 撤銷此筆存入後，權益數將低於原始保證金，無法撤銷', 'warn');
+                return;
+            }
+
+            const cur = parseFloat(defaultEquityInput.value) || 0;
+            defaultEquityInput.value = cur + (isDeposit ? -rec.amount : rec.amount);
+            state.cashFlowHistory = state.cashFlowHistory.filter(r => r.id !== id);
+            renderCashFlow();
+            calculate();
+            showCashFlowMsg(`↩ 已撤銷${isDeposit ? '存入' : '提領'} ${formatNTD(rec.amount)}，權益數已${isDeposit ? '扣回' : '加回'}`, 'ok');
+        }
+
+        function renderCashFlow() {
+            const container = document.getElementById('cashFlowHistoryContainer');
+            const net = getNetCashFlow();
+            const netEl = document.getElementById('netCashFlowHeader');
+            if (netEl) {
+                netEl.innerText = `${net >= 0 ? '+' : ''}${net.toLocaleString()}`;
+                netEl.className = net > 0 ? 'text-sky-300' : (net < 0 ? 'text-amber-300' : 'text-slate-400');
+            }
+            if (!container) return;
+
+            if (state.cashFlowHistory.length === 0) {
+                container.innerHTML = `<div class="text-center py-3 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">尚無存提紀錄</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            state.cashFlowHistory.forEach(r => {
+                const isDep = r.type === 'DEPOSIT';
+                const el = document.createElement('div');
+                el.className = 'bg-[#0f131a] p-2 rounded-lg border border-slate-800 flex items-center justify-between gap-2';
+                el.innerHTML = `
+                    <div class="flex items-center gap-1.5">
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${isDep ? 'bg-sky-950 text-sky-300' : 'bg-amber-950 text-amber-300'}">${isDep ? '存入' : '提領'}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">${r.time}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold ${isDep ? 'text-sky-300' : 'text-amber-300'}">${isDep ? '+' : '-'}${r.amount.toLocaleString()}</span>
+                        <button onclick="undoCashFlow(${r.id})" class="text-[10px] text-slate-500 hover:text-rose-400" title="撤銷此筆並還原權益數"><i class="fa-solid fa-rotate-left"></i></button>
+                    </div>`;
+                container.appendChild(el);
+            });
         }
 
         function updatePosQtyWithSign(id, valStr) {
@@ -1137,7 +1336,6 @@
                     }
                 }
 
-                // 即時連動更新抬頭標籤右側的均價數字
                 const headerCostEl = document.getElementById(`pos-header-cost-${pos.id}`);
                 if (headerCostEl) headerCostEl.innerText = pos.costPrice.toLocaleString();
 
@@ -1162,6 +1360,7 @@
             const totalEquity = todayBalance + totalUnrealizedPnL;
             const availableCash = totalEquity - totalReqInitialMargin;
             
+            state.availableCash = availableCash;
             state.canAddPosition = availableCash >= 0;
 
             const addPosBtn = document.getElementById('addPosBtn');
@@ -1172,8 +1371,15 @@
             const totalMaintRatio = totalReqMaintMargin > 0 ? (totalEquity / totalReqMaintMargin) * 100 : 999.9;
             const riskIndex = totalReqInitialMargin > 0 ? (totalEquity / totalReqInitialMargin) * 100 : 999.9;
 
-            const baseInitialEquity = defaultEquity - closedPnL;
+            const netCashFlow = getNetCashFlow();
+            const baseInitialEquity = defaultEquity - closedPnL - netCashFlow;
             document.getElementById('outDefaultEquity').innerText = formatNTD(baseInitialEquity);
+
+            const netCfEl = document.getElementById('outNetCashFlow');
+            if (netCfEl) {
+                netCfEl.innerText = formatNTD(netCashFlow);
+                netCfEl.className = `py-2 px-2.5 text-right font-bold font-mono ${netCashFlow >= 0 ? 'text-sky-300' : 'text-amber-300'}`;
+            }
 
             const closedPnLTableEl = document.getElementById('outClosedPnLTable');
             closedPnLTableEl.innerText = formatNTD(closedPnL);
@@ -1329,7 +1535,9 @@
             loadConfigFromStorage();
             renderPositions();
             renderClosedHistory();
+            renderCashFlow();
             calculate();
+            updateLayoutMode();
             if (state.autoSyncMarketPrice) {
                 fetchLiveMarketPrice();
                 startPolling();
