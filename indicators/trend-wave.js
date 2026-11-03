@@ -25,7 +25,28 @@
     const p = price || 0;                                   // 個股 / 股期：台股升降單位
     return p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
   }
-  window.TV_SETTINGS = { lines, tickSize };
+  /* ---- 多空必來點：各商品「交易日時段」設定 ----
+   *  tz      : 時區 (決定換日時間，自動處理夏令時間)
+   *  start   : 交易日起算時間 (當地時間，分鐘；525=08:45、900=15:00、1080=18:00)
+   *  evening : true = 夜盤/盤前時段歸入「隔一個」交易日 (台指 15:00、美期 18:00、日經夜盤)
+   *  weekend : true = 週六日也是交易日 (比特幣)；false = 週末順延到週一
+   *  day     : [起,迄] 日盤分鐘範圍，供「僅日盤」統計使用 (沒有日夜盤之分的商品不用填)
+   *  closeAt : 前收定義  'session' = 前一個整個時段的最後收盤 (預設)
+   *                      'day'     = 前一個時段中「日盤」的收盤 (有 day 才有效)
+   *  label   : 顯示說明文字
+   *  新增商品或調整時段只改這裡。 */
+  const zoneSessions = {
+    'TX-1':    { tz: 'Asia/Taipei',      start: 900,  evening: true,  day: [525, 825], closeAt: 'session', label: '全日盤 15:00~13:45' },
+    'TXAM-1':  { tz: 'Asia/Taipei',      start: 525,  evening: false,                  closeAt: 'session', label: '日盤 08:45~13:45' },
+    'TWN-1':   { tz: 'Asia/Taipei',      start: 525,  evening: false, day: [525, 825], closeAt: 'session', label: '全日盤 08:45~次日05:15' },
+    'NQ-1':    { tz: 'America/New_York', start: 1080, evening: true,                   closeAt: 'session', label: 'CME 美東18:00~17:00' },
+    'GC-1':    { tz: 'America/New_York', start: 1080, evening: true,                   closeAt: 'session', label: 'COMEX 美東18:00~17:00' },
+    'NK-1':    { tz: 'Asia/Tokyo',       start: 990,  evening: true,  day: [525, 945], closeAt: 'session', label: '全日盤 夜盤+日盤' },
+    'BTCUSDT': { tz: 'UTC',              start: 0,    evening: false, weekend: true,    closeAt: 'session', label: '24H（UTC 00:00 換日）' }
+  };
+  /* ---- 多空必來點：預設參數 (網頁設定選單修改後會以選單為準) ---- */
+  const zone = { sessMode: 'auto', baseMode: 'prev', lookback: 20, shortN: 5, wLong: 0.5, wShort: 0.3, wLast: 0.2, linear: true, kTarget: 0.25, kRange: 0.5 };
+  window.TV_SETTINGS = { lines, tickSize, zoneSessions, zone };
 })();
 
 /* ============================================================
