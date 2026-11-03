@@ -436,6 +436,7 @@
           <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR</button>
           <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
           <button id="tab-vwap" class="py-2 px-1" title="VWAP（依交易日重置，日K為累積）">VWAP</button>
+          <button id="tab-zone" class="py-2 px-1" title="多空必來點（依商品交易時段）">必來點</button>
           <button id="tab-mcdx" class="py-2 px-1" title="MCDX 籌碼副圖">MCDX</button>
     </div>
           <div class="flex items-center gap-1 text-xs">
@@ -560,6 +561,17 @@
             </label>
             <button id="ind-only-val" type="button" class="w-full mt-1 text-[11px] py-1 rounded border border-tvBorder text-tvTextMuted hover:text-white hover:bg-tvHover">只顯示數值</button>
           </div>
+          <div class="border-t border-tvBorder pt-2 mt-1 space-y-2">
+            <div class="text-tvTextMuted text-[10px]">多空必來點設定 <span id="zone-sess-info" class="text-[#ffcc66]"></span></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-tvText">統計時段</span>
+              <select id="zone-sess" class="w-24 bg-tvBg border border-tvBorder rounded px-1 py-0.5 text-white focus:outline-none focus:border-tvAccent disabled:opacity-40"><option value="auto">依商品</option><option value="day">僅日盤</option></select></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-tvText">多空線基準</span>
+              <select id="zone-base" class="w-24 bg-tvBg border border-tvBorder rounded px-1 py-0.5 text-white focus:outline-none focus:border-tvAccent"><option value="prev">前收</option><option value="open">今開</option></select></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-tvText">長期統計(天)</span>
+              <input id="zone-long" type="number" min="3" max="60" class="w-24 bg-tvBg border border-tvBorder rounded px-1 py-0.5 text-white focus:outline-none focus:border-tvAccent"></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-tvText">短期統計(天)</span>
+              <input id="zone-short" type="number" min="1" max="20" class="w-24 bg-tvBg border border-tvBorder rounded px-1 py-0.5 text-white focus:outline-none focus:border-tvAccent"></div>
+          </div>
         </div>
 
   <!-- Add Symbol Modal -->
@@ -625,12 +637,13 @@
       vol: false,       // 成交量副圖
       vwap: false,      // VWAP
       mcdx: false,      // MCDX 副圖
-      trendWave: false  // 台指順勢波段副圖
+      trendWave: false, // 台指順勢波段副圖
+      zone: false       // 多空必來點（主圖）
     };
     /* 指標文字顯示偏好：數值預設開、參數預設關 */
     let uiPrefs = { showNames: true, showValues: true, showParams: false };
     /* 底部分頁 ↔ 指標線 對應 */
-    const IND_TAB_LINES = { filter: ['filter12'], ema: ['ema20', 'ema60'], daily: ['daily', 'weekly'], atr: ['atrTrend'], vol: ['vol'], vwap: ['vwap'], mcdx: ['mcdx'], trendWave: ['trendWave'] };
+    const IND_TAB_LINES = { filter: ['filter12'], ema: ['ema20', 'ema60'], daily: ['daily', 'weekly'], atr: ['atrTrend'], vol: ['vol'], vwap: ['vwap'], mcdx: ['mcdx'], trendWave: ['trendWave'], zone: ['zone'] };
 
     const symbolLineConfigs = {
       'TX-1':   { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 },                           
@@ -2429,6 +2442,7 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
     }
     function refreshOverlays() {
       try {
+        zoneRefresh();
         if (!currentCandles.length) return;
         const last = currentCandles[currentCandles.length - 1];
         const base = currentCandles.length + '|' + last.time + '|' + last.close + '|' + last.volume + '|' + curKey();
@@ -2444,6 +2458,211 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
       b.onclick = () => { set(!get()); b.className = get() ? TAB_ON : TAB_OFF; refreshOverlays(); };
     };
     bindTab('tab-vwap', () => vwapOn, v => { vwapOn = v; lineVisibility.vwap = v; saveIndPrefs(); });
+    /* ---------- 多空必來點（依商品交易時段統計，疊在主圖） ----------
+       預期振幅 = 長期線性加權平均×0.5 + 短期平均×0.3 + 昨日振幅×0.2
+       多空線 = 前一交易日收盤價（或今開）；多/空方目標 = ±0.25×預期振幅；區間頂/底 = ±0.5×預期振幅
+       ※ 每個「交易日時段」獨立統計高低點；夜盤歸入隔一個交易日，週末自動順延到週一
+       ※ 統計資料固定用 15 分K 計算，圖表切換任何週期、任何商品，同一交易日的點位都一致
+       ※ 商品時段可在 indicators/trend-wave.js 的 zoneSessions 修改 (closeAt: 'session' 以整個時段收盤為前收；'day' 以日盤收盤為前收) */
+    const ZONE_DEF = { tz: 'Asia/Taipei', start: 525, evening: false, weekend: false, day: null, closeAt: 'session', label: '日盤' };
+    const ZONE_SESS = {
+      'TX-1':    { tz: 'Asia/Taipei', start: 900, evening: true, day: [525, 825], label: '全日盤 15:00~13:45' },
+      'TXAM-1':  { tz: 'Asia/Taipei', start: 525, evening: false, label: '日盤 08:45~13:45' },
+      'TWN-1':   { tz: 'Asia/Taipei', start: 525, evening: false, day: [525, 825], label: '全日盤 08:45~次日05:15' },
+      'NQ-1':    { tz: 'America/New_York', start: 1080, evening: true, label: 'CME 美東18:00~17:00' },
+      'GC-1':    { tz: 'America/New_York', start: 1080, evening: true, label: 'COMEX 美東18:00~17:00' },
+      'NK-1':    { tz: 'Asia/Tokyo', start: 990, evening: true, day: [525, 945], label: '全日盤 夜盤+日盤' },
+      'BTCUSDT': { tz: 'UTC', start: 0, evening: false, weekend: true, label: '24H（UTC 00:00 換日）' }
+    };
+    if (window.TV_SETTINGS && window.TV_SETTINGS.zoneSessions) Object.assign(ZONE_SESS, window.TV_SETTINGS.zoneSessions);
+    const ZCFG = Object.assign({ sessMode: 'auto', baseMode: 'prev', lookback: 20, shortN: 5, wLong: 0.5, wShort: 0.3, wLast: 0.2, linear: true, kTarget: 0.25, kRange: 0.5 }, (window.TV_SETTINGS && window.TV_SETTINGS.zone) || {});
+    const ZLS = 'tvZoneCfg_v1';
+    try { Object.assign(ZCFG, JSON.parse(localStorage.getItem(ZLS) || '{}')); } catch (e) {}
+    const ZN = ['區間頂', '多方目標', '多空線', '空方目標', '區間底'];
+    const ZC = ['#f23645', 'rgba(242,54,69,.65)', '#00B0FF', 'rgba(8,153,129,.65)', '#089981'];
+    const ZCS = ['#f23645', '#ff8a95', '#00B0FF', '#3fcfb4', '#089981'];
+    const ZW = [2, 1, 2, 1, 2];
+    const hhmm = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+
+    function zSess(code) { return Object.assign({}, ZONE_DEF, ZONE_SESS[String(code).toUpperCase()] || {}); }
+    const zOffCache = {}, zFmt = {};
+    function zOffMin(tz, t) {
+      if (tz === 'Asia/Taipei') return 480;
+      if (tz === 'Asia/Tokyo') return 540;
+      if (tz === 'UTC') return 0;
+      const ck = tz + '|' + Math.floor(t / 3600);
+      if (zOffCache[ck] !== undefined) return zOffCache[ck];
+      const f = zFmt[tz] || (zFmt[tz] = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }));
+      const p = {}; f.formatToParts(new Date(t * 1000)).forEach(x => { p[x.type] = +x.value; });
+      return (zOffCache[ck] = Math.round(Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute) / 60000 - Math.floor(t / 60)));
+    }
+    function zKey(t, S) {
+      const lm = Math.floor(t / 60) + zOffMin(S.tz, t);
+      const m = ((lm % 1440) + 1440) % 1440;
+      let d = Math.floor((lm - S.start) / 1440) + (S.evening ? 1 : 0);
+      if (!S.weekend) { const wd = (d + 4) % 7; if (wd === 6) d += 2; else if (wd === 0) d += 1; }
+      return { d, m };
+    }
+    function zExp(a) {
+      const L = Math.min(ZCFG.lookback, a.length), N = Math.min(ZCFG.shortN, a.length);
+      if (!L) return null;
+      let num = 0, den = 0, s = 0;
+      for (let i = 0; i < L; i++) { const w = ZCFG.linear ? (L - i) : 1; num += w * a[a.length - 1 - i]; den += w; }
+      for (let i = 0; i < N; i++) s += a[a.length - 1 - i];
+      const ws = ZCFG.wLong + ZCFG.wShort + ZCFG.wLast, lv = num / den;
+      return ws > 0 ? (ZCFG.wLong * lv + ZCFG.wShort * (s / N) + ZCFG.wLast * a[a.length - 1]) / ws : lv;
+    }
+    const zLevels = (b, R, rnd) => [b + ZCFG.kRange * R, b + ZCFG.kTarget * R, b, b - ZCFG.kTarget * R, b - ZCFG.kRange * R].map(rnd);
+    function zBuild(bars, S, dayMode) {
+      const out = []; let cur = null;
+      for (const b of bars) {
+        const z = zKey(b.time, S), inDay = !!S.day && z.m >= S.day[0] && z.m <= S.day[1];
+        if (dayMode && !inDay) continue;
+        if (!cur || cur.d !== z.d) { cur = { d: z.d, t0: b.time, open: b.open, high: b.high, low: b.low, close: b.close, dayClose: null }; out.push(cur); }
+        else { if (b.high > cur.high) cur.high = b.high; if (b.low < cur.low) cur.low = b.low; cur.close = b.close; }
+        if (inDay) cur.dayClose = b.close;
+      }
+      return out;
+    }
+    /* 統計資料來源：固定抓 15 分K（不受圖表週期、圖表載入天數影響），分段抓取避免單次資料過多 */
+    const zBars = { code: '', from: 0, at: 0, ver: 0, bars: [], loading: null, tok: 0, failAt: 0 };
+    async function zFetchChunk(code, a, b) {
+      const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(code)}&resolution=15&from=${Math.floor(a)}&to=${Math.floor(b)}&ws=true&metaData=true`;
+      const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json(), arr = Array.isArray(j) ? j : (j.bars || []);
+      return arr.map(x => { const raw = x.time || new Date(x.datetime).getTime(); return { time: raw > 1e10 ? Math.floor(raw / 1000) : raw, open: x.open, high: x.high, low: x.low, close: x.close }; });
+    }
+    async function zFetchBars(code, from, to) {
+      const CH = 30 * 86400, jobs = [];
+      for (let a = from; a < to; a += CH) jobs.push(zFetchChunk(code, a, Math.min(a + CH, to)));
+      const res = await Promise.allSettled(jobs);
+      if (res[res.length - 1].status !== 'fulfilled') throw res[res.length - 1].reason;   // 最新一段失敗就視為失敗
+      const m = new Map();
+      res.forEach(p => { if (p.status === 'fulfilled') p.value.forEach(b => { if (b.time && b.high != null && b.low != null) m.set(b.time, b); }); });
+      return [...m.values()].sort((x, y) => x.time - y.time);
+    }
+    /* 需要多早的資料：長期統計天數 × 1.5 (含週末假日) + 緩衝；日K圖只需近期 */
+    function zNeedFrom(daily, firstT) {
+      const warm = (Math.max(+ZCFG.lookback || 20, +ZCFG.shortN || 5) * 1.5 + 6) * 86400, now = Math.floor(Date.now() / 1000);
+      return Math.floor((daily ? now : Math.min(firstT, now)) - warm);
+    }
+    function zEnsureBars(code, needFrom, force) {
+      const now = Date.now();
+      if (zBars.loading && zBars.loading.code === code && zBars.loading.from <= needFrom) return;
+      if (now - zBars.failAt < 10000) return;
+      const have = zBars.code === code && zBars.from <= needFrom;
+      if (have && now - zBars.at < (force ? 15000 : 300000)) return;
+      zLoad(code, have ? Math.min(zBars.from, needFrom) : needFrom);
+    }
+    async function zLoad(code, from) {
+      const tok = ++zBars.tok; zBars.loading = { code, from };
+      try {
+        const bars = await zFetchBars(code, from, Math.floor(Date.now() / 1000));
+        if (tok !== zBars.tok) return;
+        if (bars.length) { Object.assign(zBars, { code, from, at: Date.now(), bars }); zBars.ver++; zoneSig = ''; } else zBars.failAt = Date.now();
+      } catch (e) { if (tok === zBars.tok) zBars.failAt = Date.now(); console.warn('必來點統計資料載入失敗', code, e); }
+      if (tok === zBars.tok) zBars.loading = null;
+    }
+    function zStat(ranges) {
+      const avg = k => { const s = Math.min(k, ranges.length); if (!s) return null; let t = 0; for (let i = 0; i < s; i++) t += ranges[ranges.length - 1 - i]; return t / s; };
+      return { R: ranges.length ? zExp(ranges) : null, a: [1, 5, 10, 20].map(avg) };
+    }
+    /* 逐交易日時段：預期振幅 = 之前「已完成」各時段(高-低)的加權平均；多空線 = 前一時段收盤(或本時段開盤) */
+    function calcZone() {
+      const cs = currentCandles, n = cs.length, code = curCode();
+      if (!n || zBars.code !== code || !zBars.bars.length) return null;
+      const S = zSess(code), px = cs[n - 1].close;
+      const tk = tickOf(code, px) > 0 ? tickOf(code, px) : 1, dec = decOf(code, px);
+      const rnd = v => +(Math.round(v / tk) * tk).toFixed(dec);
+      const daily = currentResolution === '1D' || isNaN(Number(currentResolution));
+      const dayMode = ZCFG.sessMode === 'day' && !!S.day;
+      const ss = zBuild(zBars.bars, S, dayMode);
+      if (ss.length < 3) return null;                         // 第 1 個時段可能資料不完整，不納入統計
+      const closeOf = s => (S.closeAt === 'day' && s.dayClose != null) ? s.dayClose : s.close;
+      const lvMap = new Map(), ranges = [];
+      for (let i = 1; i < ss.length; i++) {
+        if (i >= 2) { ranges.push(ss[i - 1].high - ss[i - 1].low); if (ranges.length > 60) ranges.shift(); }
+        if (!ranges.length) continue;
+        const R = zExp(ranges), b = ZCFG.baseMode === 'open' ? ss[i].open : closeOf(ss[i - 1]);
+        lvMap.set(ss[i].d, { lv: zLevels(b, R, rnd), R });
+      }
+      const last = ss[ss.length - 1];
+      if (daily) {
+        const dNow = zKey(Date.now() / 1000, S).d;
+        let e = lvMap.get(dNow), st = zStat(ranges);
+        if (!e && dNow > last.d) {                             // 下一個交易日尚無資料 → 以最新完成時段的收盤推算
+          const rr = ranges.concat([last.high - last.low]); st = zStat(rr);
+          e = { lv: zLevels(closeOf(last), st.R, rnd), R: st.R };
+        }
+        if (!e) e = lvMap.get(last.d);
+        return e ? { daily: true, S, R: e.R, lv: e.lv, stat: st } : null;
+      }
+      const resMin = Number(currentResolution) || 1;
+      const out = [[], [], [], [], []], map = new Map(); let missing = false;
+      const blank = t => { for (let j = 0; j < 5; j++) out[j].push({ time: t }); };
+      for (let i = 0; i < n; i++) {
+        const c = cs[i], z = zKey(c.time, S);
+        if (dayMode && (z.m + resMin <= S.day[0] || z.m > S.day[1])) { blank(c.time); continue; }
+        const e = lvMap.get(z.d);
+        if (!e) { blank(c.time); if (i === n - 1 && z.d > last.d) missing = true; continue; }
+        map.set(c.time, e.lv);
+        for (let j = 0; j < 5; j++) out[j].push({ time: c.time, value: e.lv[j] });
+      }
+      return { daily: false, S, R: (lvMap.get(zKey(cs[n - 1].time, S).d) || {}).R, out, map, dayMode, missing, stat: zStat(ranges) };
+    }
+
+    
+const zSer = ZN.map((nm, i) => chart.addLineSeries({ color: ZC[i], lineWidth: ZW[i], priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false, title: nm, priceFormat: INT_FMT }));
+    let zoneOn = !!lineVisibility.zone, zoneRes = null, zoneSig = '', zLines = [], zPxKey = '', zInfoKey = '';
+    function clearZLines() { zLines.forEach(([s, l]) => { try { s.removePriceLine(l); } catch (e) {} }); zLines = []; }
+    function zClear() { zSer.forEach(s => s.setData([])); clearZLines(); zoneRes = null; zoneSig = ''; for (let i = 0; i < 5; i++) prev['z' + i] = null; }
+    function zUpdateInfo(r) {
+      const code = curCode(), S = zSess(code), R = r && r.R != null ? r.R : null;
+      const k = code + '|' + ZCFG.sessMode + '|' + (R == null ? '' : Math.round(R * 100)); if (k === zInfoKey) return; zInfoKey = k;
+      const eff = (ZCFG.sessMode === 'day' && S.day) ? '日盤 ' + hhmm(S.day[0]) + '~' + hhmm(S.day[1]) : S.label;
+      const f = v => v == null ? '-' : fmtPx(v, code);
+      const a = $('zone-sess-info'); if (a) a.textContent = eff + (R != null ? ' ｜預期振幅 ' + f(R) : '');
+      const b = $('zone-sess'); if (b) b.disabled = !S.day;
+      const t = $('tab-zone'); if (t) t.title = '多空必來點｜' + eff + (R != null ? '｜預期振幅 ' + f(R) + '｜平均振幅 近1日 ' + f(r.stat.a[0]) + ' / 近5日 ' + f(r.stat.a[1]) + ' / 近10日 ' + f(r.stat.a[2]) + ' / 近20日 ' + f(r.stat.a[3]) : '');
+    }
+    function zoneRefresh() {
+      zUpdateInfo(zoneRes);
+      if (!zoneOn || !currentCandles.length) { if (zoneSig || zoneRes) zClear(); return; }
+      const cs = currentCandles, f = cs[0], l = cs[cs.length - 1], c = curCode();
+      const daily = currentResolution === '1D' || isNaN(Number(currentResolution));
+      zEnsureBars(c, zNeedFrom(daily, f.time), false);
+      if (zBars.code !== c || !zBars.bars.length) { if (zoneSig || zoneRes) zClear(); return; }   // 統計資料載入中
+      const sg = [cs.length, f.time, l.time, curKey(), JSON.stringify(ZCFG), zBars.ver, daily ? zKey(Date.now() / 1000, zSess(c)).d : ''].join('|');
+      if (sg === zoneSig) return;
+      const r = calcZone(); zoneSig = sg; zoneRes = r; clearZLines();
+      if (r && r.missing) zEnsureBars(c, zNeedFrom(daily, f.time), true);   // 新時段開始、統計資料尚未含新時段 → 重抓
+      const p = priceOf(c), t = tickOf(c, p), pk = c + '|' + t;
+      if (pk !== zPxKey) { zPxKey = pk; const pf = { type: 'price', precision: decOf(c, p), minMove: t }; zSer.forEach(s => s.applyOptions({ priceFormat: pf })); }
+      zUpdateInfo(r);
+      if (!r || r.daily) {
+        zSer.forEach(s => s.setData([])); for (let i = 0; i < 5; i++) prev['z' + i] = null;
+        if (r) zSer.forEach((s, i) => zLines.push([s, s.createPriceLine({ price: r.lv[i], color: ZC[i], lineWidth: ZW[i], lineStyle: (i === 1 || i === 3) ? 2 : 0, axisLabelVisible: true, title: ZN[i] })]));
+        return;
+      }
+      zSer.forEach((s, i) => feed(s, 'z' + i, r.out[i]));
+    }
+    
+function zoneLegend(c) {
+      if (!zoneRes) return '';
+      const lv = zoneRes.daily ? zoneRes.lv : zoneRes.map.get(c.time); if (!lv) return '';
+      return ZN.map((nm, i) => `<span style="color:${ZCS[i]}"><span class="lg-name">${nm}</span><span class="lg-val"> ${fmtPx(lv[i], curCode())}</span></span>`).join('');
+    }
+    /* 設定選單：統計時段 / 多空線基準 / 長期、短期統計天數 */
+    [['zone-sess', 'sessMode'], ['zone-base', 'baseMode'], ['zone-long', 'lookback', 1], ['zone-short', 'shortN', 1]].forEach(([id, key, num]) => {
+      const el = $(id); if (!el) return; el.value = ZCFG[key];
+      el.onchange = () => {
+        let v = el.value;
+        if (num) { v = Math.max(+el.min, Math.min(+el.max, parseInt(v, 10) || ZCFG[key])); el.value = v; }
+        ZCFG[key] = v; try { localStorage.setItem(ZLS, JSON.stringify(ZCFG)); } catch (e) {}
+        zoneRefresh();
+      };
+    });
+    bindTab('tab-zone', () => zoneOn, v => { zoneOn = v; lineVisibility.zone = v; saveIndPrefs(); });
     window.__indRefreshers.push(refreshOverlays);
     setInterval(refreshOverlays, 500);
 
@@ -2461,18 +2680,17 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         `<span class="text-tvTextMuted">收</span><span style="color:${col}">${fmt(c.close)}</span>` +
         `<span style="color:${col}">${s}${fmt(chg)} (${s}${pct.toFixed(2)}%)</span>` +
         (c.volume != null ? `<span class="text-tvTextMuted">量</span><span style="color:${col}">${Number(c.volume).toLocaleString()}</span>` : '') +
-        (vwapOn && vwapMap.has(c.time) ? `<span style="color:#e040fb"><span class="lg-name">VWAP</span><span class="lg-val"> ${fmtInt(vwapMap.get(c.time))}</span></span>` : '');
+        (vwapOn && vwapMap.has(c.time) ? `<span style="color:#e040fb"><span class="lg-name">VWAP</span><span class="lg-val"> ${fmtInt(vwapMap.get(c.time))}</span></span>` : '') +
+        (zoneOn ? zoneLegend(c) : '');
     }
     let fromMini = false;
     chart.subscribeCrosshairMove(p => {
       const has = !!(p && p.time);
-      // K 線 → 走勢圖：同步十字游標時間 (K 線時間為秒，走勢圖為毫秒)
       if (!fromMini && window.__miniSync) window.__miniSync.set(has ? p.time * 1000 : null);
       if (!has) { hovering = false; return; }
       hovering = true;
       showOhlc(currentCandles.find(c => c.time === p.time));
     });
-    // 走勢圖 → K 線：找出包含該時間的那一根 K 棒，並移動十字游標 (副圖成交量 / MCDX 會跟著同步)
     window.__onMiniHover = ms => {
       fromMini = true;
       try {
@@ -2491,9 +2709,8 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
 
     /* ---------- 副圖共用：時間軸只顯示在最下方的圖 ---------- */
     const paneState = { vol: false, mcdx: false };
-    const extraPanes = [];                       // 外掛指標副圖 {id, on, chart}（依畫面由上到下排列）
+    const extraPanes = [];
     let vchartRef = null, mchartRef = null;
-    /* 副圖高度拖曳：把手在副圖上緣，往上拖變高、往下拖變矮；高度依副圖 key 記住 */
     function attachPaneResizer(pane, key) {
       if (!pane || pane.querySelector(':scope > .pane-resizer')) return;
       const h = document.createElement('div');
@@ -2518,7 +2735,7 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
     function layoutAxes() {
       const order = [['vol', paneState.vol, vchartRef], ['mcdx', paneState.mcdx, mchartRef], ...extraPanes.map(p => [p.id, p.on, p.chart])];
       const lastOn = order.filter(o => o[1]).pop();
-      chart.applyOptions({ timeScale: { visible: !lastOn } });   // 時間軸只顯示在最下方的圖
+      chart.applyOptions({ timeScale: { visible: !lastOn } });
       order.forEach(([id, , c]) => c && c.applyOptions({ timeScale: { visible: !!lastOn && lastOn[0] === id } }));
     }
 
@@ -2550,7 +2767,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
       const vseries = vchart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceLineVisible: false });
       chart.applyOptions({ rightPriceScale: { minimumWidth: 72 } });
 
-      /* 讓原本的 updateIndicatorDisplay() 改把成交量資料送到副圖 */
       volumeSeries = {
         setData(d) { vseries.setData(d); show(d.length > 0); syncRange(); },
         update(d) { vseries.update(d); },
@@ -2563,7 +2779,7 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
       function show(on) {
         if (pane.classList.contains('hidden') !== !on) {
           pane.classList.toggle('hidden', !on);
-          paneState.vol = on; vchartRef = vchart; layoutAxes();   // 有副圖時，時間軸只顯示在最下方
+          paneState.vol = on; vchartRef = vchart; layoutAxes();
           requestAnimationFrame(() => {
             const r = chart.timeScale().getVisibleLogicalRange();
             if (r) vchart.timeScale().setVisibleLogicalRange(r);
@@ -2575,15 +2791,13 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         if (w > 0 && h > 0) { vchart.applyOptions({ width: w, height: h }); syncRange(); }
       }).observe(vbox);
 
-      /* 時間軸同步 */
       const link = (a, b) => a.timeScale().subscribeVisibleLogicalRangeChange(r => {
         if (!r || lock) return; lock = true;
         try { b.timeScale().setVisibleLogicalRange(r); } catch (e) {}
         lock = false;
       });
-      link(chart, vchart);   // 單向：主圖 → 副圖
+      link(chart, vchart);
 
-      /* 十字線同步 */
       let xl = false;
       chart.subscribeCrosshairMove(p => {
         if (xl) return; xl = true;
@@ -2606,11 +2820,9 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
     /* ================= MCDX 副圖 (由 Pine Script 移植) ================= */
     (function initMcdxPane() {
       const pane = $('mcdx-pane'), mbox = $('mcdx-container');
-      /* ---- 參數（可直接改這裡）---- */
       const CFG = { lenMode: 'auto', manualLen: 100, autoOffset: true, offsetV: 5.0, maLen: 10 };
       const C = { bkStrong: '#f52f2f', bkWeak: '#dfa59f', rtStrong: '#048000', rtWeak: '#8ed984', hot: '#fcf52d', rtMA: '#1b41bd', bkMA: '#8d0d0d', hotMA: '#ff7d03' };
 
-      /* ---- 核心計算 ---- */
       const emaSeries = (arr, len) => {
         const a = 2 / (len + 1); let p = null;
         return arr.map(v => { if (v == null) return null; p = p == null ? v : a * v + (1 - a) * p; return p; });
@@ -2644,7 +2856,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         return { pc: pcA, fc: fcA, epc: emaSeries(pcA, CFG.maLen), efc: emaSeries(fcA, CFG.maLen), elc: emaSeries(fcA.map(v => v == null ? null : 100 - v), CFG.maLen) };
       }
 
-      /* ---- 副圖 chart ---- */
       const mchart = LightweightCharts.createChart(mbox, {
         layout: { background: { type: 'solid', color: '#131722' }, textColor: '#b2b5be', fontSize: 11 },
         grid: { vertLines: { color: 'rgba(42,46,57,.5)' }, horzLines: { color: 'rgba(42,46,57,.5)' } },
@@ -2674,7 +2885,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         if (w > 0 && h > 0) { mchart.applyOptions({ width: w, height: h }); sync(); }
       }).observe(mbox);
 
-      /* ---- 十字線同步 + 圖例 ---- */
       const legend = $('mcdx-legend');
       function setLegend(i) {
         if (!res || i == null || res.pc[i] == null) { legend.textContent = ''; return; }
@@ -2697,7 +2907,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         xl = false;
       });
 
-      /* ---- 主圖週期資料 ---- */
       function refreshMain(force) {
         if (!on || !currentCandles.length) return;
         const last = currentCandles[currentCandles.length - 1];
@@ -2719,7 +2928,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         if (!hovering) setLegend(currentCandles.length - 1);
       }
 
-      /* ---- 5M / 15M / 60M 趨勢表格 ---- */
       const TF = [['5', '5M'], ['15', '15M'], ['60', '60M']];
       const tf = {}; let tfKey = '', tfBusy = false;
       async function fetchBars(code, r) {
@@ -2761,11 +2969,9 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         el.innerHTML = `<table><tr><td></td><td class="s">莊</td><td class="s">游</td><td class="s">散</td></tr>${rows}<tr><td colspan="4" style="background:${col};color:#fff">${txt}</td></tr></table>`;
       }
 
-      /* ---- 開關 / 設定 ---- */
       function setOn(v) {
         on = v; pane.classList.toggle('hidden', !on);
-        lineVisibility.mcdx = v; indicatorStates.mcdx = v; saveIndPrefs();
-        paneState.mcdx = on; layoutAxes();
+        lineVisibility.mcdx = v; indicatorStates.mcdx = v; saveIndPrefs(); layoutAxes();
         const b = $('tab-mcdx'); b.className = on ? TAB_ON : TAB_OFF;
         if (on) { lastSig = ''; requestAnimationFrame(() => { sync(); refreshMain(true); }); loadTf(); }
         renderTable();
@@ -2775,15 +2981,13 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
       $('mcdx-len').onchange = e => { CFG.lenMode = e.target.value; refreshMain(true); loadTf(); };
       $('tab-mcdx').className = TAB_OFF;
       window.__indRefreshers.push(() => { if (on) { refreshMain(true); loadTf(); } });
-      if (lineVisibility.mcdx) setOn(true);          // 依設定自動開啟
+      if (lineVisibility.mcdx) setOn(true);
       setInterval(() => refreshMain(false), 600);
       setInterval(() => { if (on) loadTf(); }, 20000);
       setInterval(() => { if (on) { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); if (it && it.code !== tfKey) loadTf(); } }, 1500);
     })();
 
-    /* ================= 指標外掛框架 =================
-       指標程式放在獨立 .js 檔 (indicators/*.js)，用 TVIndicators.register({...}) 註冊。
-       框架負責：副圖建立、底部分頁按鈕、時間軸/十字游標同步、定時重算、記住開關狀態。 */
+    /* ================= 指標外掛框架 ================= */
     (function initIndicatorHost() {
       let tabAnchor = $('tab-mcdx'), paneAnchor = $('mcdx-pane');
       const mounted = {};
@@ -2794,7 +2998,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         resolution: () => currentResolution,
         symbol: () => { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); return it ? it.code : null; },
         resSeconds: r => (r === '1D' ? 86400 : (Number(r) || 1) * 60),
-        /* Pine 風格 EMA：前 len-1 根為 null，第 len 根以 SMA 起算 */
         ema(values, len) {
           const out = Array(values.length).fill(null), a = 2 / (len + 1); let prev = null, sum = 0, cnt = 0;
           for (let i = 0; i < values.length; i++) {
@@ -2804,7 +3007,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
           }
           return out;
         },
-        /* 抓取其他週期的 K 棒 → [{time(秒), open, high, low, close, volume}] */
         async fetchBars(code, res, from, to) {
           to = to || Math.floor(Date.now() / 1000);
           const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(code)}&resolution=${res}&from=${Math.floor(from)}&to=${to}&ws=true&metaData=true`;
@@ -2842,7 +3044,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         if (!def || !def.id || mounted[def.id] || typeof def.compute !== 'function') { console.warn('指標註冊失敗', def); return; }
         const id = def.id, vk = def.visKey || id;
         if (!(vk in lineVisibility)) lineVisibility[vk] = false;
-        /* --- DOM：副圖 + 底部分頁按鈕 --- */
         const pane = document.createElement('div');
         pane.className = 'hidden relative border-t border-tvBorder shrink-0';
         pane.style.cssText = `height:${def.height || '12%'};min-height:${def.minHeight || '56px'};max-height:60%`;
@@ -2858,7 +3059,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         btn.className = TAB_OFF; btn.textContent = def.tab || def.name; btn.title = def.name;
         tabAnchor.insertAdjacentElement('afterend', btn); tabAnchor = btn;
 
-        /* --- 副圖 chart 與 series --- */
         const c = LightweightCharts.createChart(box, paneOptions());
         const ser = {};
         (def.series || []).forEach(sd => {
@@ -2873,7 +3073,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         extraPanes.push(st);
         mounted[id] = st;
 
-        /* --- 時間軸同步 (主圖 → 副圖) --- */
         const sync = () => { const r = chart.timeScale().getVisibleLogicalRange(); if (r) try { c.timeScale().setVisibleLogicalRange(r); } catch (e) {} };
         chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && st.on) try { c.timeScale().setVisibleLogicalRange(r); } catch (e) {} });
         new ResizeObserver(() => {
@@ -2881,7 +3080,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
           if (w > 0 && h > 0) { c.applyOptions({ width: w, height: h }); sync(); }
         }).observe(box);
 
-        /* --- 計算 / 套用 --- */
         let result = null, tmap = new Map(), busy = false, lastSig = '', lastKey = '', shown = {};
         const setLegend = t => {
           let html = '';
@@ -2913,7 +3111,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
           busy = false;
         }
 
-        /* --- 十字游標同步 --- */
         let xl = false;
         chart.subscribeCrosshairMove(p => {
           if (!st.on) return;
@@ -2929,12 +3126,11 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
           if (xl || !st.on) return; xl = true;
           try {
             if (p && p.time) { const k = currentCandles.find(q => q.time === p.time); if (k) chart.setCrosshairPosition(k.close, k.time, S()); }
-            else chart.clearCrosshairPosition();
+            else c.clearCrosshairPosition();
           } catch (e) {}
           xl = false;
         });
 
-        /* --- 開關 --- */
         function setOn(v) {
           st.on = v; pane.classList.toggle('hidden', !v); btn.className = v ? TAB_ON : TAB_OFF;
           lineVisibility[vk] = v; indicatorStates[vk] = v; saveIndPrefs(); layoutAxes();
@@ -2944,21 +3140,19 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         setInterval(() => refresh(false), 600);
         setInterval(() => refresh(true), def.refreshMs || 15000);
         window.__indRefreshers.push(() => refresh(true));
-        if (lineVisibility[vk]) setOn(true);          // 依設定自動開啟
+        if (lineVisibility[vk]) setOn(true);
       }
 
       window.TVIndicators._attach(def => { try { mount(def); } catch (e) { console.error('指標載入失敗', def && def.id, e); } });
 
-      /* --- 載入外部指標檔 (indicators/*.js)；也可用網址參數 ?ind=a.js,b.js 追加 --- */
       const files = [].concat(window.TV_INDICATOR_FILES || []);
-      /* 只允許本站 indicators/ 底下的檔，避免被惡意連結載入外部程式 */
       try { const q = new URLSearchParams(location.search).get('ind'); if (q) files.push(...q.split(',').map(x => x.trim()).filter(x => /^indicators\/[\w.-]+\.js$/.test(x))); } catch (e) {}
       const loadFile = (f, retry) => {
-        if (/trend-wave\.js$/.test(f) && mounted['trend-wave']) return;      // <head> 已載入成功就不重複載入
+        if (/trend-wave\.js$/.test(f) && mounted['trend-wave']) return;
         const sc = document.createElement('script'); sc.src = f;
         sc.onerror = () => {
           console.warn('找不到指標檔：' + f);
-          if (retry && f.indexOf('/') > -1) loadFile(f.split('/').pop(), false);   // 備援：與網頁同一資料夾
+          if (retry && f.indexOf('/') > -1) loadFile(f.split('/').pop(), false);
         };
         document.body.appendChild(sc);
       };
@@ -3039,7 +3233,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
       return null;
     }
 
-    /* ---- 事件 (capture：工具模式或點到圖形時攔截，其餘交給圖表平移縮放) ---- */
     function down(e) {
       if (hidden) return;
       const { x, y } = evPt(e);
@@ -3121,7 +3314,6 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
     $('dt-del').onclick = () => { if (sel) delSel(); else if (drawings.length && confirm('清除此商品/週期的所有繪圖？')) { drawings = []; save(); } };
     $('dt-color').oninput = e => { color = e.target.value; if (sel) { sel.color = color; save(); } };
 
-    /* ---- 繪製 ---- */
     function drawOne(d, isSel) {
       const q = d.pts.map(px); if (q.some(o => o.x == null || o.y == null)) return;
       const c = d.color || '#2962ff';
@@ -3136,7 +3328,7 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
         ctx.globalAlpha = .15; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; ctx.strokeRect(x, y, w, h);
       } else if (d.type === 'fib') {
         const x1 = Math.min(q[0].x, q[1].x), x2 = Math.max(q[0].x, q[1].x);
-        const p0 = d.pts[1].p, p1 = d.pts[0].p;               // 0 在第二點，1 在第一點
+        const p0 = d.pts[1].p, p1 = d.pts[0].p;
         ctx.font = '11px sans-serif'; ctx.textBaseline = 'bottom';
         let prevY = null, prevC = null;
         FIB.forEach(([lv, col]) => {
@@ -3184,7 +3376,7 @@ const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼�
     setTool('cursor');
   }
 })();
-
   </script>
 </body>
+</html>
 </html>
