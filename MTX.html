@@ -270,7 +270,7 @@
                             <div onclick="toggleSection('positions')" class="flex items-center cursor-pointer select-none flex-grow">
                                 <i id="icon-positions" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
                                 <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
-                                    <i class="fa-solid fa-list-check text-blue-500 mr-2"></i>部位清單 (支援分批)
+                                    <i class="fa-solid fa-list-check text-blue-500 mr-2"></i>期貨部位
                                 </h2>
                             </div>
 
@@ -298,7 +298,7 @@
                     <div onclick="toggleSection('options')" class="flex items-center cursor-pointer select-none flex-grow">
                         <i id="icon-options" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
                         <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
-                            <i class="fa-solid fa-layer-group text-purple-400 mr-2"></i>選擇權損益 (買權 BC / 賣權 BP)
+                            <i class="fa-solid fa-layer-group text-purple-400 mr-2"></i>選擇權部位
                         </h2>
                     </div>
                     <div class="flex items-center space-x-2.5">
@@ -549,6 +549,31 @@
 
     <!-- JavaScript 應用邏輯 -->
     <script>
+        // =====================================================================
+        // 【區塊顯示開關設定】想改預設要顯示哪些區塊，只要改這一塊
+        //   true  = 預設顯示
+        //   false = 預設隱藏
+        // 也可以在畫面右上角「≡」選單即時勾選（會記住），這裡只是「預設值」。
+        // =====================================================================
+        const DEFAULT_VISIBLE_CARDS = {
+            quick:            false,  // 快捷情境與控制（安全/追繳/斷頭 情境按鈕列）
+            cash:             true,   // 帳戶金流與預設權益數
+            cashflow:         false,  // 存提款 / 出入金
+            positions:        true,  // 部位清單（期貨：大台/小台/微台）
+            options:          true,   // 選擇權損益（BC 買權 / BP 賣權）
+            'closed-history': true,  // 已平倉明細記錄
+            specs:            false,  // 期交所保證金規格
+            risk:             false,  // 即時風險指標摘要
+            matrix:           false,  // 帳戶權益與合約損益總表
+            triggers:         false   // 追繳與 25% 斷頭關鍵點位
+        };
+
+        // 是否「忽略」瀏覽器/JSON 檔裡已存的勾選狀態，每次開啟都照上面的預設值：
+        //   false = 照你上次在「≡」選單勾選的結果（預設）
+        //   true  = 每次開啟都套用上面的 DEFAULT_VISIBLE_CARDS（改完預設後想立刻生效就設 true）
+        const FORCE_DEFAULT_VISIBILITY = false;
+        // =====================================================================
+
         const STORAGE_KEY = 'micro_futures_risk_calc_config_v1';
         let fileHandle = null;
 
@@ -623,7 +648,7 @@
                 });
                 state.optionLegs = legs;
             }
-            if (config.visibleCards && typeof config.visibleCards === 'object') {
+            if (!FORCE_DEFAULT_VISIBILITY && config.visibleCards && typeof config.visibleCards === 'object') {
                 state.visibleCards = Object.assign(getDefaultVisible(), config.visibleCards);
             }
             renderViewMenu();
@@ -1695,8 +1720,8 @@
         ];
 
         function getDefaultVisible() {
-            return { quick: false, cash: true, cashflow: false, positions: false, options: true,
-                     'closed-history': false, specs: false, risk: false, matrix: false, triggers: false };
+            // 預設值請改檔案上方的 DEFAULT_VISIBLE_CARDS
+            return Object.assign({}, DEFAULT_VISIBLE_CARDS);
         }
 
         function renderViewMenu() {
