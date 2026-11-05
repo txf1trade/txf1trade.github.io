@@ -120,6 +120,41 @@
                     <button id="colorModeBtn" title="切換漲跌顏色習慣" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
                         <span id="colorModeLabel">台股</span>
                     </button>
+
+                    <!-- 三條線：選擇要顯示的區塊 -->
+                    <div class="relative" id="viewMenuWrap">
+                        <button onclick="toggleViewMenu(event)" title="選擇要顯示哪些區塊" class="px-2.5 py-1 text-[13px] rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700">
+                            <i class="fa-solid fa-bars"></i>
+                        </button>
+                        <div id="viewMenuPanel" class="hidden absolute right-0 mt-2 w-64 bg-[#181e2a] border border-slate-700 rounded-xl shadow-2xl p-2 z-50">
+                            <div class="px-2 py-1 text-[10px] font-bold text-slate-400 tracking-wider">顯示區塊</div>
+                            <div id="viewMenuList" class="space-y-0.5"></div>
+                            <div class="flex gap-2 mt-2 pt-2 border-t border-slate-800">
+                                <button onclick="setAllCardVisibility(true)" class="flex-1 px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg">全部顯示</button>
+                                <button onclick="resetCardVisibility()" class="flex-1 px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg">恢復預設</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 總部位摘要列 (期貨 + 選擇權) -->
+            <div class="border-t border-slate-800/80 bg-[#0f131a]/70">
+                <div class="max-w-7xl mx-auto px-3 py-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] font-mono">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-slate-400 font-sans font-semibold">期權總部位</span>
+                        <span id="sumTotalPnL" class="font-bold text-sm text-slate-400">0</span>
+                        <span class="text-slate-300"><span id="sumTotalQty" class="font-bold">0</span> 口</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-slate-500 font-sans">期貨</span>
+                        <span id="sumFutPnL" class="font-bold text-slate-400">0</span>
+                        <span class="text-slate-400">(<span id="sumFutQty">0</span> 口)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-slate-500 font-sans">選擇權</span>
+                        <span id="sumOptPnL" class="font-bold text-slate-400">0</span>
+                        <span class="text-slate-400">(<span id="sumOptQty">0</span> 口：BC <span id="sumBcQty">0</span> / BP <span id="sumBpQty">0</span>)</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -128,7 +163,7 @@
         <main class="flex-grow max-w-7xl w-full mx-auto px-3 py-3 space-y-3">
 
             <!-- 全域收合與預設情境工具列 -->
-            <div class="bg-[#181e2a] rounded-xl p-3 shadow-sm border border-slate-800 space-y-2">
+            <div id="card-quick" class="bg-[#181e2a] rounded-xl p-3 shadow-sm border border-slate-800 space-y-2">
                 <div class="flex items-center justify-between border-b border-slate-800/80 pb-2 flex-wrap gap-2">
                     <span class="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center">
                         <i class="fa-solid fa-bolt text-amber-400 mr-1.5"></i>快捷情境與控制：
@@ -169,7 +204,7 @@
             <div id="mainLayoutGrid" class="grid grid-cols-1 lg:grid-cols-12 gap-3">
 
                 <!-- 左側欄位：輸入與部位管理 (5 欄) -->
-                <div class="lg:col-span-5 space-y-3">
+                <div id="leftCol" class="lg:col-span-5 space-y-3">
 
                     <!-- 帳戶金流區塊 -->
                     <div id="card-cash" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
@@ -257,6 +292,40 @@
                         </div>
                     </div>
 
+            <!-- 選擇權損益區塊 -->
+            <div id="card-options" class="scroll-mt-28 bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
+                <div class="p-3 flex items-center justify-between border-b border-slate-800 bg-[#181e2a]/90 gap-2 flex-wrap">
+                    <div onclick="toggleSection('options')" class="flex items-center cursor-pointer select-none flex-grow">
+                        <i id="icon-options" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                        <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
+                            <i class="fa-solid fa-layer-group text-purple-400 mr-2"></i>選擇權損益 (買權 BC / 賣權 BP)
+                        </h2>
+                    </div>
+                    <div class="flex items-center space-x-2.5">
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 block leading-none">權利金合計</span>
+                            <span id="optTotalPremium" class="font-mono font-bold text-xs sm:text-sm text-slate-200">0</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 block leading-none">盈虧合計</span>
+                            <span id="optTotalProfit" class="font-mono font-bold text-xs sm:text-sm">0 TWD</span>
+                        </div>
+                        <button onclick="addOption('BC')" class="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-500 text-white rounded-lg flex items-center gap-1 shadow transition">
+                            <i class="fa-solid fa-plus"></i> 買權 BC
+                        </button>
+                        <button onclick="addOption('BP')" class="px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center gap-1 shadow transition">
+                            <i class="fa-solid fa-plus"></i> 賣權 BP
+                        </button>
+                    </div>
+                </div>
+                <div id="body-options" class="p-3 space-y-3">
+                    <div id="optionsContainer" class="overflow-x-auto"></div>
+                    <div class="text-[10px] text-slate-500 leading-relaxed">
+                        權利金 = 進場價格 × 口數 × 50　｜　損益(點) = 委買價格 − 進場價格　｜　盈虧 = 損益(點) × 口數 × 50。進場價格或口數留空代表沒有部位；委買價格留空則該筆不計損益。「平倉」會以委買價格當平倉價，損益加進預設權益數與已平倉損益並記入平倉明細；未平倉的選擇權損益會併入帳戶權益與風險指標。
+                    </div>
+                </div>
+            </div>
+
                     <!-- 已平倉明細區塊 -->
                     <div id="card-closed-history" class="bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
                         <div onclick="toggleSection('closed-history')" class="p-3 flex items-center justify-between cursor-pointer select-none border-b border-slate-800 bg-[#181e2a]/90">
@@ -306,7 +375,7 @@
                 </div>
 
                 <!-- 右側欄位：視覺化儀表板與核心矩陣總表 (7 欄) -->
-                <div class="lg:col-span-7 space-y-3">
+                <div id="rightCol" class="lg:col-span-7 space-y-3">
 
                     <!-- 風險狀態摘要卡片 -->
                     <div id="card-risk" class="bg-[#181e2a] rounded-xl border border-slate-800 relative overflow-hidden shadow-md">
@@ -387,12 +456,22 @@
                                             <td id="outTodayBalance" class="py-2 px-2.5 text-right font-bold font-mono text-white">NT$ 1,000,000</td>
                                             <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">預設權益 + 已平倉損益 - 手續費/稅</td>
                                         </tr>
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">期貨未實現損益</td>
+                                            <td id="outFuturesPnL" class="py-2 px-2.5 text-right font-bold font-mono">NT$ 0</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">大台/小台/微台未平倉損益</td>
+                                        </tr>
+                                        <tr class="hover:bg-slate-800/30">
+                                            <td class="py-2 px-2.5 text-slate-300">選擇權未實現損益</td>
+                                            <td id="outOptionsPnL" class="py-2 px-2.5 text-right font-bold font-mono">NT$ 0</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">(委買價 − 進場價) × 口數 × 50</td>
+                                        </tr>
                                         <tr class="hover:bg-slate-800/30 bg-slate-900/40">
                                             <td class="py-2 px-2.5 text-slate-200 font-semibold flex items-center">
-                                                <i class="fa-solid fa-chart-line text-blue-400 mr-2"></i>未沖銷期貨浮動總損益
+                                                <i class="fa-solid fa-chart-line text-blue-400 mr-2"></i>未實現損益合計 (期貨+選擇權)
                                             </td>
                                             <td id="outUnrealizedPnL" class="py-2 px-2.5 text-right font-bold font-mono text-sm sm:text-base">NT$ 0</td>
-                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">所有未平倉部位損益加總</td>
+                                            <td class="py-2 px-2.5 text-right text-xs text-slate-400 hidden sm:table-cell">期貨 + 選擇權 未實現損益加總</td>
                                         </tr>
                                         <tr class="bg-blue-950/30 border-y border-blue-900/50">
                                             <td class="py-2.5 px-2.5 text-white font-bold">權益總值 / 權益數</td>
@@ -458,39 +537,6 @@
 
             </div>
 
-            <!-- 選擇權損益區塊 -->
-            <div id="card-options" class="scroll-mt-16 bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
-                <div class="p-3 flex items-center justify-between border-b border-slate-800 bg-[#181e2a]/90 gap-2 flex-wrap">
-                    <div onclick="toggleSection('options')" class="flex items-center cursor-pointer select-none flex-grow">
-                        <i id="icon-options" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
-                        <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
-                            <i class="fa-solid fa-layer-group text-purple-400 mr-2"></i>選擇權損益 (買權 BC / 賣權 BP)
-                        </h2>
-                    </div>
-                    <div class="flex items-center space-x-2.5">
-                        <div class="text-right">
-                            <span class="text-[10px] text-slate-400 block leading-none">權利金合計</span>
-                            <span id="optTotalPremium" class="font-mono font-bold text-xs sm:text-sm text-slate-200">0</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-[10px] text-slate-400 block leading-none">盈虧合計</span>
-                            <span id="optTotalProfit" class="font-mono font-bold text-xs sm:text-sm">0 TWD</span>
-                        </div>
-                        <button onclick="addOption('BC')" class="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-500 text-white rounded-lg flex items-center gap-1 shadow transition">
-                            <i class="fa-solid fa-plus"></i> 買權 BC
-                        </button>
-                        <button onclick="addOption('BP')" class="px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center gap-1 shadow transition">
-                            <i class="fa-solid fa-plus"></i> 賣權 BP
-                        </button>
-                    </div>
-                </div>
-                <div id="body-options" class="p-3 space-y-3">
-                    <div id="optionsContainer" class="overflow-x-auto"></div>
-                    <div class="text-[10px] text-slate-500 leading-relaxed">
-                        權利金 = 進場價格 × 口數 × 50　｜　損益(點) = 委買價格 − 進場價格　｜　盈虧 = 損益(點) × 口數 × 50。進場價格或口數留空代表沒有部位；委買價格留空則該筆不計損益。
-                    </div>
-                </div>
-            </div>
         </main>
 
         <!-- 頁尾 -->
@@ -522,6 +568,7 @@
             cashFlowHistory: [],
             availableCash: 0,
             optionLegs: [],
+            visibleCards: getDefaultVisible(),
             scenarioTargets: { safe200: null, safe150: null, warning100: null, maintCall: null, danger25: null },
             canAddPosition: true
         };
@@ -576,6 +623,11 @@
                 });
                 state.optionLegs = legs;
             }
+            if (config.visibleCards && typeof config.visibleCards === 'object') {
+                state.visibleCards = Object.assign(getDefaultVisible(), config.visibleCards);
+            }
+            renderViewMenu();
+            applyCardVisibility();
             renderOptions();
         }
 
@@ -606,7 +658,8 @@
                 positions: state.positions,
                 closedHistory: state.closedHistory,
                 cashFlowHistory: state.cashFlowHistory,
-                optionLegs: state.optionLegs
+                optionLegs: state.optionLegs,
+                visibleCards: state.visibleCards
             };
             const jsonStr = JSON.stringify(config, null, 2);
             localStorage.setItem(STORAGE_KEY, jsonStr);
@@ -1158,7 +1211,7 @@
                         <div class="flex items-center gap-1.5 font-bold">
                             <span class="text-slate-400 text-[10px]">${item.time}</span>
                             <span class="text-white">${item.symbolName}</span>
-                            <span class="px-1.5 py-0.2 rounded text-[9px] ${item.sideName === '多單' ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${item.sideName} ${item.qty}口</span>
+                            <span class="px-1.5 py-0.2 rounded text-[9px] ${(item.sideName === '多單' || item.sideName === '買進') ? 'bg-rose-950 text-rose-300' : 'bg-emerald-950 text-emerald-300'}">${item.sideName} ${item.qty}口</span>
                         </div>
                         <div class="text-[10px] text-slate-400 font-mono">
                             均價 ${item.costPrice.toLocaleString()} ➔ 平倉 ${item.closePrice.toLocaleString()} (${item.pts >= 0 ? '+' : ''}${item.pts.toFixed(1)}點)
@@ -1435,7 +1488,10 @@
                 totalPnLHeaderEl.className = `font-mono font-bold text-xs sm:text-sm ${getPnLColorClass(totalUnrealizedPnL)}`;
             }
 
-            const totalEquity = todayBalance + totalUnrealizedPnL;
+            const optTotals = calcOptions();
+            const futuresPnL = totalUnrealizedPnL;
+            const combinedPnL = futuresPnL + optTotals.profit;
+            const totalEquity = todayBalance + combinedPnL;
             const availableCash = totalEquity - totalReqInitialMargin;
             
             state.availableCash = availableCash;
@@ -1466,8 +1522,26 @@
             document.getElementById('outTodayBalance').innerText = formatNTD(todayBalance);
             
             const pnlEl = document.getElementById('outUnrealizedPnL');
-            pnlEl.innerText = formatNTD(totalUnrealizedPnL);
-            pnlEl.className = `py-2 px-2.5 text-right font-bold font-mono text-sm sm:text-base ${getPnLColorClass(totalUnrealizedPnL)}`;
+            pnlEl.innerText = formatNTD(combinedPnL);
+            pnlEl.className = `py-2 px-2.5 text-right font-bold font-mono text-sm sm:text-base ${getPnLColorClass(combinedPnL)}`;
+
+            const futuresQty = state.positions.reduce((a, p) => a + (Number(p.qty) || 0), 0);
+            const fmtSigned = (n) => `${n > 0 ? '+' : ''}${Math.round(n).toLocaleString('zh-TW')}`;
+            setOptText('sumTotalPnL', fmtSigned(combinedPnL), `font-bold text-sm ${getPnLColorClass(combinedPnL)}`);
+            setOptText('sumTotalQty', String(futuresQty + optTotals.qty));
+            setOptText('sumFutPnL', fmtSigned(futuresPnL), `font-bold ${getPnLColorClass(futuresPnL)}`);
+            setOptText('sumFutQty', String(futuresQty));
+            setOptText('sumOptPnL', fmtSigned(optTotals.profit), `font-bold ${getPnLColorClass(optTotals.profit)}`);
+            setOptText('sumOptQty', String(optTotals.qty));
+            setOptText('sumBcQty', String(optTotals.bcQty));
+            setOptText('sumBpQty', String(optTotals.bpQty));
+
+            const futEl = document.getElementById('outFuturesPnL');
+            futEl.innerText = formatNTD(futuresPnL);
+            futEl.className = `py-2 px-2.5 text-right font-bold font-mono ${getPnLColorClass(futuresPnL)}`;
+            const optEl = document.getElementById('outOptionsPnL');
+            optEl.innerText = formatNTD(optTotals.profit);
+            optEl.className = `py-2 px-2.5 text-right font-bold font-mono ${getPnLColorClass(optTotals.profit)}`;
 
             document.getElementById('outTotalEquity').innerText = formatNTD(totalEquity);
             document.getElementById('outReqInitialMargin').innerText = formatNTD(totalReqInitialMargin);
@@ -1541,7 +1615,7 @@
                 riskAlertMsg.innerText = '風險指標低於 25%！';
             }
 
-            calculateTriggerPricesAndScenarios(todayBalance, totalReqMaintMargin, totalReqInitialMargin, totalWeightedMultiplier);
+            calculateTriggerPricesAndScenarios(todayBalance + optTotals.profit, totalReqMaintMargin, totalReqInitialMargin, totalWeightedMultiplier);
             saveConfigToStorage();
         }
 
@@ -1606,7 +1680,88 @@
         // ===== 選擇權損益 (買權 BC / 賣權 BP，每筆獨立) =====
         const OPT_MULT = 50;
 
+        // ===== 三條線選單：選擇要顯示的區塊 =====
+        const CARD_DEFS = [
+            { key: 'quick', id: 'card-quick', label: '快捷情境與控制' },
+            { key: 'cash', id: 'card-cash', label: '帳戶金流與預設權益數' },
+            { key: 'cashflow', id: 'card-cashflow', label: '存提款 / 出入金' },
+            { key: 'positions', id: 'card-positions', label: '部位清單 (期貨)' },
+            { key: 'options', id: 'card-options', label: '選擇權損益' },
+            { key: 'closed-history', id: 'card-closed-history', label: '已平倉明細記錄' },
+            { key: 'specs', id: 'card-specs', label: '期交所保證金規格' },
+            { key: 'risk', id: 'card-risk', label: '即時風險指標摘要' },
+            { key: 'matrix', id: 'card-matrix', label: '帳戶權益與合約損益總表' },
+            { key: 'triggers', id: 'card-triggers', label: '追繳與 25% 斷頭點位' }
+        ];
+
+        function getDefaultVisible() {
+            return { quick: false, cash: true, cashflow: false, positions: false, options: true,
+                     'closed-history': false, specs: false, risk: false, matrix: false, triggers: false };
+        }
+
+        function renderViewMenu() {
+            const list = document.getElementById('viewMenuList');
+            if (!list) return;
+            list.innerHTML = CARD_DEFS.map(d => `
+                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-800 cursor-pointer text-xs text-slate-200 select-none">
+                    <input type="checkbox" class="accent-blue-500" ${state.visibleCards[d.key] ? 'checked' : ''} onchange="toggleCardVisible('${d.key}', this.checked)">
+                    <span>${d.label}</span>
+                </label>`).join('');
+        }
+
+        function applyCardVisibility() {
+            CARD_DEFS.forEach(d => {
+                const el = document.getElementById(d.id);
+                if (el) el.classList.toggle('hidden', !state.visibleCards[d.key]);
+            });
+            const leftKeys = ['cash', 'cashflow', 'positions', 'options', 'closed-history', 'specs'];
+            const rightKeys = ['risk', 'matrix', 'triggers'];
+            const leftOn = leftKeys.some(k => state.visibleCards[k]);
+            const rightOn = rightKeys.some(k => state.visibleCards[k]);
+            const leftCol = document.getElementById('leftCol');
+            const rightCol = document.getElementById('rightCol');
+            if (leftCol) leftCol.className = 'space-y-3 ' + (leftOn ? (rightOn ? 'lg:col-span-5' : 'lg:col-span-12') : 'hidden');
+            if (rightCol) rightCol.className = 'space-y-3 ' + (rightOn ? (leftOn ? 'lg:col-span-7' : 'lg:col-span-12') : 'hidden');
+        }
+
+        function toggleCardVisible(key, checked) {
+            state.visibleCards[key] = checked;
+            applyCardVisibility();
+            saveConfigToStorage();
+        }
+
+        function setAllCardVisibility(on) {
+            CARD_DEFS.forEach(d => { state.visibleCards[d.key] = on; });
+            renderViewMenu();
+            applyCardVisibility();
+            saveConfigToStorage();
+        }
+
+        function resetCardVisibility() {
+            state.visibleCards = getDefaultVisible();
+            renderViewMenu();
+            applyCardVisibility();
+            saveConfigToStorage();
+        }
+
+        function toggleViewMenu(e) {
+            if (e) e.stopPropagation();
+            document.getElementById('viewMenuPanel').classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            const wrap = document.getElementById('viewMenuWrap');
+            const panel = document.getElementById('viewMenuPanel');
+            if (wrap && panel && !wrap.contains(e.target)) panel.classList.add('hidden');
+        });
+
         function jumpToOptions() {
+            if (!state.visibleCards.options) {
+                state.visibleCards.options = true;
+                renderViewMenu();
+                applyCardVisibility();
+                saveConfigToStorage();
+            }
             if (state.collapsedSections.options) toggleSection('options');
             const el = document.getElementById('card-options');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1619,13 +1774,45 @@
                 strike: '', entry: '', bid: '', qty: 1
             });
             renderOptions();
-            saveConfigToStorage();
+            calculate();
         }
 
         function deleteOption(id) {
             state.optionLegs = state.optionLegs.filter(o => o.id !== id);
             renderOptions();
-            saveConfigToStorage();
+            calculate();
+        }
+
+        // 選擇權平倉：委買價格視為平倉價，損益加進預設權益數與已平倉損益，並記入平倉明細
+        function closeOption(id) {
+            const o = state.optionLegs.find(x => x.id === id);
+            if (!o) return;
+            const entry = numOrNull(o.entry), qty = numOrNull(o.qty), bid = numOrNull(o.bid);
+            if (entry === null || entry <= 0 || qty === null || qty <= 0 || bid === null) {
+                alert('⚠️ 平倉前請先填好進場價格、委買價格（當作平倉價）與口數');
+                return;
+            }
+            const pts = bid - entry;
+            const pnl = Math.round(pts * qty * OPT_MULT);
+
+            defaultEquityInput.value = (parseFloat(defaultEquityInput.value) || 0) + pnl;
+            closedPnLInput.value = (parseFloat(closedPnLInput.value) || 0) + pnl;
+
+            state.closedHistory.unshift({
+                time: new Date().toLocaleTimeString('zh-TW', { hour12: false }),
+                symbolName: `${o.type === 'BP' ? '賣權 BP' : '買權 BC'}${o.strike !== '' && o.strike !== undefined ? ' ' + o.strike : ''}`,
+                sideName: '買進',
+                qty: qty,
+                costPrice: entry,
+                closePrice: bid,
+                pnl: pnl,
+                pts: pts
+            });
+
+            state.optionLegs = state.optionLegs.filter(x => x.id !== id);
+            renderOptions();
+            renderClosedHistory();
+            calculate();
         }
 
         function setOptType(id, type) {
@@ -1633,7 +1820,7 @@
             if (!o) return;
             o.type = type;
             renderOptions();
-            saveConfigToStorage();
+            calculate();
         }
 
         function updateOpt(id, field, value) {
@@ -1641,8 +1828,7 @@
             if (!o) return;
             const v = parseFloat(value);
             o[field] = (value === '' || isNaN(v)) ? '' : v;
-            calcOptions();
-            saveConfigToStorage();
+            calculate();
         }
 
         function numOrNull(v) {
@@ -1691,13 +1877,14 @@
                     <td id="opt-prem-${o.id}" class="py-1.5 px-2 text-right font-mono text-slate-200">--</td>
                     <td id="opt-pts-${o.id}" class="py-1.5 px-2 text-right font-mono text-slate-400">--</td>
                     <td id="opt-pnl-${o.id}" class="py-1.5 px-2 text-right font-mono text-slate-400">--</td>
-                    <td class="py-1.5 pl-1 text-right">
+                    <td class="py-1.5 pl-1 text-right whitespace-nowrap">
+                        <button onclick="closeOption(${o.id})" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-bold shadow" title="以委買價格平倉，損益加回預設權益數與已平倉損益"><i class="fa-solid fa-check-double"></i> 平倉</button>
                         <button onclick="deleteOption(${o.id})" class="px-2 py-1 bg-slate-800 hover:bg-rose-900 text-slate-300 rounded text-[10px] border border-slate-700 hover:border-rose-700 transition" title="刪除此筆"><i class="fa-solid fa-trash-can text-rose-400"></i></button>
                     </td>
                 </tr>`;
             }).join('');
             container.innerHTML = `
-                <table class="w-full text-left border-collapse min-w-[680px]">
+                <table class="w-full text-left border-collapse min-w-[780px]">
                     <thead>
                         <tr class="text-[10px] text-slate-400 font-semibold">
                             <th class="pb-1">類型</th>
@@ -1719,6 +1906,7 @@
         function calcOptions() {
             let totalPremium = 0;
             let totalProfit = 0;
+            let totalQty = 0, bcQty = 0, bpQty = 0;
             state.optionLegs.forEach(o => {
                 const entry = numOrNull(o.entry);
                 const qty = numOrNull(o.qty);
@@ -1729,6 +1917,10 @@
                 const pts = (hasLeg && bid !== null) ? (bid - entry) : null;
                 const pnl = pts !== null ? pts * qty * OPT_MULT : null;
                 if (premium !== null) totalPremium += premium;
+                if (hasLeg) {
+                    totalQty += qty;
+                    if (o.type === 'BP') bpQty += qty; else bcQty += qty;
+                }
                 if (pnl !== null) totalProfit += pnl;
 
                 setOptText(`opt-prem-${o.id}`, premium !== null ? fmtOpt(premium) : '--');
@@ -1742,6 +1934,7 @@
             setOptText('optTotalPremium', fmtOpt(totalPremium));
             setOptText('optTotalProfit', `${totalProfit > 0 ? '+' : ''}${fmtOpt(totalProfit)} TWD`,
                 `font-mono font-bold text-xs sm:text-sm ${getPnLColorClass(totalProfit)}`);
+            return { premium: totalPremium, profit: totalProfit, qty: totalQty, bcQty: bcQty, bpQty: bpQty };
         }
 
         document.getElementById('colorModeBtn').addEventListener('click', () => {
@@ -1753,6 +1946,8 @@
 
         window.onload = function() {
             loadConfigFromStorage();
+            renderViewMenu();
+            applyCardVisibility();
             renderPositions();
             renderClosedHistory();
             renderCashFlow();
