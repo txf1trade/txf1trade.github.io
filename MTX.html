@@ -105,6 +105,12 @@
                         <span id="syncStatusText">🟢 連線中</span>
                     </div>
 
+                    <!-- 跳到選擇權區塊 -->
+                    <button onclick="jumpToOptions()" title="直接跳到下方的選擇權損益區塊" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-purple-900/60 text-purple-200 hover:bg-purple-800/70 border border-purple-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrow-down text-purple-300"></i>
+                        <span>選擇權</span>
+                    </button>
+
                     <!-- 螢幕顯示模式切換按鈕 -->
                     <button id="viewModeBtn" onclick="cycleViewMode()" title="點擊切換 螢幕顯示模式 (自動 / 強制手機 / 強制電腦)" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5">
                         <i id="viewModeIcon" class="fa-solid fa-display text-emerald-400"></i>
@@ -452,6 +458,39 @@
 
             </div>
 
+            <!-- 選擇權損益區塊 -->
+            <div id="card-options" class="scroll-mt-16 bg-[#181e2a] rounded-xl border border-slate-800 shadow-sm overflow-hidden">
+                <div class="p-3 flex items-center justify-between border-b border-slate-800 bg-[#181e2a]/90 gap-2 flex-wrap">
+                    <div onclick="toggleSection('options')" class="flex items-center cursor-pointer select-none flex-grow">
+                        <i id="icon-options" class="fa-solid fa-chevron-down text-slate-500 text-xs mr-2"></i>
+                        <h2 class="font-bold text-xs sm:text-sm flex items-center text-white">
+                            <i class="fa-solid fa-layer-group text-purple-400 mr-2"></i>選擇權損益 (買權 BC / 賣權 BP)
+                        </h2>
+                    </div>
+                    <div class="flex items-center space-x-2.5">
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 block leading-none">權利金合計</span>
+                            <span id="optTotalPremium" class="font-mono font-bold text-xs sm:text-sm text-slate-200">0</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-400 block leading-none">盈虧合計</span>
+                            <span id="optTotalProfit" class="font-mono font-bold text-xs sm:text-sm">0 TWD</span>
+                        </div>
+                        <button onclick="addOption('BC')" class="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-500 text-white rounded-lg flex items-center gap-1 shadow transition">
+                            <i class="fa-solid fa-plus"></i> 買權 BC
+                        </button>
+                        <button onclick="addOption('BP')" class="px-3 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center gap-1 shadow transition">
+                            <i class="fa-solid fa-plus"></i> 賣權 BP
+                        </button>
+                    </div>
+                </div>
+                <div id="body-options" class="p-3 space-y-3">
+                    <div id="optionsContainer" class="overflow-x-auto"></div>
+                    <div class="text-[10px] text-slate-500 leading-relaxed">
+                        權利金 = 進場價格 × 口數 × 50　｜　損益(點) = 委買價格 − 進場價格　｜　盈虧 = 損益(點) × 口數 × 50。進場價格或口數留空代表沒有部位；委買價格留空則該筆不計損益。
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- 頁尾 -->
@@ -475,13 +514,14 @@
             pollTimer: null,
             layoutMode: 'auto', // 'auto' | 'mobile' | 'desktop'
             collapsedCards: {},
-            collapsedSections: { cash: false, cashflow: false, positions: false, 'closed-history': false, specs: false, risk: false, matrix: false, triggers: false },
+            collapsedSections: { cash: false, cashflow: false, positions: false, 'closed-history': false, specs: false, risk: false, matrix: false, triggers: false, options: false },
             positions: [
                 { id: 1, symbol: 'MICRO', side: 'SHORT', qty: 1, costPrice: 47340.35, currentPrice: 47500 }
             ],
             closedHistory: [],
             cashFlowHistory: [],
             availableCash: 0,
+            optionLegs: [],
             scenarioTargets: { safe200: null, safe150: null, warning100: null, maintCall: null, danger25: null },
             canAddPosition: true
         };
@@ -521,6 +561,22 @@
             if (Array.isArray(config.cashFlowHistory)) {
                 state.cashFlowHistory = config.cashFlowHistory;
             }
+            if (Array.isArray(config.optionLegs)) {
+                state.optionLegs = config.optionLegs;
+            } else if (Array.isArray(config.optionGroups)) {
+                // 舊版「每組 BC+BP」資料轉成單筆清單
+                const legs = [];
+                config.optionGroups.forEach(g => {
+                    ['bc', 'bp'].forEach(k => {
+                        const l = g && g[k];
+                        if (l && l.entry !== '' && l.entry !== undefined && l.entry !== null) {
+                            legs.push({ id: Date.now() + legs.length + Math.floor(Math.random() * 100000), type: k === 'bc' ? 'BC' : 'BP', strike: l.strike, entry: l.entry, bid: l.bid, qty: l.qty });
+                        }
+                    });
+                });
+                state.optionLegs = legs;
+            }
+            renderOptions();
         }
 
         function loadConfigFromStorage() {
@@ -549,7 +605,8 @@
                 apiSymbol: state.apiSymbol,
                 positions: state.positions,
                 closedHistory: state.closedHistory,
-                cashFlowHistory: state.cashFlowHistory
+                cashFlowHistory: state.cashFlowHistory,
+                optionLegs: state.optionLegs
             };
             const jsonStr = JSON.stringify(config, null, 2);
             localStorage.setItem(STORAGE_KEY, jsonStr);
@@ -706,7 +763,7 @@
         }
 
         function toggleAllCards(collapse) {
-            ['cash', 'cashflow', 'positions', 'closed-history', 'specs', 'risk', 'matrix', 'triggers'].forEach(key => {
+            ['cash', 'cashflow', 'positions', 'closed-history', 'specs', 'risk', 'matrix', 'triggers', 'options'].forEach(key => {
                 state.collapsedSections[key] = collapse;
                 const bodyEl = document.getElementById(`body-${key}`);
                 const iconEl = document.getElementById(`icon-${key}`);
@@ -721,6 +778,19 @@
                 }
             });
             state.positions.forEach(pos => { state.collapsedCards[pos.id] = collapse; });
+            renderPositions();
+        }
+
+        // 單筆部位是否跟隨即時報價：全域「自動同步」開啟 且 該部位同步開關未關閉
+        function isPosSynced(pos) {
+            return state.autoSyncMarketPrice && pos.syncPrice !== false;
+        }
+
+        function togglePosSync(id, enabled) {
+            const pos = state.positions.find(p => p.id === id);
+            if (!pos) return;
+            pos.syncPrice = enabled;
+            if (enabled && state.latestLivePrice) pos.currentPrice = state.latestLivePrice;
             renderPositions();
         }
 
@@ -748,13 +818,14 @@
                     updateSyncBadge('success', ` 市價 (${latestPrice.toLocaleString()})`);
                     let priceChanged = false;
                     state.positions.forEach(pos => {
+                        if (!isPosSynced(pos)) return;
                         if (pos.currentPrice !== latestPrice) {
                             pos.currentPrice = latestPrice;
                             priceChanged = true;
                         }
                     });
                     if (priceChanged) {
-                        state.positions.forEach(pos => {
+                        state.positions.filter(isPosSynced).forEach(pos => {
                             const priceInput = document.getElementById(`pos-current-${pos.id}`);
                             if (priceInput && document.activeElement !== priceInput) {
                                 priceInput.value = latestPrice;
@@ -815,6 +886,8 @@
             ];
             state.closedHistory = [];
             state.cashFlowHistory = [];
+            state.optionLegs = [];
+            renderOptions();
             defaultEquityInput.value = 1000000;
             closedPnLInput.value = 0;
             feesAndTaxesInput.value = 0;
@@ -873,7 +946,7 @@
                 const qtyInput = document.getElementById(`pos-qty-${id}`);
                 if (qtyInput) qtyInput.value = newSignedQty;
             } else if (field === 'costPrice' || field === 'currentPrice') {
-                if (field === 'currentPrice' && state.autoSyncMarketPrice) return;
+                if (field === 'currentPrice' && isPosSynced(pos)) return;
                 let val = parseFloat(pos[field]) || 0;
                 val = Math.max(0, val + delta);
                 pos[field] = Math.round(val * 100) / 100;
@@ -930,7 +1003,7 @@
                 const row = document.createElement('div');
                 row.className = 'bg-[#0f131a] rounded-xl border border-slate-800 text-xs overflow-hidden shadow-sm';
                 const isCollapsed = !!state.collapsedCards[pos.id];
-                const isLocked = state.autoSyncMarketPrice;
+                const isLocked = isPosSynced(pos);
 
                 const sideBadgeClass = pos.qty === 0 
                     ? 'bg-slate-800 text-slate-400 border border-slate-700' 
@@ -999,6 +1072,10 @@
                                 <input type="number" id="pos-current-${pos.id}" value="${pos.currentPrice}" step="1" ${isLocked ? 'readonly' : ''} onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosPriceManual(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-sm font-bold ${isLocked ? 'text-slate-400 bg-slate-900/50' : 'text-amber-300'}">
                             </div>
                         </div>
+                        <label class="flex items-center justify-end space-x-1.5 text-[10px] ${state.autoSyncMarketPrice ? 'text-slate-300 cursor-pointer' : 'text-slate-600'} select-none" title="${state.autoSyncMarketPrice ? '關閉後此部位現價可手動輸入，不再被即時報價覆蓋' : '全域自動同步已關閉，此開關暫不生效'}">
+                            <input type="checkbox" ${pos.syncPrice !== false ? 'checked' : ''} ${state.autoSyncMarketPrice ? '' : 'disabled'} onchange="togglePosSync(${pos.id}, this.checked)" class="accent-blue-500">
+                            <span>此部位現價跟隨即時報價${state.autoSyncMarketPrice ? '' : '（全域同步已關）'}</span>
+                        </label>
                     </div>
                 `;
                 row.innerHTML = headerHtml + bodyHtml;
@@ -1243,7 +1320,8 @@
         }
 
         function updatePosPriceManual(id, value) {
-            if (state.autoSyncMarketPrice) return;
+            const pos = state.positions.find(p => p.id === id);
+            if (!pos || isPosSynced(pos)) return;
             updatePosInput(id, 'currentPrice', value);
         }
 
@@ -1525,10 +1603,152 @@
             liqDistEl.innerText = `再${totalWeightedMultiplier < 0 ? '漲' : '跌'} ${liqPts.toLocaleString()} 點`;
         }
 
+        // ===== 選擇權損益 (買權 BC / 賣權 BP，每筆獨立) =====
+        const OPT_MULT = 50;
+
+        function jumpToOptions() {
+            if (state.collapsedSections.options) toggleSection('options');
+            const el = document.getElementById('card-options');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function addOption(type) {
+            state.optionLegs.push({
+                id: Date.now() + Math.floor(Math.random() * 100000),
+                type: type,
+                strike: '', entry: '', bid: '', qty: 1
+            });
+            renderOptions();
+            saveConfigToStorage();
+        }
+
+        function deleteOption(id) {
+            state.optionLegs = state.optionLegs.filter(o => o.id !== id);
+            renderOptions();
+            saveConfigToStorage();
+        }
+
+        function setOptType(id, type) {
+            const o = state.optionLegs.find(x => x.id === id);
+            if (!o) return;
+            o.type = type;
+            renderOptions();
+            saveConfigToStorage();
+        }
+
+        function updateOpt(id, field, value) {
+            const o = state.optionLegs.find(x => x.id === id);
+            if (!o) return;
+            const v = parseFloat(value);
+            o[field] = (value === '' || isNaN(v)) ? '' : v;
+            calcOptions();
+            saveConfigToStorage();
+        }
+
+        function numOrNull(v) {
+            return (v === '' || v === null || v === undefined || isNaN(v)) ? null : Number(v);
+        }
+
+        function fmtOpt(n) {
+            return (Math.round(n * 100) / 100).toLocaleString('zh-TW');
+        }
+
+        function setOptText(elId, text, cls) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            el.innerText = text;
+            if (cls !== undefined) el.className = cls;
+        }
+
+        function optInput(id, field, value, step, ph) {
+            const v = (value === '' || value === null || value === undefined) ? '' : value;
+            return `<input type="number" step="${step}" value="${v}" placeholder="${ph}" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updateOpt(${id}, '${field}', this.value)" class="w-full min-w-[70px] bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1.5 font-mono text-white text-xs font-bold focus:outline-none focus:border-blue-500">`;
+        }
+
+        function renderOptions() {
+            const container = document.getElementById('optionsContainer');
+            if (!container) return;
+            if (!state.optionLegs.length) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">尚無選擇權部位，點右上角「買權 BC」或「賣權 BP」新增</div>`;
+                calcOptions();
+                return;
+            }
+            const rows = state.optionLegs.map(o => {
+                const isBC = o.type !== 'BP';
+                const typeCls = isBC ? 'bg-red-600 text-white' : 'bg-green-600 text-white';
+                return `
+                <tr class="border-t border-slate-800/60">
+                    <td class="py-1.5 pr-1.5">
+                        <select onchange="setOptType(${o.id}, this.value)" class="${typeCls} rounded font-bold text-[11px] px-1.5 py-1.5 focus:outline-none">
+                            <option value="BC" ${isBC ? 'selected' : ''} class="bg-[#181e2a] text-white">BC 買權</option>
+                            <option value="BP" ${!isBC ? 'selected' : ''} class="bg-[#181e2a] text-white">BP 賣權</option>
+                        </select>
+                    </td>
+                    <td class="py-1.5 px-1">${optInput(o.id, 'strike', o.strike, 100, '履約價')}</td>
+                    <td class="py-1.5 px-1">${optInput(o.id, 'entry', o.entry, 0.1, '成本')}</td>
+                    <td class="py-1.5 px-1">${optInput(o.id, 'bid', o.bid, 0.1, '委買價')}</td>
+                    <td class="py-1.5 px-1">${optInput(o.id, 'qty', o.qty, 1, '口數')}</td>
+                    <td id="opt-prem-${o.id}" class="py-1.5 px-2 text-right font-mono text-slate-200">--</td>
+                    <td id="opt-pts-${o.id}" class="py-1.5 px-2 text-right font-mono text-slate-400">--</td>
+                    <td id="opt-pnl-${o.id}" class="py-1.5 px-2 text-right font-mono text-slate-400">--</td>
+                    <td class="py-1.5 pl-1 text-right">
+                        <button onclick="deleteOption(${o.id})" class="px-2 py-1 bg-slate-800 hover:bg-rose-900 text-slate-300 rounded text-[10px] border border-slate-700 hover:border-rose-700 transition" title="刪除此筆"><i class="fa-solid fa-trash-can text-rose-400"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+            container.innerHTML = `
+                <table class="w-full text-left border-collapse min-w-[680px]">
+                    <thead>
+                        <tr class="text-[10px] text-slate-400 font-semibold">
+                            <th class="pb-1">類型</th>
+                            <th class="pb-1 px-1">位置(履約價)</th>
+                            <th class="pb-1 px-1">進場價格</th>
+                            <th class="pb-1 px-1">委買價格</th>
+                            <th class="pb-1 px-1">口數</th>
+                            <th class="pb-1 px-2 text-right">權利金</th>
+                            <th class="pb-1 px-2 text-right">損益(點)</th>
+                            <th class="pb-1 px-2 text-right">盈虧</th>
+                            <th class="pb-1"></th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+            calcOptions();
+        }
+
+        function calcOptions() {
+            let totalPremium = 0;
+            let totalProfit = 0;
+            state.optionLegs.forEach(o => {
+                const entry = numOrNull(o.entry);
+                const qty = numOrNull(o.qty);
+                const bid = numOrNull(o.bid);
+                const hasLeg = entry !== null && entry > 0 && qty !== null && qty > 0;
+
+                const premium = hasLeg ? entry * qty * OPT_MULT : null;
+                const pts = (hasLeg && bid !== null) ? (bid - entry) : null;
+                const pnl = pts !== null ? pts * qty * OPT_MULT : null;
+                if (premium !== null) totalPremium += premium;
+                if (pnl !== null) totalProfit += pnl;
+
+                setOptText(`opt-prem-${o.id}`, premium !== null ? fmtOpt(premium) : '--');
+                setOptText(`opt-pts-${o.id}`,
+                    pts !== null ? `${pts > 0 ? '+' : ''}${fmtOpt(pts)}` : '--',
+                    `py-1.5 px-2 text-right font-mono ${pts !== null ? getPnLColorClass(pts) : 'text-slate-400'}`);
+                setOptText(`opt-pnl-${o.id}`,
+                    pnl !== null ? `${pnl > 0 ? '+' : ''}${fmtOpt(pnl)}` : '--',
+                    `py-1.5 px-2 text-right font-mono font-bold ${pnl !== null ? getPnLColorClass(pnl) : 'text-slate-400'}`);
+            });
+            setOptText('optTotalPremium', fmtOpt(totalPremium));
+            setOptText('optTotalProfit', `${totalProfit > 0 ? '+' : ''}${fmtOpt(totalProfit)} TWD`,
+                `font-mono font-bold text-xs sm:text-sm ${getPnLColorClass(totalProfit)}`);
+        }
+
         document.getElementById('colorModeBtn').addEventListener('click', () => {
             state.twColorMode = !state.twColorMode;
             document.getElementById('colorModeLabel').innerText = state.twColorMode ? '台股' : '美股';
             calculate();
+            calcOptions();
         });
 
         window.onload = function() {
