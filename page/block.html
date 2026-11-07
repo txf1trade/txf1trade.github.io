@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script>
+// 跟隨外層選單(index.html)的深淺模式；單獨開啟時沿用系統設定
+(function () {
+  var t = null;
+  try { t = localStorage.getItem("shellTheme"); } catch (e) {}
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  addEventListener("message", function (e) {
+    var d = e.data;
+    if (d && d.type === "shell-theme" && (d.theme === "light" || d.theme === "dark"))
+      document.documentElement.setAttribute("data-theme", d.theme);
+  });
+})();
+</script>
+<title>選擇權鉅額日報</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{--bg:#fff;--tx:#1d2330;--mut:#7a8396;--bd:#e6e8ed;--pri:#2b5fb4;--put:#1a7f4b;--call:#c0392b;--soft:#f6f7f9}
+@media(prefers-color-scheme:dark){:root:not([data-theme]){--bg:#14171d;--tx:#e6e9ef;--mut:#8c95a8;--bd:#2a303c;--pri:#6b9cf0;--put:#4cc58a;--call:#ff7b6b;--soft:#1b2029;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14171d;--tx:#e6e9ef;--mut:#8c95a8;--bd:#2a303c;--pri:#6b9cf0;--put:#4cc58a;--call:#ff7b6b;--soft:#1b2029;color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,"Noto Sans TC",sans-serif}
+main{max-width:720px;margin:0 auto;padding:12px 12px 32px}
+h1{font-size:17px;margin:0 0 8px}
+h2{font-size:12px;font-weight:600;color:var(--mut);letter-spacing:.04em;margin:14px 0 2px}
+.bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+select,button{font:inherit;padding:3px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx)}
+button{background:var(--pri);border-color:var(--pri);color:#fff;cursor:pointer}
+button.ghost{background:var(--bg);color:var(--tx);border-color:var(--bd)}
+button:disabled{opacity:.6}
+.mut{color:var(--mut);font-size:12px}
+#shot{padding:8px 2px 4px;background:var(--bg)}
+.hl{background:#ffe44d;color:#1d2330;padding:1px 5px;border-radius:3px}
+.verdict{font-size:15px;font-weight:600;margin:6px 0 2px}
+.exp{display:inline-block;font-size:11px;font-weight:600;color:var(--pri);border:1px solid var(--pri);border-radius:3px;padding:0 5px;margin-right:5px;line-height:1.4}
+.tg{display:flex;gap:10px;padding:4px 0;align-items:baseline;border-bottom:1px solid var(--bd)}
+.lvl{font-size:17px;font-weight:700;min-width:78px}
+.src{font-size:12px;color:var(--mut)}
+.src div{margin:0}
+.PUT{color:var(--put)}.CALL{color:var(--call)}
+.sub{font-weight:600;font-size:13px;margin:8px 0 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:640px){.two{grid-template-columns:1fr}}
+.box{background:var(--soft);border-radius:6px;padding:7px 10px}
+.box>b{display:block;margin-bottom:1px;font-size:13px}
+.box p{margin:2px 0;font-size:13px}
+details{margin-top:12px}
+summary{cursor:pointer;color:var(--mut);font-size:12px}
+.scroll{overflow-x:auto;margin-top:4px}
+table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+th,td{padding:2px 6px;border-bottom:1px solid var(--bd);text-align:right}
+th{color:var(--mut);font-weight:600}
+td.l,th.l{text-align:left}
+tr.lo{color:var(--mut)}
+.empty{color:var(--mut);padding:8px 0}
+.pairtag{display:inline-block;font-size:11px;font-weight:600;color:#1d2330;background:#ffe44d;border-radius:3px;padding:0 5px;line-height:1.4}
+.menuwrap{position:relative;display:inline-block}
+.menu{position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:4px;display:flex;flex-direction:column;gap:4px;z-index:5;min-width:112px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.menu[hidden]{display:none}
+.menu button{text-align:left;white-space:nowrap}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px;overflow:auto}
+.ov[hidden]{display:none}
+.ov img{max-width:100%;height:auto;background:#fff;border-radius:6px}
+.ov p{color:#fff;margin:0}
+</style>
+</head>
+<body>
+<main>
+  <h1>選擇權鉅額日報</h1>
+  <div class="bar">
+    <select id="mk"><option value="0">一般交易時段</option><option value="1">盤後交易時段</option></select>
+    <button id="go">查詢</button>
+    <button id="save" class="ghost" hidden>下載圖片</button>
+    <span class="menuwrap">
+      <button id="share" class="ghost" hidden>分享 ▾</button>
+      <div id="menu" class="menu" hidden>
+        <button data-a="img" class="ghost">分享圖片</button>
+        <button data-a="txt" class="ghost">複製文字</button>
+      </div>
+    </span>
+    <span id="st" class="mut"></span>
+  </div>
+  <div id="out"></div>
+</main>
+<div id="ov" class="ov" hidden>
+  <p>長按圖片 → 儲存到相簿</p>
+  <img id="ovimg" alt="">
+  <button id="ovx" type="button">關閉</button>
+</div>
+<script>
+// Cloudflare Worker API 位址（結尾不要加 /）
+const API_BASE = 'https://block.wildvlogtw.workers.dev';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const n = x => Number(x).toLocaleString('en-US');
+const hl = s => '<span class="hl">' + s + '</span>';
+
+// 到期月份：202612 → 2026/12 月選；202611W2 → 2026/11 W2 週選
+function expFmt(e) {
+  const m = String(e || '').trim().match(/^(\d{4})(\d{2})\s*(.*)$/);
+  if (!m) return esc(e || '未知');
+  const w = m[3].match(/W\s*(\d+)/i);
+  return m[1] + '/' + m[2] + (w ? ' W' + w[1] + ' 週選' : ' 月選');
+}
+const expBadge = e => '<span class="exp">' + expFmt(e) + '</span>';
+
+// 互換組合（疑似事先談好，不一定是對敲）：同到期月、同買賣權，且買賣雙方互換（A買B賣 ↔ B買A賣）。優先配對口數相同者
+// 這類單是兩家對手在同一到期月來回建立部位，視為「參考價值較高」，不扣除、反而優先顯示
+const isRef = r => !r.sameFirm;
+function markPairs(rows) {
+  const key = x => (x.buyId || x.buyName) + '|' + (x.sellId || x.sellName);
+  const rev = x => (x.sellId || x.sellName) + '|' + (x.buyId || x.buyName);
+  rows.forEach(r => { r.pair = false; });
+  const cand = rows.filter(r => !r.sameFirm);
+  for (const a of cand) {
+    if (a.pair) continue;
+    const ok = cand.filter(x => x !== a && !x.pair && x.expiry === a.expiry && x.type === a.type && key(x) === rev(a));
+    const b = ok.find(x => x.volume === a.volume) || ok[0];
+    if (b) { a.pair = b.pair = true; }
+  }
+  return rows;
+}
+function pairLine(rows) {
+  const p = rows.filter(r => r.pair);
+  if (!p.length) return '';
+  return '<div class="mut" style="margin-top:2px"><span class="pairtag">互換・疑似談好</span> ' + (p.length / 2) + ' 組 / ' + p.length + ' 筆（同月、買賣雙方互換，未必是對敲，但像是事先談好，參考價值較高，優先列出）</div>';
+}
+
+// 只用「買賣不同券商」的單，依目標位置分組，口數多的排前面
+function group(rows) {
+  const out = { PUT: [], CALL: [] };
+  for (const t of ['PUT', 'CALL']) {
+    const m = new Map();
+    for (const r of rows.filter(x => isRef(x) && x.type === t)) {
+      const o = m.get(r.level) || { level: r.level, vol: 0, items: [] };
+      o.vol += r.volume; o.items.push(r); m.set(r.level, o);
+    }
+    for (const o of m.values()) o.pair = o.items.some(r => r.pair);
+    out[t] = [...m.values()].sort((a, b) => (b.pair - a.pair) || b.vol - a.vol);
+  }
+  return out;
+}
+
+function targetsHtml(t, list) {
+  if (!list.length) return '';
+  const put = t === 'PUT', sign = put ? '−' : '+';
+  return '<div class="sub ' + t + '">' + (put ? '▼ 下檔目標（履約價 − 成交價）' : '▲ 上檔目標（履約價 + 成交價）') + '</div>' +
+    list.map((o, i) => '<div class="tg"><div class="lvl ' + t + '">' + (i === 0 ? hl(n(o.level)) : n(o.level)) + '</div><div class="src">' +
+      o.items.map(r => '<div>' + (r.pair ? '<span class="pairtag">互換・疑似談好</span> ' : '') + expBadge(r.expiry) + '履約價 ' + n(r.strike) + ' ' + sign + ' 成交價 ' + n(r.price) + ' · ' + n(r.volume) + ' 口 · 玩家 ' + esc(r.buyName) + ' ／ 莊家 ' + esc(r.sellName) + '</div>').join('') +
+      '</div></div>').join('');
+}
+
+// 玩家＝買方、莊家＝賣方
+function intentHtml(g) {
+  const vol = a => a.reduce((s, o) => s + o.vol, 0);
+  const player = [], dealer = [];
+  if (g.PUT.length) {
+    player.push('<p><span class="PUT">PUT ' + n(vol(g.PUT)) + ' 口</span>：買進下檔保護或看空，指數跌破目標位置才開始獲利。</p>');
+    dealer.push('<p><span class="PUT">PUT</span>：賣出收權利金，押 ' + hl(n(g.PUT[0].level)) + ' 附近不易跌破，視為支撐／防守位置。</p>');
+  }
+  if (g.CALL.length) {
+    player.push('<p><span class="CALL">CALL ' + n(vol(g.CALL)) + ' 口</span>：買進上檔保護或看多，指數漲過目標位置才開始獲利。</p>');
+    dealer.push('<p><span class="CALL">CALL</span>：賣出收權利金，押 ' + hl(n(g.CALL[0].level)) + ' 附近不易突破，視為壓力位置。</p>');
+  }
+  if (!player.length) return '';
+  return '<h2>企圖</h2><div class="two"><div class="box"><b>玩家（買方）</b>' + player.join('') +
+    '</div><div class="box"><b>莊家（賣方）</b>' + dealer.join('') + '</div></div>';
+}
+
+function expiryLine(rows) {
+  const m = new Map();
+  for (const r of rows.filter(isRef)) m.set(r.expiry, (m.get(r.expiry) || 0) + r.volume);
+  if (!m.size) return '';
+  return '<div class="mut" style="margin-top:2px">到期月份：' +
+    [...m.entries()].sort((a, b) => b[1] - a[1]).map(([e, v]) => expBadge(e) + n(v) + ' 口').join('　') + '</div>';
+}
+
+function detailHtml(rows) {
+  let h = '<details><summary>原始鉅額明細（' + rows.length + ' 筆，灰色＝同券商／同集團，無參考價值；黃色「疑似談好」＝買賣互換，參考價值較高）</summary><div class="scroll"><table><tr><th class="l">契約</th><th>到期</th><th>買賣權</th><th>履約價</th><th>成交價</th><th>口數</th><th class="l">買進（玩家）</th><th class="l">賣出（莊家）</th><th>目標位置</th><th>備註</th></tr>';
+  for (const r of rows) {
+    h += '<tr class="' + (r.sameFirm ? 'lo' : '') + '"><td class="l">' + esc(r.code) + '</td><td>' + expFmt(r.expiry) +
+      '</td><td class="' + r.type + '">' + r.type + '</td><td>' + n(r.strike) + '</td><td>' + n(r.price) + '</td><td>' + n(r.volume) +
+      '</td><td class="l">' + esc(r.buyName) + '</td><td class="l">' + esc(r.sellName) + '</td><td><b>' + n(r.level) + '</b></td><td>' + (r.pair ? '<span class="pairtag">疑似談好</span>' : r.sameFirm ? '同集團' : '') + '</td></tr>';
+  }
+  return h + '</table></div></details>';
+}
+
+let shotName = '選擇權鉅額日報';
+let state = null, blobPromise = null, prefetchT = null;
+function render(j) {
+  const d = j.days[0] || { date: null, rows: [] };
+  const mkt = $('mk').options[$('mk').selectedIndex].text;
+  const head = '<div class="mut">選擇權鉅額日報 · 交易日期 ' + esc(d.date || '未知') + ' · ' + mkt + '</div>';
+  shotName = '選擇權鉅額_' + String(d.date || '').replace(/\//g, '') + '_' + mkt;
+  $('save').hidden = $('share').hidden = true;
+  $('menu').hidden = true;
+  state = null;
+  if (d.error) return '<div id="shot">' + head + '<div class="empty">抓取失敗：' + esc(d.error) + '</div></div>';
+  if (!d.rows.length) {
+    return '<div id="shot">' + head + '<div class="empty">' + (j.meta && j.meta.tableFound === false
+      ? '抓到網頁但找不到資料表，請開 /api/debug 查看原因'
+      : '此時段無鉅額交易') + '</div></div>';
+  }
+  markPairs(d.rows);
+  const g = group(d.rows), s = j.summary;
+  state = { d, g, s, mkt };
+  blobPromise = null;
+  clearTimeout(prefetchT);
+  prefetchT = setTimeout(() => { blobPromise = snapBlob().catch(() => null); }, 400); // 先備好圖片，手機分享才不會因等待而被擋
+  $('save').hidden = $('share').hidden = false;
+  let h = '<div id="shot">' + head;
+  h += '<div class="verdict">' + hl(esc(s.verdict)) + '</div>' +
+    '<div class="mut">參考價值 ' + s.high.n + ' 筆 / ' + n(s.high.vol) + ' 口　·　無參考價值（同券商／同集團）' + s.low.n + ' 筆 / ' + n(s.low.vol) + ' 口</div>' +
+    expiryLine(d.rows) + pairLine(d.rows);
+  h += '<h2>目標位置（履約價 → 目標）</h2>' + (targetsHtml('PUT', g.PUT) + targetsHtml('CALL', g.CALL) || '<div class="empty">無參考價值的單可計算</div>');
+  h += intentHtml(g);
+  h += '<p class="mut" style="margin:10px 0 0;font-size:11px">莊家＝賣方、玩家＝買方；目標位置＝玩家損益兩平／莊家防守或壓力位置。鉅額單可能是價差或避險組合的一腳，規則式推論僅供參考，非投資建議。</p></div>';
+  h += detailHtml(d.rows);
+  return h;
+}
+
+/* ---------- 圖片、下載、分享、複製文字 ---------- */
+const UA_ = navigator.userAgent;
+const isIOS = /iPad|iPhone|iPod/.test(UA_) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(UA_);
+const isMobile = isIOS || isAndroid;
+$('save').textContent = isMobile ? '存到相簿' : '下載圖片';
+
+async function snapBlob() {
+  if (!window.html2canvas) throw new Error('圖片元件載入失敗（外部腳本被擋或離線）');
+  const canvas = await html2canvas($('shot'), { backgroundColor: getComputedStyle(document.body).backgroundColor, scale: 2 });
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('產生圖片失敗')), 'image/png'));
+}
+async function getBlob() {
+  let b = blobPromise ? await blobPromise : null;
+  if (!b) { blobPromise = snapBlob(); b = await blobPromise; }
+  return b;
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function showOverlay(blob) {
+  $('ovimg').src = URL.createObjectURL(blob);
+  $('ov').hidden = false;
+}
+// 回傳 true＝已透過系統分享選單處理；false＝不支援；使用者取消也算已處理
+async function tryShareFile(blob) {
+  const file = new File([blob], shotName + '.png', { type: 'image/png' });
+  if (!(navigator.canShare && navigator.canShare({ files: [file] }))) return false;
+  try { await navigator.share({ files: [file], title: '選擇權鉅額日報' }); return true; }
+  catch (e) { return e.name === 'AbortError'; }
+}
+
+// 下載（手機：存到相簿）
+async function doSave() {
+  if (!state) return;
+  $('st').textContent = '產生圖片中…';
+  try {
+    const blob = await getBlob();
+    if (isIOS) { // iPhone：分享選單裡選「儲存影像」；不支援就顯示圖片讓你長按儲存
+      if (await tryShareFile(blob)) { $('st').textContent = '請在選單選「儲存影像」'; return; }
+      showOverlay(blob); $('st').textContent = ''; return;
+    }
+    download(blob, shotName);
+    $('st').textContent = isAndroid ? '已儲存，可在相簿或「下載」資料夾找到' : '已下載圖片';
+  } catch (e) { $('st').textContent = '錯誤：' + e.message; }
+}
+
+// 分享圖片
+async function shareImage() {
+  if (!state) return;
+  $('st').textContent = '產生圖片中…';
+  try {
+    const blob = await getBlob();
+    if (await tryShareFile(blob)) { $('st').textContent = ''; return; }
+    if (isMobile) { showOverlay(blob); $('st').textContent = ''; return; }
+    download(blob, shotName);
+    $('st').textContent = '此瀏覽器不支援分享，已改為下載圖片';
+  } catch (e) { $('st').textContent = '錯誤：' + e.message; }
+}
+
+// 純文字版本
+function buildText() {
+  const { d, g, s, mkt } = state;
+  const vol = a => a.reduce((x, o) => x + o.vol, 0);
+  const L = [];
+  L.push('【選擇權鉅額日報】' + (d.date || '') + ' ' + mkt);
+  L.push('結論：' + s.verdict);
+  L.push('參考價值 ' + s.high.n + ' 筆 / ' + n(s.high.vol) + ' 口；無參考價值（同券商／同集團）' + s.low.n + ' 筆 / ' + n(s.low.vol) + ' 口');
+  const ex = new Map();
+  for (const r of d.rows.filter(isRef)) ex.set(r.expiry, (ex.get(r.expiry) || 0) + r.volume);
+  if (ex.size) L.push('到期月份：' + [...ex.entries()].sort((a, b) => b[1] - a[1]).map(([e, v]) => expFmt(e) + ' ' + n(v) + ' 口').join('、'));
+  for (const [t, title, sign] of [['PUT', '▼ 下檔目標（履約價 − 成交價）', '−'], ['CALL', '▲ 上檔目標（履約價 + 成交價）', '+']]) {
+    if (!g[t].length) continue;
+    L.push('', title);
+    for (const o of g[t]) for (const r of o.items)
+      L.push(n(o.level) + '｜' + expFmt(r.expiry) + ' 履約價 ' + n(r.strike) + ' ' + sign + ' 成交價 ' + n(r.price) + '｜' + n(r.volume) + ' 口｜玩家 ' + r.buyName + '／莊家 ' + r.sellName + (r.pair ? '｜【互換・疑似談好，參考價值較高】' : ''));
+  }
+  const p = [], m = [];
+  if (g.PUT.length) { p.push('PUT ' + n(vol(g.PUT)) + ' 口買進下檔保護或看空'); m.push('賣 PUT 收權利金，押 ' + n(g.PUT[0].level) + ' 附近不易跌破（支撐）'); }
+  if (g.CALL.length) { p.push('CALL ' + n(vol(g.CALL)) + ' 口買進上檔保護或看多'); m.push('賣 CALL 收權利金，押 ' + n(g.CALL[0].level) + ' 附近不易突破（壓力）'); }
+  if (p.length) L.push('', '玩家（買方）：' + p.join('；'), '莊家（賣方）：' + m.join('；'));
+  L.push('', '※ 規則式推論，僅供參考，非投資建議');
+  return L.join('\n');
+}
+async function copyText() {
+  if (!state) return;
+  const t = buildText();
+  try {
+    await navigator.clipboard.writeText(t);
+  } catch (e) { // 舊瀏覽器／非 https 的備援
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand && document.execCommand('copy');
+    ta.remove();
+    if (!ok) { $('st').textContent = '複製失敗，請改用分享圖片'; return; }
+  }
+  $('st').textContent = '已複製文字';
+}
+
+async function load() {
+  $('st').textContent = '查詢中…';
+  $('go').disabled = true;
+  try {
+    const r = await fetch(API_BASE + '/api/data?' + new URLSearchParams({ market: $('mk').value }));
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    $('out').innerHTML = render(j);
+    $('st').textContent = '更新：' + new Date().toLocaleTimeString();
+  } catch (e) {
+    $('st').textContent = '錯誤：' + e.message;
+  }
+  $('go').disabled = false;
+}
+$('go').onclick = load;
+$('mk').onchange = load;
+$('save').onclick = doSave;
+$('share').onclick = e => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; };
+$('menu').onclick = e => {
+  const a = e.target.dataset && e.target.dataset.a;
+  if (!a) return;
+  $('menu').hidden = true;
+  if (a === 'img') shareImage(); else copyText();
+};
+document.addEventListener('click', () => { $('menu').hidden = true; });
+$('ovx').onclick = () => { $('ov').hidden = true; URL.revokeObjectURL($('ovimg').src); };
+load();
+</script>
+</body>
+</html>
