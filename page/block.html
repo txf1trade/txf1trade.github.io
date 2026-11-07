@@ -121,14 +121,14 @@ function markPairs(rows) {
     if (a.pair) continue;
     const ok = cand.filter(x => x !== a && !x.pair && x.expiry === a.expiry && x.type === a.type && key(x) === rev(a));
     const b = ok.find(x => x.volume === a.volume) || ok[0];
-    if (b) { a.pair = b.pair = true; }
+    if (b) { a.pair = b.pair = true; a.mate = b; b.mate = a; }
   }
   return rows;
 }
 function pairLine(rows) {
   const p = rows.filter(r => r.pair);
   if (!p.length) return '';
-  return '<div class="mut" style="margin-top:2px"><span class="pairtag">互換・疑似談好</span> ' + (p.length / 2) + ' 組 / ' + p.length + ' 筆（同月、買賣雙方互換，未必是對敲，但像是事先談好，參考價值較高，優先列出）</div>';
+  return '<div class="mut" style="margin-top:2px"><span class="pairtag">價差腳</span> ' + (p.length / 2) + ' 組 / ' + p.length + ' 筆（同月買賣雙方互換，視為價差組合單，見下方）</div>';
 }
 
 // 只用「買賣不同券商」的單，依目標位置分組，口數多的排前面
@@ -136,14 +136,53 @@ function group(rows) {
   const out = { PUT: [], CALL: [] };
   for (const t of ['PUT', 'CALL']) {
     const m = new Map();
-    for (const r of rows.filter(x => isRef(x) && x.type === t)) {
+    for (const r of rows.filter(x => isRef(x) && !x.pair && x.type === t)) {
       const o = m.get(r.level) || { level: r.level, vol: 0, items: [] };
       o.vol += r.volume; o.items.push(r); m.set(r.level, o);
     }
-    for (const o of m.values()) o.pair = o.items.some(r => r.pair);
-    out[t] = [...m.values()].sort((a, b) => (b.pair - a.pair) || b.vol - a.vol);
+    for (const o of m.values()) out[t] = [...m.values()].sort((a, b) => b.vol - a.vol);
   }
   return out;
+}
+
+
+// 互換組合 → 價差單（兩腳互相抵銷，單腳目標不能單獨當支撐壓力，改看價差區間與損益兩平）
+function combos(rows) {
+  const out = [], seen = new Set();
+  for (const a of rows) {
+    if (!a.pair || !a.mate || seen.has(a) || seen.has(a.mate)) continue;
+    seen.add(a); seen.add(a.mate);
+    const lo = a.strike <= a.mate.strike ? a : a.mate, hi = lo === a ? a.mate : a;
+    const put = lo.type === 'PUT', width = hi.strike - lo.strike;
+    const net = put ? hi.price - lo.price : lo.price - hi.price; // PUT：高履約價較貴；CALL：低履約價較貴
+    const ok = width > 0 && net > 0 && net < width;
+    out.push({
+      lo, hi, put, width, net: Math.abs(net), ok, vol: Math.min(lo.volume, hi.volume), diffVol: lo.volume !== hi.volume,
+      be: ok ? (put ? hi.strike - net : lo.strike + net) : null,
+      // lo.buyName＝買低履約價腳的一方
+      a: { name: lo.buyName, kind: put ? '牛市賣權價差（收權利金）' : '牛市買權價差（付權利金）' },
+      b: { name: lo.sellName, kind: put ? '熊市賣權價差（付權利金）' : '熊市買權價差（收權利金）' }
+    });
+  }
+  return out;
+}
+function comboHtml(cs) {
+  if (!cs.length) return '';
+  const T = c => c.put ? 'P' : 'C';
+  return '<h2>組合單（價差）</h2>' + cs.map(c =>
+    '<div class="box" style="margin:4px 0"><div><span class="pairtag">價差腳</span> ' + expBadge(c.lo.expiry) +
+    '<b class="' + c.lo.type + '">' + c.lo.type + ' 價差 ' + n(c.lo.strike) + ' ~ ' + n(c.hi.strike) + '</b>（寬 ' + n(c.width) + '）· ' + n(c.vol) + ' 口' + (c.diffVol ? '（兩腳口數不同，取較小）' : '') + '</div>' +
+    '<p>' + esc(c.a.name) + '：買 ' + n(c.lo.strike) + T(c) + '／賣 ' + n(c.hi.strike) + T(c) + ' → ' + c.a.kind + '</p>' +
+    '<p>' + esc(c.b.name) + '：買 ' + n(c.hi.strike) + T(c) + '／賣 ' + n(c.lo.strike) + T(c) + ' → ' + c.b.kind + '</p>' +
+    (c.ok ? '<p>淨權利金 ' + n(c.net) + '・損益兩平 ' + hl(n(c.be)) + '・最大損益 ' + n(c.net) + ' ／ ' + n(c.width - c.net) + '</p>' : '') +
+    '</div>').join('') +
+    '<div class="mut" style="margin-top:2px">兩腳互相抵銷、風險有限，多為區間佈局或避險，不等於單押方向；不知哪一方是真客戶，建議隔日起觀察 OI 是否續增。</div>';
+}
+function comboText(cs) {
+  return cs.map(c => {
+    const T = c.put ? 'P' : 'C';
+    return expFmt(c.lo.expiry) + ' ' + c.lo.type + ' 價差 ' + n(c.lo.strike) + '~' + n(c.hi.strike) + '｜' + n(c.vol) + ' 口｜' + c.a.name + ' 買' + n(c.lo.strike) + T + '賣' + n(c.hi.strike) + T + '／' + c.b.name + ' 買' + n(c.hi.strike) + T + '賣' + n(c.lo.strike) + T + (c.ok ? '｜淨權利金 ' + n(c.net) + '，損益兩平 ' + n(c.be) : '');
+  });
 }
 
 function targetsHtml(t, list) {
@@ -151,7 +190,7 @@ function targetsHtml(t, list) {
   const put = t === 'PUT', sign = put ? '−' : '+';
   return '<div class="sub ' + t + '">' + (put ? '▼ 下檔目標（履約價 − 成交價）' : '▲ 上檔目標（履約價 + 成交價）') + '</div>' +
     list.map((o, i) => '<div class="tg"><div class="lvl ' + t + '">' + (i === 0 ? hl(n(o.level)) : n(o.level)) + '</div><div class="src">' +
-      o.items.map(r => '<div>' + (r.pair ? '<span class="pairtag">互換・疑似談好</span> ' : '') + expBadge(r.expiry) + '履約價 ' + n(r.strike) + ' ' + sign + ' 成交價 ' + n(r.price) + ' · ' + n(r.volume) + ' 口 · 玩家 ' + esc(r.buyName) + ' ／ 莊家 ' + esc(r.sellName) + '</div>').join('') +
+      o.items.map(r => '<div>' + expBadge(r.expiry) + '履約價 ' + n(r.strike) + ' ' + sign + ' 成交價 ' + n(r.price) + ' · ' + n(r.volume) + ' 口 · 玩家 ' + esc(r.buyName) + ' ／ 莊家 ' + esc(r.sellName) + '</div>').join('') +
       '</div></div>').join('');
 }
 
@@ -181,11 +220,11 @@ function expiryLine(rows) {
 }
 
 function detailHtml(rows) {
-  let h = '<details><summary>原始鉅額明細（' + rows.length + ' 筆，灰色＝同券商／同集團，無參考價值；黃色「疑似談好」＝買賣互換，參考價值較高）</summary><div class="scroll"><table><tr><th class="l">契約</th><th>到期</th><th>買賣權</th><th>履約價</th><th>成交價</th><th>口數</th><th class="l">買進（玩家）</th><th class="l">賣出（莊家）</th><th>目標位置</th><th>備註</th></tr>';
+  let h = '<details open><summary>原始鉅額明細（' + rows.length + ' 筆，灰色＝同券商／同集團，無參考價值；黃色「價差腳」＝買賣互換組合單，單腳目標僅供參考）</summary><div class="scroll"><table><tr><th class="l">契約</th><th>到期</th><th>買賣權</th><th>履約價</th><th>成交價</th><th>口數</th><th class="l">買進（玩家）</th><th class="l">賣出（莊家）</th><th>目標位置</th><th>備註</th></tr>';
   for (const r of rows) {
     h += '<tr class="' + (r.sameFirm ? 'lo' : '') + '"><td class="l">' + esc(r.code) + '</td><td>' + expFmt(r.expiry) +
       '</td><td class="' + r.type + '">' + r.type + '</td><td>' + n(r.strike) + '</td><td>' + n(r.price) + '</td><td>' + n(r.volume) +
-      '</td><td class="l">' + esc(r.buyName) + '</td><td class="l">' + esc(r.sellName) + '</td><td><b>' + n(r.level) + '</b></td><td>' + (r.pair ? '<span class="pairtag">疑似談好</span>' : r.sameFirm ? '同集團' : '') + '</td></tr>';
+      '</td><td class="l">' + esc(r.buyName) + '</td><td class="l">' + esc(r.sellName) + '</td><td>' + (r.pair ? '<span class="mut">' + n(r.level) + '</span>' : '<b>' + n(r.level) + '</b>') + '</td><td>' + (r.pair ? '<span class="pairtag">價差腳</span>' : r.sameFirm ? '同集團' : '') + '</td></tr>';
   }
   return h + '</table></div></details>';
 }
@@ -217,9 +256,11 @@ function render(j) {
   h += '<div class="verdict">' + hl(esc(s.verdict)) + '</div>' +
     '<div class="mut">參考價值 ' + s.high.n + ' 筆 / ' + n(s.high.vol) + ' 口　·　無參考價值（同券商／同集團）' + s.low.n + ' 筆 / ' + n(s.low.vol) + ' 口</div>' +
     expiryLine(d.rows) + pairLine(d.rows);
-  h += '<h2>目標位置（履約價 → 目標）</h2>' + (targetsHtml('PUT', g.PUT) + targetsHtml('CALL', g.CALL) || '<div class="empty">無參考價值的單可計算</div>');
+  const cs = combos(d.rows);
+  h += comboHtml(cs);
+  h += '<h2>目標位置（單腳，履約價 → 目標）</h2>' + (targetsHtml('PUT', g.PUT) + targetsHtml('CALL', g.CALL) || '<div class="empty">' + (cs.length ? '無單腳方向單（鉅額皆為價差組合）' : '無參考價值的單可計算') + '</div>');
   h += intentHtml(g);
-  h += '<p class="mut" style="margin:10px 0 0;font-size:11px">莊家＝賣方、玩家＝買方；目標位置＝玩家損益兩平／莊家防守或壓力位置。鉅額單可能是價差或避險組合的一腳，規則式推論僅供參考，非投資建議。</p></div>';
+  h += '<p class="mut" style="margin:10px 0 0;font-size:11px">莊家＝賣方、玩家＝買方；目標位置＝玩家損益兩平／莊家防守或壓力位置。鉅額單可能是價差或避險組合的一腳；組合單請看價差區間與損益兩平，並搭配 OI 變化，規則式推論僅供參考，非投資建議。</p></div>';
   h += detailHtml(d.rows);
   return h;
 }
@@ -303,8 +344,10 @@ function buildText() {
     if (!g[t].length) continue;
     L.push('', title);
     for (const o of g[t]) for (const r of o.items)
-      L.push(n(o.level) + '｜' + expFmt(r.expiry) + ' 履約價 ' + n(r.strike) + ' ' + sign + ' 成交價 ' + n(r.price) + '｜' + n(r.volume) + ' 口｜玩家 ' + r.buyName + '／莊家 ' + r.sellName + (r.pair ? '｜【互換・疑似談好，參考價值較高】' : ''));
+      L.push(n(o.level) + '｜' + expFmt(r.expiry) + ' 履約價 ' + n(r.strike) + ' ' + sign + ' 成交價 ' + n(r.price) + '｜' + n(r.volume) + ' 口｜玩家 ' + r.buyName + '／莊家 ' + r.sellName);
   }
+  const cs = combos(d.rows);
+  if (cs.length) { L.push('', '組合單（價差，兩腳互相抵銷，不等於單押方向）'); comboText(cs).forEach(x => L.push(x)); }
   const p = [], m = [];
   if (g.PUT.length) { p.push('PUT ' + n(vol(g.PUT)) + ' 口買進下檔保護或看空'); m.push('賣 PUT 收權利金，押 ' + n(g.PUT[0].level) + ' 附近不易跌破（支撐）'); }
   if (g.CALL.length) { p.push('CALL ' + n(vol(g.CALL)) + ' 口買進上檔保護或看多'); m.push('賣 CALL 收權利金，押 ' + n(g.CALL[0].level) + ' 附近不易突破（壓力）'); }
