@@ -11,11 +11,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="台指期籌碼">
 <script>
-// 深淺模式：用上次選的；沒選過就跟系統。先在這裡決定好，畫面才不會閃一下
+// 深淺模式：用上次選的；沒選過就預設深色。先在這裡決定好，畫面才不會閃一下
 (function () {
   var t = null;
   try { t = localStorage.getItem("shellTheme"); } catch (e) {}
-  if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  if (t !== "light" && t !== "dark") {
+    t = "dark";
+    try { localStorage.setItem("shellTheme", t); } catch (e) {}   // 記下來，各頁面一開始就讀到深色，不會先閃一下淺色
+  }
   document.documentElement.setAttribute("data-theme", t);
 })();
 </script>
@@ -260,13 +263,6 @@ tb.onclick = () => {
 $("tabs").appendChild(tb);
 $("tabs").insertAdjacentHTML("beforeend", '<div class="sep"></div>');
 applyTheme();
-// 沒手動選過的話，系統深淺改變時跟著變
-const mqDark = matchMedia("(prefers-color-scheme: dark)");
-if (mqDark.addEventListener) mqDark.addEventListener("change", (e) => {
-  let st = null;
-  try { st = localStorage.getItem("shellTheme"); } catch (e2) {}
-  if (st !== "light" && st !== "dark") { theme = e.matches ? "dark" : "light"; applyTheme(); }
-});
 
 TABS.forEach((t, i) => {
   const b = item(t.icon, t.name, "tab");
