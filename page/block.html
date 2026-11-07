@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script>
+// 跟隨外層選單(index.html)的深淺模式；單獨開啟時沿用系統設定
+(function () {
+  var t = null;
+  try { t = localStorage.getItem("shellTheme"); } catch (e) {}
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  addEventListener("message", function (e) {
+    var d = e.data;
+    if (d && d.type === "shell-theme" && (d.theme === "light" || d.theme === "dark"))
+      document.documentElement.setAttribute("data-theme", d.theme);
+  });
+})();
+</script>
+<title>選擇權鉅額日報</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{--bg:#fff;--tx:#1d2330;--mut:#7a8396;--bd:#e6e8ed;--pri:#2b5fb4;--put:#1a7f4b;--call:#c0392b;--soft:#f6f7f9}
+@media(prefers-color-scheme:dark){:root:not([data-theme]){--bg:#14171d;--tx:#e6e9ef;--mut:#8c95a8;--bd:#2a303c;--pri:#6b9cf0;--put:#4cc58a;--call:#ff7b6b;--soft:#1b2029;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14171d;--tx:#e6e9ef;--mut:#8c95a8;--bd:#2a303c;--pri:#6b9cf0;--put:#4cc58a;--call:#ff7b6b;--soft:#1b2029;color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,"Noto Sans TC",sans-serif}
+main{max-width:720px;margin:0 auto;padding:12px 12px 32px}
+h1{font-size:17px;margin:0 0 8px}
+h2{font-size:12px;font-weight:600;color:var(--mut);letter-spacing:.04em;margin:14px 0 2px}
+.bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+select,button{font:inherit;padding:3px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx)}
+button{background:var(--pri);border-color:var(--pri);color:#fff;cursor:pointer}
+button.ghost{background:var(--bg);color:var(--tx);border-color:var(--bd)}
+button:disabled{opacity:.6}
+.mut{color:var(--mut);font-size:12px}
+#shot{padding:8px 2px 4px;background:var(--bg)}
+.hl{background:#ffe44d;color:#1d2330;padding:1px 5px;border-radius:3px}
+.verdict{font-size:15px;font-weight:600;margin:6px 0 2px}
+.exp{display:inline-block;font-size:11px;font-weight:600;color:var(--pri);border:1px solid var(--pri);border-radius:3px;padding:0 5px;margin-right:5px;line-height:1.4}
+.tg{display:flex;gap:10px;padding:4px 0;align-items:baseline;border-bottom:1px solid var(--bd)}
+.lvl{font-size:17px;font-weight:700;min-width:78px}
+.src{font-size:12px;color:var(--mut)}
+.src div{margin:0}
+.PUT{color:var(--put)}.CALL{color:var(--call)}
+.sub{font-weight:600;font-size:13px;margin:8px 0 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:640px){.two{grid-template-columns:1fr}}
+.box{background:var(--soft);border-radius:6px;padding:7px 10px}
+.box>b{display:block;margin-bottom:1px;font-size:13px}
+.box p{margin:2px 0;font-size:13px}
+details{margin-top:12px}
+summary{cursor:pointer;color:var(--mut);font-size:12px}
+.scroll{overflow-x:auto;margin-top:4px}
+table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+th,td{padding:2px 6px;border-bottom:1px solid var(--bd);text-align:right}
+th{color:var(--mut);font-weight:600}
+td.l,th.l{text-align:left}
+tr.lo{color:var(--mut)}
+.empty{color:var(--mut);padding:8px 0}
+.pairtag{display:inline-block;font-size:11px;font-weight:600;color:#1d2330;background:#ffe44d;border-radius:3px;padding:0 5px;line-height:1.4}
+.menuwrap{position:relative;display:inline-block}
+.menu{position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:4px;display:flex;flex-direction:column;gap:4px;z-index:5;min-width:112px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.menu[hidden]{display:none}
+.menu button{text-align:left;white-space:nowrap}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px;overflow:auto}
+.ov[hidden]{display:none}
+.ov img{max-width:100%;height:auto;background:#fff;border-radius:6px}
+.ov p{color:#fff;margin:0}
+textarea{width:100%;min-height:150px;margin-top:4px;padding:6px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:6px;white-space:pre}
+input.t{font:inherit;padding:3px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);width:112px}
+#impimg{display:block;max-width:100%;max-height:150px;margin:4px 0;border-radius:4px;border:1px solid var(--bd)}
+#imp{margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+  <h1>選擇權鉅額日報</h1>
+  <div class="bar">
+    <select id="mk"><option value="0">一般交易時段</option><option value="1">盤後交易時段</option></select>
+    <button id="go">查詢</button>
+    <button id="up" class="ghost">上傳圖片分析</button><input type="file" id="upf" accept="image/*" hidden>
+    <button id="save" class="ghost" hidden>下載圖片</button>
+    <span class="menuwrap">
+      <button id="share" class="ghost" hidden>分享 ▾</button>
+      <div id="menu" class="menu" hidden>
+        <button data-a="img" class="ghost">分享圖片</button>
+        <button data-a="txt" class="ghost">複製文字</button>
+      </div>
+    </span>
+    <span id="st" class="mut"></span>
+  </div>
+  <div id="imp" class="box" hidden>
+    <div class="mut">圖片辨識結果（可直接修改，也能貼上文字）。每行：代號 到期 買賣權 履約價 成交價 口數 買進代號 買進名稱 賣出代號 賣出名稱（缺的用 ? 代替）；「#」開頭＝未能辨識，修正後請拿掉 #</div>
+    <img id="impimg" alt="">
+    <div class="bar">
+      <span class="mut">交易日期</span><input id="impd" class="t" placeholder="2026/11/06">
+      <select id="impm"><option value="0">一般交易時段</option><option value="1">盤後交易時段</option></select>
+      <button id="impgo" type="button">重新分析</button>
+      <button id="impx" type="button" class="ghost">收起</button>
+    </div>
+    <textarea id="impt" spellcheck="false"></textarea>
+    <details><summary>原始辨識文字（除錯用）</summary><pre id="impraw" class="mut" style="white-space:pre-wrap;margin:4px 0"></pre></details>
+  </div>
+  <div id="out"></div>
+</main>
+<div id="ov" class="ov" hidden>
+  <p>長按圖片 → 儲存到相簿</p>
+  <img id="ovimg" alt="">
+  <button id="ovx" type="button">關閉</button>
+</div>
+<script>
+// Cloudflare Worker API 位址（結尾不要加 /）
+const API_BASE = 'https://block.wildvlogtw.workers.dev';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const n = x => Number(x).toLocaleString('en-US');
+const hl = s => '<span class="hl">' + s + '</span>';
+
+// 到期月份：202612 → 2026/12 月選；202611W2 → 2026/11 W2 週選
+function expFmt(e) {
+  const m = String(e || '').trim().match(/^(\d{4})(\d{2})\s*(.*)$/);
+  if (!m) return esc(e || '未知');
+  const w = m[3].match(/([WF])\s*(\d+)/i);
+  return m[1] + '/' + m[2] + (w ? ' ' + w[1].toUpperCase() + w[2] + (w[1].toUpperCase() === 'F' ? ' 週五週選' : ' 週三週選') : ' 月選');
+}
+// 到期排序鍵：近月在前；同月週選（W1..）早於月選
+function expKey(e) {
+  const m = String(e || '').trim().match(/^(\d{4})(\d{2})\s*(.*)$/);
+  if (!m) return 999999999;
+  const w = m[3].match(/([WF])\s*(\d+)/i);
+  return (+m[1]) * 100000 + (+m[2]) * 1000 + (w ? (+w[2]) * 10 + (w[1].toUpperCase() === 'F' ? 1 : 0) : 990);
+}
+const expBadge = e => '<span class="exp">' + expFmt(e) + '</span>';
+
+// 互換組合（疑似事先談好，不一定是對敲）：同到期月、同買賣權，且買賣雙方互換（A買B賣 ↔ B買A賣）。優先配對口數相同者
+// 這類單是兩家對手在同一到期月來回建立部位，視為「參考價值較高」，不扣除、反而優先顯示
+const isRef = r => !r.sameFirm;
+function markPairs(rows) {
+  const key = x => (x.buyId || x.buyName) + '|' + (x.sellId || x.sellName);
+  const rev = x => (x.sellId || x.sellName) + '|' + (x.buyId || x.buyName);
+  rows.forEach(r => { r.pair = false; });
+  const cand = rows.filter(r => !r.sameFirm);
+  for (const a of cand) {
+    if (a.pair) continue;
+    const ok = cand.filter(x => x !== a && !x.pair && x.expiry === a.expiry && x.type === a.type && key(x) === rev(a));
+    const b = ok.find(x => x.volume === a.volume) || ok[0];
+    if (b) { a.pair = b.pair = true; a.mate = b; b.mate = a; }
+  }
+  return rows;
+}
+function pairLine(rows) {
+  const p = rows.filter(r => r.pair);
+  if (!p.length) return '';
+  return '<div class="mut" style="margin-top:2px"><span class="pairtag">價差腳</span> ' + (p.length / 2) + ' 組 / ' + p.length + ' 筆（同月買賣雙方互換，視為價差組合單，見下方）</div>';
+}
+
+// 只用「買賣不同券商」的單，依目標位置分組，口數多的排前面
+function group(rows) {
+  const out = { PUT: [], CALL: [] };
+  for (const t of ['PUT', 'CALL']) {
+    const m = new Map();
+    for (const r of rows.filter(x => isRef(x) && !x.pair && x.type === t)) {
+      const o = m.get(r.level) || { level: r.level, vol: 0, items: [] };
+      o.vol += r.volume; o.items.push(r); m.set(r.level, o);
+    }
+    for (const o of m.values()) out[t] = [...m.values()].sort((a, b) => b.vol - a.vol);
+  }
+  return out;
+}
+
+
+// 互換組合 → 價差單（兩腳互相抵銷，單腳目標不能單獨當支撐壓力，改看價差區間與損益兩平）
+function combos(rows) {
+  const out = [], seen = new Set();
+  for (const a of rows) {
+    if (!a.pair || !a.mate || seen.has(a) || seen.has(a.mate)) continue;
+    seen.add(a); seen.add(a.mate);
+    const lo = a.strike <= a.mate.strike ? a : a.mate, hi = lo === a ? a.mate : a;
+    const put = lo.type === 'PUT', width = hi.strike - lo.strike;
+    const net = put ? hi.price - lo.price : lo.price - hi.price; // PUT：高履約價較貴；CALL：低履約價較貴
+    const ok = width > 0 && net > 0 && net < width;
+    out.push({
+      lo, hi, put, width, net: Math.abs(net), ok, vol: Math.min(lo.volume, hi.volume), diffVol: lo.volume !== hi.volume,
+      be: ok ? (put ? hi.strike - net : lo.strike + net) : null,
+      // lo.buyName＝買低履約價腳的一方
+      a: { name: lo.buyName, kind: put ? '牛市賣權價差（收權利金）' : '牛市買權價差（付權利金）' },
+      b: { name: lo.sellName, kind: put ? '熊市賣權價差（付權利金）' : '熊市買權價差（收權利金）' }
+    });
+  }
+  return out;
+}
+function comboHtml(cs) {
+  if (!cs.length) return '';
+  const T = c => c.put ? 'P' : 'C';
+  return '<h2>組合單（價差）</h2>' + cs.map(c =>
+    '<div class="box" style="margin:4px 0"><div><span class="pairtag">價差腳</span> ' + expBadge(c.lo.expiry) +
+    '<b class="' + c.lo.type + '">' + c.lo.type + ' 價差 ' + n(c.lo.strike) + ' ~ ' + n(c.hi.strike) + '</b>（寬 ' + n(c.width) + '）· ' + n(c.vol) + ' 口' + (c.diffVol ? '（兩腳口數不同，取較小）' : '') + '</div>' +
+    '<p>' + esc(c.a.name) + '：買 ' + n(c.lo.strike) + T(c) + '／賣 ' + n(c.hi.strike) + T(c) + ' → ' + c.a.kind + '</p>' +
+    '<p>' + esc(c.b.name) + '：買 ' + n(c.hi.strike) + T(c) + '／賣 ' + n(c.lo.strike) + T(c) + ' → ' + c.b.kind + '</p>' +
+    (c.ok ? '<p>淨權利金 ' + n(c.net) + '・損益兩平 ' + hl(n(c.be)) + '・最大損益 ' + n(c.net) + ' ／ ' + n(c.width - c.net) + '</p>' : '') +
+    '</div>').join('') +
+    '<div class="mut" style="margin-top:2px">兩腳互相抵銷、風險有限，多為區間佈局或避險，不等於單押方向；不知哪一方是真客戶，建議隔日起觀察 OI 是否續增。</div>';
+}
+function comboText(cs) {
+  return cs.map(c => {
+    const T = c.put ? 'P' : 'C';
+    return expFmt(c.lo.expiry) + ' ' + c.lo.type + ' 價差 ' + n(c.lo.strike) + '~' + n(c.hi.strike) + '｜' + n(c.vol) + ' 口｜' + c.a.name + ' 買' + n(c.lo.strike) + T + '賣' + n(c.hi.strike) + T + '／' + c.b.name + ' 買' + n(c.hi.strike) + T + '賣' + n(c.lo.strike) + T + (c.ok ? '｜淨權利金 ' + n(c.net) + '，損益兩平 ' + n(c.be) : '');
+  });
+}
+
+const minExp = o => Math.min(...o.items.map(r => expKey(r.expiry)));
+const byExp = list => [...list].sort((a, b) => minExp(a) - minExp(b) || b.vol - a.vol);
+function targetsHtml(t, list) {
+  if (!list.length) return '';
+  const top = list[0].level; // 口數最多者標示重點
+  list = byExp(list);
+  const put = t === 'PUT', sign = put ? '−' : '+';
+  return '<div class="sub ' + t + '">' + (put ? '▼ 下檔目標（履約價 − 成交價）' : '▲ 上檔目標（履約價 + 成交價）') + '</div>' +
+    list.map((o, i) => '<div class="tg"><div class="lvl ' + t + '">' + (o.level === top ? hl(n(o.level)) : n(o.level)) + '</div><div class="src">' +
+      o.items.map(r => '<div>' + expBadge(r.expiry) + '履約價 ' + n(r.strike) + ' ' + sign + ' 成交價 ' + n(r.price) + ' · ' + n(r.volume) + ' 口 · 玩家 ' + esc(r.buyName) + ' ／ 莊家 ' + esc(r.sellName) + '</div>').join('') +
+      '</div></div>').join('');
+}
+
+// 玩家＝買方、莊家＝賣方
+function intentHtml(g) {
+  const vol = a => a.reduce((s, o) => s + o.vol, 0);
+  const player = [], dealer = [];
+  if (g.PUT.length) {
+    player.push('<p><span class="PUT">PUT ' + n(vol(g.PUT)) + ' 口</span>：買進下檔保護或看空，指數跌破目標位置才開始獲利。</p>');
+    dealer.push('<p><span class="PUT">PUT</span>：賣出收權利金，押 ' + hl(n(g.PUT[0].level)) + ' 附近不易跌破，視為支撐／防守位置。</p>');
+  }
+  if (g.CALL.length) {
+    player.push('<p><span class="CALL">CALL ' + n(vol(g.CALL)) + ' 口</span>：買進上檔保護或看多，指數漲過目標位置才開始獲利。</p>');
+    dealer.push('<p><span class="CALL">CALL</span>：賣出收權利金，押 ' + hl(n(g.CALL[0].level)) + ' 附近不易突破，視為壓力位置。</p>');
+  }
+  if (!player.length) return '';
+  return '<h2>企圖</h2><div class="two"><div class="box"><b>玩家（買方）</b>' + player.join('') +
+    '</div><div class="box"><b>莊家（賣方）</b>' + dealer.join('') + '</div></div>';
+}
+
+function expiryLine(rows) {
+  const m = new Map();
+  for (const r of rows.filter(isRef)) m.set(r.expiry, (m.get(r.expiry) || 0) + r.volume);
+  if (!m.size) return '';
+  return '<div class="mut" style="margin-top:2px">到期月份：' +
+    [...m.entries()].sort((a, b) => expKey(a[0]) - expKey(b[0])).map(([e, v]) => expBadge(e) + n(v) + ' 口').join('　') + '</div>';
+}
+
+function detailHtml(rows) {
+  let h = '<div style="margin-top:10px"><div class="mut" style="font-weight:600">原始鉅額明細（' + rows.length + ' 筆，灰色＝同券商，無參考價值；黃色「價差腳」＝買賣互換組合單，單腳目標僅供參考）</div><div class="scroll"><table><tr><th class="l">契約</th><th>到期</th><th>買賣權</th><th>履約價</th><th>成交價</th><th>口數</th><th class="l">買進（玩家）</th><th class="l">賣出（莊家）</th><th>目標位置</th><th>備註</th></tr>';
+  for (const r of rows) {
+    h += '<tr class="' + (r.sameFirm ? 'lo' : '') + '"><td class="l">' + esc(r.code) + '</td><td>' + expFmt(r.expiry) +
+      '</td><td class="' + r.type + '">' + r.type + '</td><td>' + n(r.strike) + '</td><td>' + n(r.price) + '</td><td>' + n(r.volume) +
+      '</td><td class="l">' + esc(r.buyName) + '</td><td class="l">' + esc(r.sellName) + '</td><td>' + (r.pair ? '<span class="mut">' + n(r.level) + '</span>' : '<b>' + n(r.level) + '</b>') + '</td><td>' + (r.pair ? '<span class="pairtag">價差腳</span>' : r.sameFirm ? '同券商' : '') + '</td></tr>';
+  }
+  return h + '</table></div></div>';
+}
+
+let shotName = '選擇權鉅額日報';
+let state = null, blobPromise = null, prefetchT = null;
+function render(j) {
+  const d = j.days[0] || { date: null, rows: [] };
+  const mkt = $('mk').options[$('mk').selectedIndex].text;
+  const head = '<div class="mut">選擇權鉅額日報 · 交易日期 ' + esc(d.date || '未知') + ' · ' + mkt + '</div>';
+  shotName = '選擇權鉅額_' + String(d.date || '').replace(/\//g, '') + '_' + mkt;
+  $('save').hidden = $('share').hidden = true;
+  $('menu').hidden = true;
+  state = null;
+  if (d.error) return '<div id="shot">' + head + '<div class="empty">抓取失敗：' + esc(d.error) + '</div></div>';
+  if (!d.rows.length) {
+    return '<div id="shot">' + head + '<div class="empty">' + (j.meta && j.meta.tableFound === false
+      ? '抓到網頁但找不到資料表，請開 /api/debug 查看原因'
+      : '此時段無鉅額交易') + '</div></div>';
+  }
+  d.rows.sort((a, b) => expKey(a.expiry) - expKey(b.expiry) || (a.type === b.type ? 0 : a.type === 'PUT' ? -1 : 1) || a.strike - b.strike);
+  markPairs(d.rows);
+  const g = group(d.rows), s = j.summary;
+  state = { d, g, s, mkt };
+  blobPromise = null;
+  clearTimeout(prefetchT);
+  prefetchT = setTimeout(() => { blobPromise = snapBlob().catch(() => null); }, 400); // 先備好圖片，手機分享才不會因等待而被擋
+  $('save').hidden = $('share').hidden = false;
+  let h = '<div id="shot">' + head;
+  h += '<div class="verdict">' + hl(esc(s.verdict)) + '</div>' +
+    '<div class="mut">參考價值 ' + s.high.n + ' 筆 / ' + n(s.high.vol) + ' 口　·　無參考價值（同券商）' + s.low.n + ' 筆 / ' + n(s.low.vol) + ' 口</div>' +
+    expiryLine(d.rows) + pairLine(d.rows) + detailHtml(d.rows);
+  const cs = combos(d.rows);
+  h += comboHtml(cs);
+  h += '<h2>目標位置（單腳，履約價 → 目標）</h2>' + (targetsHtml('PUT', g.PUT) + targetsHtml('CALL', g.CALL) || '<div class="empty">' + (cs.length ? '無單腳方向單（鉅額皆為價差組合）' : '無參考價值的單可計算') + '</div>');
+  h += intentHtml(g);
+  h += '<p class="mut" style="margin:10px 0 0;font-size:11px">莊家＝賣方、玩家＝買方；目標位置＝玩家損益兩平／莊家防守或壓力位置。鉅額單可能是價差或避險組合的一腳；組合單請看價差區間與損益兩平，並搭配 OI 變化，規則式推論僅供參考，非投資建議。</p></div>';
+  return h;
+}
+
+/* ---------- 圖片、下載、分享、複製文字 ---------- */
+const UA_ = navigator.userAgent;
+const isIOS = /iPad|iPhone|iPod/.test(UA_) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(UA_);
+const isMobile = isIOS || isAndroid;
+$('save').textContent = isMobile ? '存到相簿' : '下載圖片';
+
+async function snapBlob() {
+  if (!window.html2canvas) throw new Error('圖片元件載入失敗（外部腳本被擋或離線）');
+  const canvas = await html2canvas($('shot'), { backgroundColor: getComputedStyle(document.body).backgroundColor, scale: 2 });
+  return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('產生圖片失敗')), 'image/png'));
+}
+async function getBlob() {
+  let b = blobPromise ? await blobPromise : null;
+  if (!b) { blobPromise = snapBlob(); b = await blobPromise; }
+  return b;
+}
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function showOverlay(blob) {
+  $('ovimg').src = URL.createObjectURL(blob);
+  $('ov').hidden = false;
+}
+// 回傳 true＝已透過系統分享選單處理；false＝不支援；使用者取消也算已處理
+async function tryShareFile(blob) {
+  const file = new File([blob], shotName + '.png', { type: 'image/png' });
+  if (!(navigator.canShare && navigator.canShare({ files: [file] }))) return false;
+  try { await navigator.share({ files: [file], title: '選擇權鉅額日報' }); return true; }
+  catch (e) { return e.name === 'AbortError'; }
+}
+
+// 下載（手機：存到相簿）
+async function doSave() {
+  if (!state) return;
+  $('st').textContent = '產生圖片中…';
+  try {
+    const blob = await getBlob();
+    if (isIOS) { // iPhone：分享選單裡選「儲存影像」；不支援就顯示圖片讓你長按儲存
+      if (await tryShareFile(blob)) { $('st').textContent = '請在選單選「儲存影像」'; return; }
+      showOverlay(blob); $('st').textContent = ''; return;
+    }
+    download(blob, shotName);
+    $('st').textContent = isAndroid ? '已儲存，可在相簿或「下載」資料夾找到' : '已下載圖片';
+  } catch (e) { $('st').textContent = '錯誤：' + e.message; }
+}
+
+// 分享圖片
+async function shareImage() {
+  if (!state) return;
+  $('st').textContent = '產生圖片中…';
+  try {
+    const blob = await getBlob();
+    if (await tryShareFile(blob)) { $('st').textContent = ''; return; }
+    if (isMobile) { showOverlay(blob); $('st').textContent = ''; return; }
+    download(blob, shotName);
+    $('st').textContent = '此瀏覽器不支援分享，已改為下載圖片';
+  } catch (e) { $('st').textContent = '錯誤：' + e.message; }
+}
+
+// 純文字版本
+function buildText() {
+  const { d, g, s, mkt } = state;
+  const vol = a => a.reduce((x, o) => x + o.vol, 0);
+  const L = [];
+  L.push('【選擇權鉅額日報】' + (d.date || '') + ' ' + mkt);
+  L.push('結論：' + s.verdict);
+  L.push('參考價值 ' + s.high.n + ' 筆 / ' + n(s.high.vol) + ' 口；無參考價值（同券商）' + s.low.n + ' 筆 / ' + n(s.low.vol) + ' 口');
+  const ex = new Map();
+  for (const r of d.rows.filter(isRef)) ex.set(r.expiry, (ex.get(r.expiry) || 0) + r.volume);
+  if (ex.size) L.push('到期月份：' + [...ex.entries()].sort((a, b) => expKey(a[0]) - expKey(b[0])).map(([e, v]) => expFmt(e) + ' ' + n(v) + ' 口').join('、'));
+  L.push('', '▼ 原始鉅額明細（' + d.rows.length + ' 筆，由近月到遠月）');
+  for (const r of d.rows)
+    L.push(r.code + '｜' + expFmt(r.expiry) + ' ' + r.type + '｜履約價 ' + n(r.strike) + '｜成交價 ' + n(r.price) + '｜' + n(r.volume) + ' 口｜買 ' + r.buyName + '／賣 ' + r.sellName + '｜目標 ' + n(r.level) + (r.pair ? '｜價差腳' : r.sameFirm ? '｜同券商' : ''));
+  for (const [t, title, sign] of [['PUT', '▼ 下檔目標（履約價 − 成交價）', '−'], ['CALL', '▲ 上檔目標（履約價 + 成交價）', '+']]) {
+    if (!g[t].length) continue;
+    L.push('', title);
+    for (const o of byExp(g[t])) for (const r of o.items)
+      L.push(n(o.level) + '｜' + expFmt(r.expiry) + ' 履約價 ' + n(r.strike) + ' ' + sign + ' 成交價 ' + n(r.price) + '｜' + n(r.volume) + ' 口｜玩家 ' + r.buyName + '／莊家 ' + r.sellName);
+  }
+  const cs = combos(d.rows);
+  if (cs.length) { L.push('', '組合單（價差，兩腳互相抵銷，不等於單押方向）'); comboText(cs).forEach(x => L.push(x)); }
+  const p = [], m = [];
+  if (g.PUT.length) { p.push('PUT ' + n(vol(g.PUT)) + ' 口買進下檔保護或看空'); m.push('賣 PUT 收權利金，押 ' + n(g.PUT[0].level) + ' 附近不易跌破（支撐）'); }
+  if (g.CALL.length) { p.push('CALL ' + n(vol(g.CALL)) + ' 口買進上檔保護或看多'); m.push('賣 CALL 收權利金，押 ' + n(g.CALL[0].level) + ' 附近不易突破（壓力）'); }
+  if (p.length) L.push('', '玩家（買方）：' + p.join('；'), '莊家（賣方）：' + m.join('；'));
+  L.push('', '※ 規則式推論，僅供參考，非投資建議');
+  return L.join('\n');
+}
+async function copyText() {
+  if (!state) return;
+  const t = buildText();
+  try {
+    await navigator.clipboard.writeText(t);
+  } catch (e) { // 舊瀏覽器／非 https 的備援
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand && document.execCommand('copy');
+    ta.remove();
+    if (!ok) { $('st').textContent = '複製失敗，請改用分享圖片'; return; }
+  }
+  $('st').textContent = '已複製文字';
+}
+
+/* ---------- 圖片上傳分析（瀏覽器端 OCR，圖片不會上傳到伺服器） ---------- */
+const grp = s => String(s || '').replace(/(期貨|證券|投信|商業銀行|銀行|金融控股|金控)$/g, '').trim();
+function analyzeRow(r) {
+  const isCall = r.side === 'CALL';
+  const level = isCall ? r.strike + r.price : r.strike - r.price; // 與後端相同：PUT＝履約價−權利金；CALL＝履約價+權利金
+  const sameFirm = !!((r.buyId && r.buyId === r.sellId) || (grp(r.buyName) && grp(r.buyName) === grp(r.sellName)));
+  return { ...r, buyName: r.buyName || r.buyId || '（缺）', sellName: r.sellName || r.sellId || '（缺）', type: isCall ? 'CALL' : 'PUT', level, sameFirm };
+}
+function summarize(list) {
+  const high = list.filter(x => !x.sameFirm), low = list.filter(x => x.sameFirm);
+  const vol = a => a.reduce((s, x) => s + x.volume, 0);
+  const agg = type => {
+    const map = new Map();
+    for (const x of high.filter(a => a.type === type)) {
+      const o = map.get(x.level) || { level: x.level, vol: 0, n: 0 };
+      o.vol += x.volume; o.n++; map.set(x.level, o);
+    }
+    return [...map.values()].sort((a, b) => b.vol - a.vol).slice(0, 5);
+  };
+  const pv = vol(high.filter(x => x.type === 'PUT')), cv = vol(high.filter(x => x.type === 'CALL')), total = pv + cv;
+  let verdict;
+  if (total === 0) verdict = list.length ? '鉅額單皆為同券商對沖，方向訊號不明顯。' : '當日無鉅額交易。';
+  else if (cv === 0) verdict = '當日僅有 PUT 鉅額（無 CALL），只能看下檔目標位置，無法比較多空。';
+  else if (pv === 0) verdict = '當日僅有 CALL 鉅額（無 PUT），只能看上檔目標位置，無法比較多空。';
+  else verdict = pv > cv * 1.3 ? '偏向「下檔」佈局（PUT 口數較多）' : cv > pv * 1.3 ? '偏向「上檔」佈局（CALL 口數較多）' : '多空佈局相近，偏區間思維';
+  return { high: { n: high.length, vol: vol(high) }, low: { n: low.length, vol: vol(low) }, put: agg('PUT'), call: agg('CALL'), pv, cv, verdict };
+}
+
+// 已知期貨商代號（代號比中文字更容易被 OCR 讀對，用來校正名稱；你手動按「重新分析」確認過的也會記住）
+const BROKER_SEED = { F020: '群益期貨', F021: '元大期貨', S144: '美林證券', F034: '澳帝華期貨', F001: '國泰期貨', F002: '永豐期貨', S844: '摩根大通' };
+function brokerMap() {
+  let m = {};
+  try { m = JSON.parse(localStorage.getItem('brokerMap') || '{}') || {}; } catch (e) {}
+  return { ...BROKER_SEED, ...m };
+}
+function learnBrokers(rows) {
+  try {
+    const m = JSON.parse(localStorage.getItem('brokerMap') || '{}') || {};
+    for (const r of rows) for (const s of ['buy', 'sell']) if (r[s + 'Id'] && r[s + 'Name']) m[r[s + 'Id']] = r[s + 'Name'];
+    localStorage.setItem('brokerMap', JSON.stringify(m));
+  } catch (e) {}
+}
+const normName = s => String(s || '').replace(/期[貸發賃貧贷]$/, '期貨');
+
+// 單行解析：容忍欄位缺漏（表格 rowspan 造成的空白），回傳部分欄位
+// 官網欄位順序：代號 名稱 到期 買賣權 履約價 成交價 成交量 買進代號 買進名稱 賣出代號 賣出名稱
+function parseLine(raw) {
+  let s = String(raw || '').trim();
+  if (!s || s[0] === '#') return null;
+  s = s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 65248))
+       .replace(/(\d),(?=\d{3})/g, '$1').replace(/[|｜,，;]/g, ' ')
+       .replace(/(\d)(?=[\u4e00-\u9fff])/g, '$1 ').replace(/([\u4e00-\u9fff])(?=\d)/g, '$1 ');
+  const r = { code: '', expiry: '', side: '', nums: [], parties: [] };
+  for (const t of s.split(/\s+/).filter(Boolean)) {
+    let m;
+    if (!r.expiry && (m = t.match(/^(20\d{2})[\/\-]?(0[1-9]|1[0-2])(?:月選|週選|月)?(?:[\/\-]?([WF]\d))?$/i))) { r.expiry = m[1] + m[2] + (m[3] ? m[3].toUpperCase() : ''); continue; }
+    if (r.expiry && /^[WF]\d$/i.test(t) && !/[WF]/.test(r.expiry)) { r.expiry += t.toUpperCase(); continue; }
+    if (t === '?' && r.nums.length < 3) { r.sideUnknown = true; continue; }
+    if (/^(CALL|C)$/i.test(t) || /[買賈][權櫂榷]/.test(t)) { r.side = 'CALL'; continue; }
+    if (/^(PUT|P)$/i.test(t) || /[賣賫][權櫂榷]/.test(t)) { r.side = 'PUT'; continue; }
+    if (/^TX[A-Z0-9]{0,2}$/i.test(t)) { r.code = t.toUpperCase(); continue; }
+    if (/^\d+(\.\d+)?$/.test(t)) { r.nums.push(Number(t)); continue; }
+    if (r.nums.length < 3) continue; // 成交量之前的欄位（契約名稱等）一律忽略
+    const last = r.parties[r.parties.length - 1];
+    if (/^[A-Z][0-9OoIl]{3,6}$/i.test(t)) { // 期貨商代號（O→0、l→1 校正）
+      r.parties.push({ id: t[0].toUpperCase() + t.slice(1).replace(/[Oo]/g, '0').replace(/[Il]/g, '1'), name: '' }); continue;
+    }
+    if (t === '?') { r.parties.push({ id: '', name: '' }); continue; }
+    if (/[\u4e00-\u9fff]/.test(t) && !/選擇權|選$|臺|台指|台股|價差腳|同券商|^[買賣]$/.test(t)) {
+      if (last && !last.name) last.name = normName(t); else r.parties.push({ id: '', name: normName(t) });
+    }
+  }
+  return r;
+}
+function mkRow(p, code, expiry, side) {
+  const b = p.parties[0] || { id: '', name: '' }, e = p.parties[1] || { id: '', name: '' };
+  return { code, expiry, side, strike: p.nums[0], price: p.nums[1], volume: p.nums[2], buyId: b.id, buyName: b.name, sellId: e.id, sellName: e.name };
+}
+// 多行解析（空白欄位沿用上一列）
+let skippedSide = 0;
+function parseAll(text) {
+  skippedSide = 0;
+  const rows = []; let prev = { code: 'TXO', expiry: '', side: '' };
+  for (const line of String(text || '').split('\n')) {
+    const p = parseLine(line);
+    if (!p || p.nums.length < 3) continue;
+    const code = p.code || prev.code, expiry = p.expiry || prev.expiry, side = p.side || prev.side;
+    if (p.sideUnknown && !p.side) { skippedSide++; prev = { code, expiry, side: '' }; continue; }
+    prev = { code, expiry, side };
+    if (side) rows.push(mkRow(p, code, expiry, side));
+  }
+  return rows;
+}
+// 用代號校正名稱；代號不在表內就用同張圖裡出現最多次的名稱
+function resolveBrokers(rows) {
+  const map = brokerMap(), votes = {};
+  for (const r of rows) for (const s of ['buy', 'sell']) {
+    const id = r[s + 'Id'], nm = r[s + 'Name'];
+    if (id && nm) { votes[id] = votes[id] || {}; votes[id][nm] = (votes[id][nm] || 0) + 1; }
+  }
+  for (const id in votes) if (!map[id]) map[id] = Object.entries(votes[id]).sort((a, b) => b[1] - a[1])[0][0];
+  const byName = {}; for (const id in map) byName[map[id]] = id;
+  for (const r of rows) for (const s of ['buy', 'sell']) {
+    if (r[s + 'Id'] && map[r[s + 'Id']]) r[s + 'Name'] = map[r[s + 'Id']];
+    else if (!r[s + 'Id'] && r[s + 'Name'] && byName[r[s + 'Name']]) r[s + 'Id'] = byName[r[s + 'Name']];
+  }
+  return rows;
+}
+const party = (id, name) => (id || name) ? [id, name].filter(Boolean).join(' ') : '?';
+const canon = r => [r.code, r.expiry, r.side, r.strike, r.price, r.volume, party(r.buyId, r.buyName), party(r.sellId, r.sellName)].join(' ');
+const missingCount = rows => rows.filter(r => !(r.buyId || r.buyName) || !(r.sellId || r.sellName)).length;
+
+function loadTess() {
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    s.onload = res; s.onerror = () => rej(new Error('OCR 元件載入失敗（外部腳本被擋或離線）'));
+    document.head.appendChild(s);
+  });
+}
+// 放大、轉灰階；深色底自動反相，提高辨識率
+async function prepImage(url) {
+  const img = new Image(); img.src = url; await img.decode();
+  const sc = Math.min(3, Math.max(1, 1800 / img.naturalWidth));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, c.width, c.height);
+  const id = x.getImageData(0, 0, c.width, c.height), d = id.data; let sum = 0;
+  for (let i = 0; i < d.length; i += 4) { const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; d[i] = d[i + 1] = d[i + 2] = g; sum += g; }
+  if (sum / (d.length / 4) < 128) for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = 255 - d[i];
+  x.putImageData(id, 0, 0);
+  return c;
+}
+/* ---------- 表格格線切格（官網截圖專用，逐格辨識，準確度遠高於整張 OCR） ---------- */
+const SIDE_TPL = { buy: ["00000000000000000000000051100005511511000000000000000000000000005110000551151100559999999999999955000000511779999115999955110550000550014400000051100005511511005511055000055001440000005110000551151100559999999999999955001188999449999448996655999999999999995500118899944999944899660000000000000000000000006112233224450055005599999999999500000011866229999448996600559999999999950000001186622999944899660055100000000114000000337442233222250000005510000000011400000033744223322225000000559999999999950000006651111889999999770055100000000114000022335117755002230000005510000000011400002233511775500223000000559999999999950000000053366889999999660055999999999995000000005336688999999966000077700008899300000000511114400223000088992000000000057700000051111889999999998899200000000005770000005111188999999999", "00000000000000000000000050000005500500000000000000000000000000005000000550050000889999999999999922000000511889966008997755001440022330032200000050000005500500005500144002233003220000005000000550050000889999999999999922004499977669999339993388999999999999992200449997766999933999330000000000000000000000116005511553332233008899999999999200000044933559999339993300889999999999920000004493355999933999330055000000000332000000556550055005520000005500000000033200000055655005500552000000889999999999920000225550044999999999550055000000000332000055115118822005510000005500000000033200005511511882200551000000889999999999920000000055566999999999330088999999999992000000005556699999999933001185500229999100000000500332200551000099770000000000085500000050044999999999779977000000000008550000005004499999999977", "00000000000000000000000322000032233220000000000000000000000000032200003223322000449999999999999960000003225599922449993333200551105500005000000322000032233220003320055110550000500000032200003223322000449999999999999960000889995588955779970044999999999999996000088999558895577997000000000000000000000000052211441445500500004999999999996600000008772288955779970000499999999999660000000877228895577997000032200000000055000002274433223116600000003220000000005500000227443322311660000000499999999999660000066422008899999999110032200000000055000114432255660114400000003220000000005500011443225566011440000000499999999999660000000333668899999997000049999999999966000000033366889999999700000559911077995500000003220055011440000077933000000000449110000322008899999999337793300000000044911000032200889999999933"], sell: ["00000000000000000000000051100005511511000000000000000000000000005110000551151100000000033220000000000000511779999115999988999999999999999911000051100005511511008899999999999999991100005110000551151100000000033220000000001188999449999448996600000003322000000000118899944999944899667799999999999999660000006112233224450055551105500005500144000011866229999448996655110550000550014400001186622999944899665599999999999999550000337442233222250000559999999999999955000033744223322225000000550000000000050000006651111889999999770077999999999996000022335117755002230000007799999999999600002233511775500223000000550000000000050000000053366889999999660055000000000005000000005336688999999966007799999999999600000000511114400223000088999110000000059911000051111889999999998899911000000005991100005111188999999999"] };
+function gRuns(idx) {
+  const out = []; let s = null, p = null;
+  for (const i of idx) { if (s === null) s = p = i; else if (i === p + 1) p = i; else { out.push([s, p]); s = p = i; } }
+  if (s !== null) out.push([s, p]);
+  return out;
+}
+// G = { w, h, d: 灰階陣列（深色底已反相） }
+function gridDetect(G) {
+  const { w: W, h: H, d } = G, LT = 235, sc = W / 740, thin = Math.max(3, Math.round(3 * sc));
+  const hit = []; // 每列「淺灰以下」像素數達 85% 以上＝橫線／表頭色塊
+  for (let y = 0; y < H; y++) { let c = 0; const o = y * W; for (let x = 0; x < W; x++) if (d[o + x] < LT) c++; if (c >= 0.85 * W) hit.push(y); }
+  const runs = gRuns(hit), b = [];
+  for (const [a, c] of runs) { const v = c - a <= thin ? (a + c) / 2 : c; if (b.length && v - b[b.length - 1] <= 4 * sc) b[b.length - 1] = v; else b.push(v); }
+  const rows = [];
+  for (let i = 0; i + 1 < b.length; i++) {
+    const a = Math.round(b[i]), c = Math.round(b[i + 1]), gap = c - a;
+    if (gap < 14 * sc || gap > 90 * sc) continue;
+    let sum = 0, n = 0; for (let y = a + 3; y < c - 2; y++) for (let x = 0; x < W; x += 3) { sum += d[y * W + x]; n++; }
+    if (n && sum / n > 200) rows.push([a, c]); // 表頭（藍底）不算資料列
+  }
+  if (!rows.length) return null;
+  const y0 = rows[0][0], y1 = rows[rows.length - 1][1], hh = y1 - y0 + 1, cols = [];
+  for (let x = 0; x < W; x++) { let c = 0; for (let y = y0; y <= y1; y++) if (d[y * W + x] < LT) c++; if (c >= 0.9 * hh) cols.push(x); }
+  const xs = gRuns(cols).map(([a, c]) => Math.round((a + c) / 2));
+  if (xs.length !== 12) return null; // 官網表格 11 欄 → 12 條直線
+  const near = runs.filter(r => r[1] <= y0 && r[0] >= y0 - 70 * sc);
+  return { rows, xs, top: near.length ? Math.min(...near.map(r => r[0])) : y0 };
+}
+function cellReg(G, row, xs, c, inset = 2) {
+  const x0 = xs[c] + inset, x1 = xs[c + 1] - inset, y0 = row[0] + inset, y1 = row[1] - inset, w = x1 - x0 + 1, h = y1 - y0 + 1;
+  const d = new Uint8ClampedArray(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d[y * w + x] = G.d[(y0 + y) * G.w + x0 + x];
+  return { w, h, d };
+}
+const inkCount = (r, t = 150) => { let c = 0; for (let i = 0; i < r.d.length; i++) if (r.d[i] < t) c++; return c; };
+// 買權／賣權：把儲存格內的字縮成 40x20 的墨量圖，與範本做相關係數比對
+const TW = 40, TH = 20;
+function sideDesc(r) {
+  let x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1, n = 0;
+  for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) if (255 - r.d[y * r.w + x] > 60) { n++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (n < 6) return null;
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1, out = new Float64Array(TW * TH); let mx = 0;
+  for (let oy = 0; oy < TH; oy++) for (let ox = 0; ox < TW; ox++) {
+    const sx0 = ox * bw / TW, sx1 = (ox + 1) * bw / TW, sy0 = oy * bh / TH, sy1 = (oy + 1) * bh / TH;
+    let s = 0, wsum = 0;
+    for (let y = Math.floor(sy0); y < Math.ceil(sy1); y++) {
+      const wy = Math.min(y + 1, sy1) - Math.max(y, sy0); if (wy <= 0) continue;
+      for (let x = Math.floor(sx0); x < Math.ceil(sx1); x++) {
+        const wx = Math.min(x + 1, sx1) - Math.max(x, sx0); if (wx <= 0) continue;
+        s += (255 - r.d[(y0 + y) * r.w + x0 + x]) * wx * wy; wsum += wx * wy;
+      }
+    }
+    out[oy * TW + ox] = wsum ? s / wsum : 0; if (out[oy * TW + ox] > mx) mx = out[oy * TW + ox];
+  }
+  return out.map(v => v / (mx || 1));
+}
+function corr(a, b) {
+  let ma = 0, mb = 0; for (let i = 0; i < a.length; i++) { ma += a[i]; mb += b[i]; } ma /= a.length; mb /= a.length;
+  let s = 0, sa = 0, sb = 0; for (let i = 0; i < a.length; i++) { const x = a[i] - ma, y = b[i] - mb; s += x * y; sa += x * x; sb += y * y; }
+  return s / (Math.sqrt(sa * sb) + 1e-9);
+}
+const tplArr = s => Float64Array.from(s, ch => Number(ch) / 9);
+function classifySide(r) {
+  const d = sideDesc(r); if (!d) return null;
+  const best = list => Math.max(...list.map(t => corr(d, tplArr(t))));
+  const cb = best(SIDE_TPL.buy), cs = best(SIDE_TPL.sell);
+  if (Math.max(cb, cs) >= 0.6 && Math.abs(cb - cs) >= 0.2) return cb > cs ? 'CALL' : 'PUT';
+  return null;
+}
+
+const normId = t => {
+  t = String(t || '').toUpperCase().replace(/[^FS0-9]/g, '');
+  const m = t.match(/^([FS])(\d+)$/);
+  if (m) return m[1] + (m[2].length < 3 ? m[2].padStart(3, '0') : m[2]);
+  return /^\d{3}$/.test(t) ? 'F' + t : '';
+};
+function cropReg(G, x0, y0, x1, y1) {
+  x0 = Math.max(0, Math.round(x0)); y0 = Math.max(0, Math.round(y0)); x1 = Math.min(G.w - 1, Math.round(x1)); y1 = Math.min(G.h - 1, Math.round(y1));
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, d = new Uint8ClampedArray(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d[y * w + x] = G.d[(y0 + y) * G.w + x0 + x];
+  return { w, h, d };
+}
+// 小區塊 → 放大、二值化、加白邊後交給 OCR
+function regCanvas(reg, gw, k = 4) {
+  const sc = Math.max(1, k * 740 / gw), c0 = document.createElement('canvas');
+  c0.width = reg.w; c0.height = reg.h;
+  const x0 = c0.getContext('2d'), id = x0.createImageData(reg.w, reg.h);
+  for (let i = 0; i < reg.d.length; i++) { id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = reg.d[i]; id.data[i * 4 + 3] = 255; }
+  x0.putImageData(id, 0, 0);
+  const pad = 16, c = document.createElement('canvas');
+  c.width = Math.round(reg.w * sc) + pad * 2; c.height = Math.round(reg.h * sc) + pad * 2;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  x.imageSmoothingQuality = 'high'; x.drawImage(c0, pad, pad, Math.round(reg.w * sc), Math.round(reg.h * sc));
+  const im = x.getImageData(0, 0, c.width, c.height);
+  for (let i = 0; i < im.data.length; i += 4) { const v = im.data[i] < 150 ? 0 : 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; }
+  x.putImageData(im, 0, 0);
+  return c;
+}
+async function loadGray(url) {
+  const img = new Image(); img.src = url; await img.decode();
+  const sc = Math.min(1, 3000 / img.naturalWidth), c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+  const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, c.width, c.height);
+  const id = x.getImageData(0, 0, c.width, c.height), n = c.width * c.height, d = new Uint8ClampedArray(n); let sum = 0;
+  for (let i = 0; i < n; i++) { const g = 0.299 * id.data[i * 4] + 0.587 * id.data[i * 4 + 1] + 0.114 * id.data[i * 4 + 2]; d[i] = g; sum += g; }
+  if (sum / n < 128) for (let i = 0; i < n; i++) d[i] = 255 - d[i];
+  return { w: c.width, h: c.height, d };
+}
+const setSt = t => { $('st').textContent = t; };
+
+// 官網截圖：格線切格，逐格辨識
+async function readTable(G, grid) {
+  const mk = lang => Tesseract.createWorker(lang, 1, {});
+  const eng = await mk('eng'); let chi = null;
+  const getChi = async () => chi || (chi = await mk('chi_tra'));
+  const rd = async (reg, wl, psm = '7', k = 4) => {
+    await eng.setParameters({ tessedit_pageseg_mode: psm, tessedit_char_whitelist: wl });
+    return String((await eng.recognize(regCanvas(reg, G.w, k))).data.text).trim();
+  };
+  const rdChi = async (reg) => {
+    const w = await getChi(); await w.setParameters({ tessedit_pageseg_mode: '7' });
+    return String((await w.recognize(regCanvas(reg, G.w))).data.text).replace(/\s/g, '');
+  };
+  const map = brokerMap(), rows = [], bad = [];
+  let prev = { expiry: '', side: '' }, guessed = 0, i = 0;
+  for (const r of grid.rows) {
+    i++; setSt('讀取表格 ' + i + ' / ' + grid.rows.length + ' 列…');
+    const reg = c => cellReg(G, r, grid.xs, c);
+    let expiry = prev.expiry, side = prev.side;
+    const e = reg(2);
+    if (inkCount(e) > 8) {
+      const t = (await rd(e, '0123456789WF')).replace(/\s/g, ''), m = t.match(/^(20\d{2})(\d{2})([WF]\d)?/);
+      if (m) expiry = m[1] + m[2] + (m[3] || ''); else guessed++;
+    }
+    const sd = reg(3);
+    if (inkCount(sd) > 8) {
+      side = classifySide(sd) || '';
+      if (!side) { // 圖形比對沒把握 → 用中文 OCR 補判
+        const t = await rdChi(sd);
+        side = /[買賈貝冒]/.test(t) ? 'CALL' : /[賣賫責賓]/.test(t) ? 'PUT' : '?';
+      }
+    }
+    const strike = parseFloat(await rd(reg(4), '0123456789')), price = parseFloat(await rd(reg(5), '0123456789.')), volume = parseFloat(await rd(reg(6), '0123456789'));
+    if (!(strike > 0) || !(price > 0) || !(volume > 0)) { bad.push('# 第 ' + i + ' 列數字未能辨識（履約價/成交價/口數），請對照圖片補上'); prev = { expiry, side }; continue; }
+    const party = async (idc, nc) => {
+      const id = normId(await rd(reg(idc), 'FS0123456789', '7', 3)); let name = id && map[id] ? map[id] : '';
+      if (!name && inkCount(reg(nc)) > 8) name = normName(await rdChi(reg(nc)));
+      return { id, name };
+    };
+    const b = await party(7, 8), s = await party(9, 10);
+    prev = { expiry, side };
+    rows.push({ code: 'TXO', expiry, side: side || '?', strike, price, volume, buyId: b.id, buyName: b.name, sellId: s.id, sellName: s.name });
+  }
+  // 交易日期（表格上方一行）；時段只有在中文辨識已載入時才順便判斷
+  let date = '', market = '';
+  try {
+    const hdr = cropReg(G, 0, grid.top - 60 * G.w / 740, G.w * 0.7, grid.top - 2);
+    const t = await rd(hdr, '', '6'), m = t.match(/(20\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+    if (m) date = m[1] + '/' + m[2].padStart(2, '0') + '/' + m[3].padStart(2, '0');
+    if (chi) { await chi.setParameters({ tessedit_pageseg_mode: '6' }); const c = String((await chi.recognize(regCanvas(hdr, G.w))).data.text); if (/盤後/.test(c) && !/一般/.test(c)) market = '1'; else if (/一般/.test(c)) market = '0'; }
+  } catch (e) {}
+  await eng.terminate(); if (chi) await chi.terminate();
+  resolveBrokers(rows);
+  return { rows, bad, date, market, guessed, text: '（格線切格模式：逐格辨識，無整頁文字）' };
+}
+
+// 其他截圖（沒有標準表格線）：整頁 OCR 再逐行解析
+async function readLoose(url) {
+  const canvas = await prepImage(url);
+  const worker = await Tesseract.createWorker(['chi_tra', 'eng'], 1, {
+    logger: m => { if (m.status === 'recognizing text') setSt('辨識中 ' + Math.round(m.progress * 100) + '%'); else if (/loading|initializ/.test(m.status)) setSt('準備辨識…'); }
+  });
+  await worker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
+  const { data } = await worker.recognize(canvas);
+  await worker.terminate();
+  const text = data.text.replace(/([\u4e00-\u9fff])[ \t]+(?=[\u4e00-\u9fff])/g, '$1');
+  const dm = text.match(/交易日期\D{0,4}(20\d{2})[\/\-.年]\s?(\d{1,2})[\/\-.月]\s?(\d{1,2})/) || text.match(/(20\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+  const market = /盤後/.test(text) && !/一般/.test(text) ? '1' : /一般/.test(text) && !/盤後/.test(text) ? '0' : '';
+  const got = [], bad = []; let prev = { code: 'TXO', expiry: '', side: '' }, guessed = 0;
+  for (const line of text.split('\n')) {
+    const p = parseLine(line);
+    if (!p || p.nums.length < 3) continue;
+    const code = p.code || prev.code, expiry = p.expiry || prev.expiry, side = p.side || prev.side;
+    if (!p.side) guessed++;
+    prev = { code, expiry, side };
+    got.push(mkRow(p, code, expiry, side));
+  }
+  const first = got.find(r => r.side), fe = got.find(r => r.expiry);
+  for (const r of got) { if (!r.side) r.side = first ? first.side : '?'; if (!r.expiry && fe) r.expiry = fe.expiry; }
+  resolveBrokers(got);
+  return { rows: got, bad, date: dm ? dm[1] + '/' + String(dm[2]).padStart(2, '0') + '/' + String(dm[3]).padStart(2, '0') : '', market, guessed, text };
+}
+
+async function handleImage(file) {
+  if (!file || !/^image\//.test(file.type)) { setSt('請選擇圖片檔'); return; }
+  const url = URL.createObjectURL(file);
+  $('go').disabled = $('up').disabled = true;
+  try {
+    $('out').innerHTML = ''; $('save').hidden = $('share').hidden = true; state = null; $('imp').hidden = true;
+    setSt('載入辨識元件…（首次需下載，請稍候）');
+    await loadTess();
+    const G = await loadGray(url), grid = gridDetect(G);
+    const res = grid ? await readTable(G, grid) : await readLoose(url);
+    $('impraw').textContent = res.text + (grid ? '' : '');
+    $('impd').value = res.date;
+    $('impm').value = res.market || $('mk').value;
+    $('impt').value = res.rows.map(canon).concat(res.bad).join('\n');
+    $('impimg').src = url; $('imp').hidden = false;
+    if (res.rows.length) {
+      runImport(false);
+      const note = [];
+      if (res.guessed) note.push(res.guessed + ' 筆到期月份沿用上一列');
+      if (!grid) note.push('此圖不是標準表格截圖，採整頁文字辨識，請特別檢查');
+      if (note.length) $('st').textContent += '；' + note.join('；');
+    } else {
+      $('out').innerHTML = '<div class="empty">這張圖沒有辨識出任何資料列（已清除舊結果）。請看上方辨識框，對照圖片手動輸入後按「重新分析」，或換較清晰、只含表格的截圖。</div>';
+      setSt('沒有辨識出資料列');
+    }
+  } catch (e) { setSt('錯誤：' + e.message); $('out').innerHTML = '<div class="empty">圖片分析失敗：' + esc(e.message) + '</div>'; }
+  $('go').disabled = $('up').disabled = false;
+}
+
+function runImport(learn) {
+  const rows = parseAll($('impt').value);
+  if (!rows.length) { $('st').textContent = '沒有可分析的資料列'; return; }
+  if (learn === true) learnBrokers(rows); // 手動確認後才記住代號與名稱的對照
+  const list = rows.map(analyzeRow), miss = missingCount(rows), skipSide = skippedSide;
+  $('mk').value = $('impm').value;
+  $('out').innerHTML = render({ days: [{ date: $('impd').value.trim() || null, rows: list }], summary: summarize(list), meta: {} });
+  $('st').textContent = '圖片分析完成（' + rows.length + ' 筆）' + (skipSide ? '；有 ' + skipSide + ' 筆買賣權未辨識（標 ?）已略過，請改成 CALL 或 PUT 再按「重新分析」' : '') + (miss ? '；有 ' + miss + ' 筆缺買方或賣方（標 ?），請對照圖片補上再按「重新分析」' : '；辨識若有誤請在上方修正後按「重新分析」');
+}
+
+async function load() {
+  $('st').textContent = '查詢中…';
+  $('go').disabled = true;
+  $('imp').hidden = true;
+  try {
+    const r = await fetch(API_BASE + '/api/data?' + new URLSearchParams({ market: $('mk').value }));
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    $('out').innerHTML = render(j);
+    $('st').textContent = '更新：' + new Date().toLocaleTimeString();
+  } catch (e) {
+    $('st').textContent = '錯誤：' + e.message;
+  }
+  $('go').disabled = false;
+}
+$('go').onclick = load;
+$('up').onclick = () => $('upf').click();
+$('upf').onchange = e => { const f = e.target.files[0]; e.target.value = ''; handleImage(f); };
+$('impgo').onclick = () => runImport(true);
+$('impx').onclick = () => { $('imp').hidden = true; };
+document.addEventListener('paste', e => { // 直接貼上截圖（Ctrl+V）
+  const it = [...(e.clipboardData ? e.clipboardData.items : [])].find(i => i.type.startsWith('image/'));
+  if (it) { e.preventDefault(); handleImage(it.getAsFile()); }
+});
+$('mk').onchange = load;
+$('save').onclick = doSave;
+$('share').onclick = e => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; };
+$('menu').onclick = e => {
+  const a = e.target.dataset && e.target.dataset.a;
+  if (!a) return;
+  $('menu').hidden = true;
+  if (a === 'img') shareImage(); else copyText();
+};
+document.addEventListener('click', () => { $('menu').hidden = true; });
+$('ovx').onclick = () => { $('ov').hidden = true; URL.revokeObjectURL($('ovimg').src); };
+load();
+</script>
+</body>
+</html>
