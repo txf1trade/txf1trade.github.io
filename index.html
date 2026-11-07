@@ -73,11 +73,14 @@
   /* 把手與遮罩（只有自動隱藏用得到） */
   #mask { position:fixed; inset:0; z-index:10; display:none; background:rgba(0,0,0,.15); }
   #mask.on { display:block; }
-  #grip { position:fixed; top:var(--menu-top, 50%); transform:translateY(-50%); z-index:11; width:24px; height:64px; padding:0; border:1px solid rgba(255,255,255,.7);
-    background:#222221; color:#fff; opacity:.9; cursor:pointer; font-size:16px; font-weight:700;
-    box-shadow:0 0 0 1px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.35); }
-  body[data-side="right"] #grip { right:0; border-right:0; border-radius:10px 0 0 10px; }
-  body[data-side="left"]  #grip { left:0; border-left:0; border-radius:0 10px 10px 0; }
+  #grip { position:fixed; top:var(--menu-top, 50%); transform:translateY(-50%); z-index:11; width:14px; height:48px; padding:0; border:1px solid rgba(255,255,255,.22);
+    background:rgba(34,34,33,.35); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); color:rgba(255,255,255,.7); opacity:.45; cursor:pointer; font-size:12px; font-weight:700; line-height:1;
+    -webkit-tap-highlight-color:transparent; box-shadow:none; transition:opacity .15s; }
+  #grip::after { content:""; position:absolute; inset:-10px -14px -10px -6px; } /* 加大觸碰範圍，視覺仍然很小 */
+  body[data-side="right"] #grip::after { inset:-10px -6px -10px -14px; }
+  #grip:active { opacity:.95; }
+  body[data-side="right"] #grip { right:0; border-right:0; border-radius:8px 0 0 8px; }
+  body[data-side="left"]  #grip { left:0; border-left:0; border-radius:0 8px 8px 0; }
   #grip.hide, body[data-mode="fixed"] #grip, body[data-mode="fixed"] #mask { display:none; }
 
   /* ===== 設定面板 ===== */
@@ -410,3 +413,4 @@ addEventListener("hashchange", () => { const n = parseInt(location.hash.slice(1)
 </script>
 </body>
 </html>
+靠左
