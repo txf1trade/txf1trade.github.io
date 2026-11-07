@@ -1,0 +1,3405 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Mini指視圖</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lightweight Charts v4 CDN -->
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    /* 指標外掛入口：外部指標檔呼叫 TVIndicators.register({...})；主程式就緒前先排隊 */
+    window.TV_INDICATOR_FILES = window.TV_INDICATOR_FILES || ['indicators/trend-wave.js'];   // ← 要載入的指標檔，可自行增減
+    window.TVIndicators = window.TVIndicators || (function () {
+      const q = [], api = { register(d) { api._h ? api._h(d) : q.push(d); }, _attach(h) { api._h = h; q.splice(0).forEach(h); } };
+      return api;
+    })();
+  </script>
+  <script src="indicators/trend-wave.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            tvBg: '#131722',
+            tvPanel: '#1e222d',
+            tvHover: '#2a2e39',
+            tvBorder: '#2a2e39',
+            tvText: '#d1d4dc',
+            tvTextMuted: '#787b86',
+            tvUp: '#089981',
+            tvDown: '#f23645',
+            tvAccent: '#2962ff'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 鎖定頁面與滾動行為，防止手機下拉橡皮筋回彈與上方空白 */
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 3px; height: 3px; }
+    ::-webkit-scrollbar-track { background: #131722; }
+    ::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 3px; }
+
+    .compact-table-row { font-size: 11px; }
+
+    /* 柔和舒適的呼吸燈動畫 */
+    @keyframes softPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.92); }
+    }
+    .soft-breathing {
+      animation: softPulse 2.5s infinite ease-in-out;
+    }
+
+    /* 桌面版收合樣式 */
+    #watchlist-wrapper {
+      width: 410px;
+      height: 100%;
+      background-color: #1e222d;
+      border-left: 1px solid #2a2e39;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease, border-left 0.2s ease;
+      position: relative;
+      z-index: 10;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    #watchlist-wrapper.collapsed {
+      width: 0px;
+      border-left: none;
+    }
+
+    /* 手機版抽屜覆蓋模式 */
+    @media (max-width: 767px) {
+      #watchlist-wrapper {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 360px;
+        z-index: 50;
+        transform: translateX(100%);
+        transition: transform 0.25s ease-in-out;
+        box-shadow: -5px 0 25px rgba(0,0,0,0.5);
+      }
+      #watchlist-wrapper.open {
+        transform: translateX(0);
+      }
+    }
+
+    /* 最右側圖示側邊欄 */
+    #sidebar-icons {
+      width: 48px;
+      height: 100%;
+      background-color: #131722;
+      border-left: 1px solid #2a2e39;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 10px;
+      gap: 12px;
+      z-index: 12;
+      flex-shrink: 0;
+    }
+
+    .sidebar-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #787b86;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .sidebar-btn:hover {
+      background-color: #2a2e39;
+      color: #f0f3fa;
+    }
+
+    .sidebar-btn.active {
+      color: #2962ff;
+      background-color: rgba(41, 98, 255, 0.15);
+    }
+
+    /* 手機遮罩層 */
+    #drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease-in-out;
+    }
+    #drawer-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    @media (min-width: 768px) {
+      #drawer-backdrop { display: none !important; }
+    }
+
+    /* 指標「數值 / 參數」顯示開關（設定選單控制 body 的 class） */
+    body.hide-val .lg-val, body.hide-val .lg-sep { display: none !important; }
+    body.hide-par .lg-par { display: none !important; }
+    body.hide-name .lg-name { display: none !important; }
+    .legend-item {
+      cursor: pointer;
+      padding: 1px 4px;
+      border-radius: 3px;
+      transition: all 0.15s ease;
+      display: inline-block;
+    }
+    .legend-item:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    .legend-item.disabled {
+      opacity: 0.35;
+      text-decoration: line-through;
+    }
+
+    .wl-sort { cursor: pointer; user-select: none; }
+    .wl-sort:hover { color: #fff; }
+    /* 群組 Tab 按鈕樣式 */
+    .group-tab-btn {
+      position: relative;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #787b86;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .group-tab-btn:hover {
+      color: #d1d4dc;
+    }
+    .group-tab-btn.active {
+      color: #ffffff;
+    }
+    .group-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 15%;
+      width: 70%;
+      height: 3px;
+      background-color: #ffffff;
+      border-radius: 2px 2px 0 0;
+    }
+
+    /* 右下角走勢圖 Canvas 容器 */
+    .vix-mini-canvas-container {
+      width: 100%;
+      height: 140px;
+      position: relative;
+      background: #131722;
+      border-radius: 6px;
+      border: 1px solid #2a2e39;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* 上下拖曳霸樣式與觸控專用觸發點 */
+    #bottom-resizer {
+      touch-action: none;
+      user-select: none;
+    }
+
+    /* ===== TradingView 風格擴充 ===== */
+    #draw-toolbar { width: 44px; background:#131722; border-right:1px solid #2a2e39; display:flex; flex-direction:column; align-items:center; padding:6px 0; gap:2px; flex-shrink:0; overflow-y:auto; z-index:20; }
+    #draw-toolbar .sidebar-btn { width:34px; height:34px; }
+    #draw-toolbar .sep { width:24px; height:1px; background:#2a2e39; margin:4px 0; }
+    #dt-color { width:22px; height:22px; padding:0; border:1px solid #2a2e39; border-radius:4px; background:none; cursor:pointer; }
+    .tool-active #chart-container, .tool-active #chart-container * { cursor: crosshair !important; }
+    .scale-btn { font-size:11px; padding:2px 8px; border-radius:4px; color:#787b86; border:1px solid transparent; }
+    .scale-btn:hover { background:#2a2e39; color:#fff; }
+    .scale-btn.on { color:#2962ff; background:rgba(41,98,255,.15); }
+    .tb-icon { width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#b2b5be; }
+    .tb-icon:hover { background:#2a2e39; color:#fff; }
+    #watchlist-wrapper.collapsed { width: 0 !important; min-width: 0 !important; border-left: none !important; }
+    @media (max-width: 767px) { #watchlist-wrapper { width: 100% !important; } }
+    #mcdx-table table { border-collapse:collapse; font-size:10px; font-family:monospace; text-align:center; opacity:.92; }
+    #mcdx-table td { padding:1px 6px; color:#000; border:1px solid rgba(128,128,128,.35); min-width:34px; }
+    #mcdx-table td.h { background:#363a45; color:#fff; }
+    #mcdx-table td.s { color:#787b86; border:none; padding:0 4px; }
+    .mini-chip { cursor:pointer; padding:1px 4px; border-radius:3px; } .mini-chip:hover { background:#2a2e39; } .mini-chip.off { opacity:.35; text-decoration:line-through; }
+    #ohlc-bar { display:flex; flex-wrap:wrap; gap:0 8px; }
+
+    /* ===== 版面：手機＝K線 + (走勢 / 清單 切換) + 底部工具列；電腦＝左K線、右清單+走勢 ===== */
+    #left-col, #right-col { display: contents; }
+    #chart-section { order: 1; flex: 1 1 0; min-height: 0; }
+    #bottom-resizer { order: 2; display: none !important; }
+    #symbol-detail-card { order: 3; flex: 1 1 0; height: auto; min-height: 190px; max-height: none; }
+    #watchlist-wrapper { order: 3; position: relative !important; left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+      transform: none !important; width: 100% !important; max-width: none !important; border: none !important; border-top: 1px solid #2a2e39 !important;
+      box-shadow: none !important; border-radius: 0 !important; display: none !important; height: auto !important; flex: 1 1 0; min-height: 200px; z-index: auto; }
+    #bottom-bar { order: 4; }
+    body.show-list #watchlist-wrapper { display: flex !important; }
+    body.show-list #symbol-detail-card, body.show-list #bottom-resizer { display: none !important; }
+    .mob-only { display: flex; }
+    #drawer-backdrop, #btn-close-drawer { display: none !important; }
+    #settings-dropdown { position: fixed !important; left: 8px; right: auto !important; top: auto !important; bottom: calc(56px + env(safe-area-inset-bottom,0px) + 8px); z-index: 61; max-height: 70dvh; overflow-y: auto; }
+    #bottom-bar > div::-webkit-scrollbar { display: none; }
+    /* 隱藏指標：收起底部指標列，並隱藏圖上的指標名稱 / 參數 / 數值與圖例 */
+    body.ind-hidden #ind-tabs-wrap { visibility: hidden; }
+    body.ind-hidden #chart-legend, body.ind-hidden #mcdx-table, body.ind-hidden .lg-name, body.ind-hidden .lg-par, body.ind-hidden .lg-val, body.ind-hidden .lg-sep { display: none !important; }
+    /* 手機：走勢圖按鈕未點亮 → 隱藏走勢圖，K 線佔滿整個畫面 */
+    @media (max-width: 767px) { body.hide-trend #symbol-detail-card { display: none !important; } }
+    /* 副圖上緣可拖曳的高度調整把手 */
+    .pane-resizer { position:absolute; left:0; right:0; top:-4px; height:11px; z-index:30; cursor:ns-resize; touch-action:none; display:flex; align-items:center; justify-content:center; }
+    .pane-resizer::after { content:''; width:36px; height:3px; border-radius:2px; background:#434651; transition:background .15s; }
+    .pane-resizer:hover::after, .pane-resizer.dragging::after { background:#2962ff; }
+    body.ind-hidden .pane-resizer { display:none; }
+    @media (min-width: 768px) {
+      .mob-only { display: none !important; }
+      #app-main { flex-direction: row !important; }
+      #left-col { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+      #right-col { display: flex; flex-direction: column; width: 420px; flex-shrink: 0; min-height: 0; border-left: 1px solid #2a2e39; background: #1e222d; }
+      #bottom-bar { order: 2; }
+      #watchlist-wrapper { display: flex !important; flex: 1; height: auto !important; min-height: 0; order: 1; border-top: none !important; }
+      #bottom-resizer { order: 2; display: flex !important; }
+      #symbol-detail-card { order: 3; flex: none; height: 400px; min-height: 280px; max-height: 92%; display: flex !important; }
+    }
+  </style>
+<script>
+// 在 index 外殼裡：深淺模式由外殼統一控制。淺色 = 把這頁原本的深色配色整頁反相（單獨開啟本頁時不受影響）
+(function () {
+  if (window.parent === window) return;
+  var root = document.documentElement;
+  root.classList.add("in-shell");
+  function set(t) { root.setAttribute("data-theme", t === "light" ? "light" : "dark"); }
+  var st = null;
+  try { st = localStorage.getItem("shellTheme"); } catch (e) {}
+  if (st !== "light" && st !== "dark") st = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  set(st);
+  addEventListener("message", function (e) {
+    var m = e.data;
+    if (e.source !== parent || !m || m.type !== "shell-theme" || (m.theme !== "light" && m.theme !== "dark")) return;
+    set(m.theme);
+  });
+})();
+</script>
+<style>
+html[data-theme="light"] { background:#131722; filter:invert(1) hue-rotate(180deg); }
+html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) hue-rotate(180deg); }
+</style>
+</head>
+<body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
+
+  <!-- Top Global Header -->
+  <header class="h-11 bg-tvPanel border-b border-tvBorder flex items-center justify-between px-3 shrink-0 z-25 relative">
+    <div class="flex items-center space-x-2 text-tvAccent font-bold text-base tracking-wider shrink-0">
+      <i class="fa-solid fa-chart-line"></i>
+      <span>Mini指視圖</span>
+    </div>
+
+    <!-- Right Global Status / Actions -->
+    <div class="flex items-center space-x-2.5 text-xs shrink-0 font-mono">
+      <div id="api-status-badge" class="flex items-center space-x-1.5 text-tvUp bg-tvUp/15 px-3 py-1.5 rounded-md border border-tvUp/50 shadow-[0_0_12px_rgba(8,153,129,0.25)] cursor-pointer hover:bg-tvUp/25 transition-all select-none group" title="點擊手動重新整理資料">
+        <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-tvUp soft-breathing"></span>
+        <i id="api-status-icon" class="fa-solid fa-rotate text-[10px] text-tvUp transition-transform"></i>
+        <span id="api-status-text" class="text-[11px] font-bold tracking-wide">即時連線</span>
+      </div>
+
+      <div class="flex items-center space-x-1.5 text-white bg-tvHover px-2.5 py-1 rounded border border-tvBorder shadow-sm">
+        <i class="fa-regular fa-clock text-[10px] text-tvTextMuted"></i>
+        <span id="live-clock" class="text-[10px] font-bold tracking-wider">--:--:--</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Content -->
+  <div id="app-main" class="flex-1 flex flex-col overflow-hidden relative min-h-0">
+  <div id="left-col">
+    
+    <!-- Left Section: Chart Area -->
+    <div id="chart-section" class="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-tvBg">
+      <!-- Active Symbol Info Bar -->
+      <div class="h-10 bg-tvPanel/50 border-b border-tvBorder flex items-center justify-between px-3 text-xs shrink-0">
+        <div class="flex items-center space-x-2 truncate">
+          <span id="active-symbol-title" class="font-bold text-white text-xs sm:text-sm truncate">台指期全 TX-1</span>
+          <span id="active-symbol-exch" class="text-tvTextMuted text-[10px]">TAIFEX</span>
+          
+          <div class="h-4 w-px bg-tvBorder hidden sm:block mx-1"></div>
+
+          <!-- Timeframe Selector -->
+          <div id="timeframe-container" class="hidden sm:flex items-center space-x-1 text-xs font-mono">
+            <button data-res="1" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
+            <button data-res="5" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
+            <button data-res="15" class="tf-btn px-2 py-0.5 rounded bg-tvHover text-white font-medium shadow">15</button>
+            <button data-res="60" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
+            <button data-res="1D" class="tf-btn px-2 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-0.5 mr-2 shrink-0 relative">
+          <button id="ct-btn" class="tb-icon" title="圖表類型"><i id="ct-icon" class="fa-solid fa-chart-simple text-sm"></i></button>
+          <div id="ct-menu" class="hidden absolute top-8 left-0 bg-tvPanel border border-tvBorder rounded shadow-xl py-1 z-50 w-28 text-xs">
+            <div class="ct-item px-3 py-1.5 hover:bg-tvHover cursor-pointer text-white" data-type="candle"><i class="fa-solid fa-chart-simple w-4"></i> K線</div>
+            <div class="ct-item px-3 py-1.5 hover:bg-tvHover cursor-pointer text-tvTextMuted" data-type="bar"><i class="fa-solid fa-bars-progress w-4"></i> 美國線</div>
+            <div class="ct-item px-3 py-1.5 hover:bg-tvHover cursor-pointer text-tvTextMuted" data-type="line"><i class="fa-solid fa-chart-line w-4"></i> 折線</div>
+            <div class="ct-item px-3 py-1.5 hover:bg-tvHover cursor-pointer text-tvTextMuted" data-type="area"><i class="fa-solid fa-chart-area w-4"></i> 面積</div>
+          </div>
+          <button id="btn-shot" class="tb-icon" title="截圖"><i class="fa-solid fa-camera text-sm"></i></button>
+          <button id="btn-full" class="tb-icon" title="全螢幕"><i class="fa-solid fa-expand text-sm"></i></button>
+        </div>
+
+        <div id="active-price-badge" class="flex items-center space-x-1.5 font-mono font-bold shrink-0">
+          <span id="active-price" class="text-xs sm:text-sm">--</span>
+          <span id="active-change" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded">--</span>
+        </div>
+      </div>
+
+      <!-- 手機版專屬第二行時框列 -->
+      <div class="sm:hidden h-8 bg-tvPanel/30 border-b border-tvBorder flex items-center px-3 space-x-1 text-xs font-mono shrink-0 overflow-x-auto no-scrollbar">
+        <button data-res="1" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">1</button>
+        <button data-res="5" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">5</button>
+        <button data-res="15" class="tf-btn px-2.5 py-0.5 rounded bg-tvHover text-white font-medium shadow">15</button>
+        <button data-res="60" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">60</button>
+        <button data-res="1D" class="tf-btn px-2.5 py-0.5 rounded hover:bg-tvHover text-tvTextMuted transition-colors">D</button>
+      </div>
+
+      <div class="flex-1 flex min-h-0 min-w-0">
+      <div id="draw-toolbar">
+        <button class="sidebar-btn draw-tool active" data-tool="cursor" title="游標 (Esc)"><i class="fa-solid fa-arrow-pointer text-sm"></i></button>
+        <div class="sep"></div>
+        <button class="sidebar-btn draw-tool" data-tool="trend" title="趨勢線"><i class="fa-solid fa-slash text-sm"></i></button>
+        <button class="sidebar-btn draw-tool" data-tool="hline" title="水平線"><i class="fa-solid fa-minus text-sm"></i></button>
+        <button class="sidebar-btn draw-tool" data-tool="vline" title="垂直線"><i class="fa-solid fa-grip-lines-vertical text-sm"></i></button>
+        <button class="sidebar-btn draw-tool" data-tool="rect" title="矩形"><i class="fa-regular fa-square text-sm"></i></button>
+        <button class="sidebar-btn draw-tool" data-tool="fib" title="斐波那契回檔"><i class="fa-solid fa-bars-staggered text-sm"></i></button>
+        <div class="sep"></div>
+        <button class="sidebar-btn" id="dt-magnet" title="磁吸 K 棒 OHLC"><i class="fa-solid fa-magnet text-sm"></i></button>
+        <button class="sidebar-btn" id="dt-eye" title="顯示/隱藏繪圖"><i class="fa-solid fa-eye text-sm"></i></button>
+        <button class="sidebar-btn" id="dt-del" title="刪除選取（無選取＝清除全部）"><i class="fa-solid fa-trash-can text-sm"></i></button>
+        <div class="sep"></div>
+        <input type="color" id="dt-color" value="#2962ff" title="繪圖顏色">
+      </div>
+      <!-- Lightweight Chart Container & Legend -->
+      <div class="flex-1 relative min-w-0 bg-tvBg flex flex-col min-h-0 overflow-hidden">
+        <!-- 主圖左上角數值即時標籤 -->
+        <div id="ohlc-bar" class="absolute top-2 left-2 z-10 text-[11px] font-mono pointer-events-none"></div>
+        <div id="chart-legend" class="absolute top-8 left-2 z-10 flex flex-col items-start gap-y-1 text-[10px] sm:text-xs font-mono bg-tvPanel/85 px-2.5 py-1.5 rounded border border-tvBorder shadow pointer-events-auto">
+          <div id="legend-row-filter" class="flex items-center gap-x-2">
+            <span id="legend-filter-group" data-line="filter12" class="legend-item text-[#df8028]" title="切換過濾線(EMA12)顯示"><span id="label-filter"><span class="lg-name">過濾線</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-filter">--</span></span>
+          </div>
+          <div id="legend-row-ema" class="flex items-center gap-x-2">
+            <span id="legend-ema20-group" data-line="ema20" class="legend-item text-[#ffcc66]" title="切換多頭線(EMA20)顯示"><span id="label-ema20"><span class="lg-name">多頭線(短)</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-ema20">--</span></span>
+            <span id="legend-ema60-group" data-line="ema60" class="legend-item text-[#28c6ee]" title="切換多頭線(EMA60)顯示"><span id="label-ema60"><span class="lg-name">多頭線(長)</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-ema60">--</span></span>
+          </div>
+          <div id="legend-row-daily" class="flex items-center gap-x-2">
+            <span id="legend-daily-group" data-line="daily" class="legend-item text-[#ee3b76]" title="點擊切換日線(EMA76)顯示"><span id="label-daily"><span class="lg-name">日線</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-dailyval">--</span></span>
+            <span id="legend-weekly-group" data-line="weekly" class="legend-item text-[#2186c0]" title="點擊切換週線(EMA380)顯示"><span id="label-weekly"><span class="lg-name">週線</span><span class="lg-par"></span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-weeklyval">--</span></span>
+          </div>
+          <div id="legend-row-atr" class="flex items-center gap-x-2">
+            <span id="legend-atr-group" data-line="atrTrend" class="legend-item text-[#00cbff]" title="點擊切換 ATR 趨勢線顯示"><span id="label-atr"><span class="lg-name">ATR趨勢</span><span class="lg-par"> (14,2)</span></span><span class="lg-sep">: </span><span class="lg-val" id="legend-atrval">--</span></span>
+          </div>
+        </div>
+
+        <div id="chart-container" class="flex-1 w-full relative min-h-0 overflow-hidden"></div>
+        <div id="vol-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:14%;min-height:56px;max-height:60%">
+          <div class="absolute top-1 left-2 z-10 text-[11px] text-tvTextMuted pointer-events-none lg-name">成交量</div>
+          <div id="vol-container" class="w-full h-full overflow-hidden"></div>
+        </div>
+        <div id="mcdx-pane" class="hidden relative border-t border-tvBorder shrink-0" style="height:19%;min-height:84px;max-height:60%">
+          <div class="absolute top-1 left-2 right-2 z-10 flex items-center gap-2 text-[11px] font-mono">
+            <span class="text-white font-bold pointer-events-none lg-name">MCDX</span>
+            <select id="mcdx-len" class="lg-par bg-tvBg border border-tvBorder rounded text-[10px] text-tvText px-1 py-0 focus:outline-none">
+              <option value="auto">自動</option><option value="50">50</option><option value="100">100</option></select>
+            <span id="mcdx-legend" class="pointer-events-none"></span>
+            <button id="mcdx-tbl-btn" class="ml-auto text-tvTextMuted hover:text-white text-[10px] border border-tvBorder rounded px-1.5" title="顯示/隱藏多週期表格">表格</button>
+          </div>
+          <div id="mcdx-table" class="absolute left-2 top-7 z-10 pointer-events-none"></div>
+          <div id="mcdx-container" class="w-full h-full overflow-hidden"></div>
+        </div>
+
+      </div>
+      </div>
+    </div>
+
+    <!-- 畫面最下方：清單 / 設定 / 指標列 -->
+  <div id="bottom-bar" class="bg-tvPanel border-t border-tvBorder flex items-center shrink-0 z-[65] font-mono select-none" style="height:56px;box-sizing:content-box;padding-bottom:env(safe-area-inset-bottom,0px)">
+    <div class="flex items-center gap-1 pl-2 pr-1 shrink-0">
+      <button id="toggle-watchlist-btn" class="sidebar-btn mob-only" title="自選商品清單"><i class="fa-solid fa-bookmark text-sm"></i></button>
+      <button id="btn-trend" class="sidebar-btn mob-only active" title="走勢圖"><i class="fa-solid fa-chart-line text-sm"></i></button>
+      <button id="btn-settings-3" class="sidebar-btn" title="設定：欄位與指標顯示"><i class="fa-solid fa-sliders text-sm"></i></button>
+      <button id="btn-ind-toggle" class="sidebar-btn" title="顯示/隱藏指標列與指標名稱"><i class="fa-solid fa-eye text-sm"></i></button>
+    </div>
+    <div class="w-px h-6 bg-tvBorder shrink-0"></div>
+    <div id="ind-tabs-wrap" class="flex-1 min-w-0 flex items-center space-x-5 px-3 text-sm overflow-x-auto whitespace-nowrap">
+          <button data-ind="filter" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">過濾線</button>
+          <button data-ind="ema" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">多頭線</button>
+          <button data-ind="daily" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">日週線</button>
+          <button data-ind="atr" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">ATR</button>
+          <button data-ind="vol" class="ind-tab text-tvTextMuted hover:text-white transition-colors py-2 px-1" data-active="false">成交量</button>
+          <button id="tab-vwap" class="py-2 px-1" title="VWAP（依交易日重置，日K為累積）">VWAP</button>
+          <button id="tab-zone" class="py-2 px-1" title="多空必來點（依商品交易時段）">必來點</button>
+          <button id="tab-mcdx" class="py-2 px-1" title="MCDX 籌碼副圖">MCDX</button>
+    </div>
+          <div class="flex items-center gap-1 text-xs">
+            <button id="sc-pct" class="scale-btn" title="百分比座標">%</button>
+            <button id="sc-log" class="scale-btn" title="對數座標">log</button>
+            <button id="sc-auto" class="scale-btn" title="自動縮放並回到最新">自動</button>
+          </div>
+  </div>
+        <!-- 設定三：下拉選單 -->
+  </div>
+  <div id="right-col">
+    <div id="bottom-resizer" class="h-3 bg-tvBorder hover:bg-tvAccent cursor-ns-resize shrink-0 transition-colors relative z-20 flex items-center justify-center group" title="上下拖曳調整下方詳細面板高度">
+        <div class="w-10 h-1 bg-tvTextMuted/60 rounded-full group-hover:bg-white"></div>
+      </div>
+      <div id="symbol-detail-card" class="p-3 border-t border-tvBorder bg-tvBg/80 text-xs shrink-0 flex flex-col gap-2" >
+        <div class="flex items-center gap-2 min-w-0 whitespace-nowrap">
+          <div id="card-name" class="font-bold text-white text-sm truncate">--</div>
+          <div id="card-code" class="text-tvTextMuted text-[10px] bg-tvHover px-1.5 py-0.5 rounded font-mono shrink-0">--</div>
+          <span id="card-price" class="text-lg font-bold font-mono text-white shrink-0">--</span>
+          <span class="text-[10px] text-tvTextMuted shrink-0">TWD</span>
+          <div id="card-change-badge" class="ml-auto font-mono text-right font-bold text-xs px-2 py-0.5 rounded bg-tvHover shrink-0">--</div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 pt-1 border-t border-tvBorder/30 text-[11px] font-mono whitespace-nowrap overflow-hidden">
+          <span><span class="text-tvTextMuted">高</span> <span id="card-high" class="text-tvUp font-bold">--</span></span>
+          <span><span class="text-tvTextMuted">低</span> <span id="card-low" class="text-tvDown font-bold">--</span></span>
+          <span><span class="text-tvTextMuted">昨</span> <span id="card-ref" class="text-tvText font-bold">--</span></span>
+          <span><span class="text-tvTextMuted">量</span> <span id="card-vol" class="text-white font-bold">--</span></span>
+        </div>
+        <div class="flex items-center gap-4 text-[11px] font-mono whitespace-nowrap">
+          <button id="chip-vwap" class="mini-chip" title="點擊 顯示/隱藏 VWAP"><i class="inline-block w-2 h-2 rounded-full mr-1" style="background:#e040fb"></i><span class="text-tvTextMuted">VWAP</span> <span id="card-vwap" class="font-bold" style="color:#e040fb">--</span></button>
+          <button id="chip-cost" class="mini-chip" title="點擊 顯示/隱藏 0.5 成本線（當日高低中點）"><i class="inline-block w-2 h-2 rounded-full mr-1" style="background:#ffb74d"></i><span class="text-tvTextMuted">成本</span> <span id="card-cost" class="font-bold" style="color:#ffb74d">--</span></button>
+        </div>
+
+        <!-- 右下角即時走勢圖 Canvas (不被高度受限) -->
+        <div class="vix-mini-canvas-container flex-1">
+          <div class="absolute top-1 left-2 z-10 text-[10px] font-bold text-white flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-tvUp"></span>
+            <span id="vix-canvas-title">即時走勢圖</span>
+          </div>
+          <canvas id="miniVixCanvas" class="w-full h-full block"></canvas>
+          <div class="mini-ctl absolute top-1 right-1 z-10 flex items-center gap-0.5">
+            <button id="mini-zin" class="mini-ctl tb-icon" style="width:20px;height:20px" title="放大（滾輪向上）"><i class="fa-solid fa-plus text-[9px]"></i></button>
+            <button id="mini-zout" class="mini-ctl tb-icon" style="width:20px;height:20px" title="縮小（滾輪向下）"><i class="fa-solid fa-minus text-[9px]"></i></button>
+            <button id="mini-zreset" class="mini-ctl tb-icon" style="width:20px;height:20px" title="重設（雙擊）"><i class="fa-solid fa-expand text-[9px]"></i></button>
+          </div>
+        </div>
+      </div>
+    <!-- 手機抽屜背景遮罩 -->
+    <div id="drawer-backdrop"></div>
+    <!-- 清單浮窗面板（點左下角清單鈕顯示/隱藏） -->
+    <div id="watchlist-wrapper">
+      <!-- Watchlist Header -->
+      <div class="h-10 px-3 border-b border-tvBorder flex items-center justify-between shrink-0 relative">
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-sm text-white">觀察分類</span>
+          <span class="text-xs bg-tvHover px-2 py-0.5 rounded text-tvTextMuted font-mono" id="watchlist-count">0</span>
+        </div>
+        <div class="flex items-center space-x-1">
+          <button id="btn-open-modal" class="p-1.5 hover:bg-tvHover rounded text-tvText hover:text-white" title="新增自選商品">
+            <i class="fa-solid fa-plus text-xs"></i>
+          </button>
+          <button id="btn-close-drawer" class="p-1.5 hover:bg-tvHover rounded text-tvTextMuted hover:text-white">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- 三大群組切換 Tab -->
+      <div id="group-tabs-bar" class="flex items-center border-b border-tvBorder bg-tvBg/60 shrink-0">
+        <button class="group-tab-btn active" data-group="自選股">指數期</button>
+        <button class="group-tab-btn" data-group="海期">海期</button>
+        <button class="group-tab-btn" data-group="股票">股票</button>
+        <button class="group-tab-btn" data-group="股期">股期</button>
+      </div>
+
+      <button id="vol-filter-btn" class="hidden w-full text-left px-3 py-1 text-[10px] font-mono text-tvTextMuted hover:text-white border-b border-tvBorder bg-tvBg/40" title="點擊循環切換：過濾成交量（股票&lt;20,000、股期&lt;5,000）→ 顯示全部 → 過濾ETF"></button>
+      <!-- Watchlist Table Header -->
+      <div id="watchlist-header" class="flex items-center px-2 py-2 text-[11px] text-tvTextMuted font-medium border-b border-tvBorder shrink-0 bg-tvBg/40 w-full"></div>
+
+      <!-- Watchlist Items Container -->
+      <div id="watchlist-items" class="flex-1 overflow-y-auto divide-y divide-tvBorder/30 w-full min-h-[100px]"></div>
+
+    </div>
+  </div>
+  </div>
+        <div id="settings-dropdown" class="absolute top-11 right-2 bg-tvPanel border border-tvBorder rounded shadow-xl p-3 z-50 hidden text-xs w-52 space-y-2.5">
+          <div class="font-bold text-white border-b border-tvBorder pb-1 mb-1">顯示欄位設定</div>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-change" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>漲跌 (點數)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-percent" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>漲跌幅 (%)</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+            <input type="checkbox" id="col-volume" checked class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+            <span>總量顯示</span>
+          </label>
+          <div class="border-t border-tvBorder pt-2 mt-1">
+            <div class="text-tvTextMuted mb-1 text-[10px]">總量單位模式</div>
+            <select id="vol-mode-select" class="w-full bg-tvBg border border-tvBorder rounded px-2 py-1 text-white focus:outline-none focus:border-tvAccent">
+              <option value="auto">自動 (K/M 縮寫或完整)</option>
+              <option value="full">完整顯示數字</option>
+            </select>
+          </div>
+          <div class="border-t border-tvBorder pt-2 mt-1 space-y-2">
+            <div class="text-tvTextMuted text-[10px]">指標顯示</div>
+            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+              <input type="checkbox" id="ind-show-name" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+              <span>顯示指標名稱</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+              <input type="checkbox" id="ind-show-val" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+              <span>顯示指標數值</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer text-tvText hover:text-white">
+              <input type="checkbox" id="ind-show-par" class="rounded bg-tvBg border-tvBorder text-tvAccent focus:ring-0">
+              <span>顯示指標參數</span>
+            </label>
+            <button id="ind-only-val" type="button" class="w-full mt-1 text-[11px] py-1 rounded border border-tvBorder text-tvTextMuted hover:text-white hover:bg-tvHover">只顯示數值</button>
+          </div>
+          <div class="border-t border-tvBorder pt-2 mt-1 space-y-2">
+            <div class="text-tvTextMuted text-[10px]">多空必來點設定 <span id="zone-sess-info" class="text-[#ffcc66]"></span></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-tvText">統計時段</span>
+              <select id="zone-sess" class="w-24 bg-tvBg border border-tvBorder rounded px-1 py-0.5 text-white focus:outline-none focus:border-tvAccent disabled:opacity-40"><option value="auto">依商品</option><option value="day">僅日盤</option></select></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-tvText">多空線基準</span>
+              <select id="zone-base" class="w-24 bg-tvBg border border-tvBorder rounded px-1 py-0.5 text-white focus:outline-none focus:border-tvAccent"><option value="prev">前收</option><option value="open">今開</option></select></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-tvText">長期統計(天)</span>
+              <input id="zone-long" type="number" min="3" max="60" class="w-24 bg-tvBg border border-tvBorder rounded px-1 py-0.5 text-white focus:outline-none focus:border-tvAccent"></div>
+            <div class="flex items-center justify-between gap-2"><span class="text-tvText">短期統計(天)</span>
+              <input id="zone-short" type="number" min="1" max="20" class="w-24 bg-tvBg border border-tvBorder rounded px-1 py-0.5 text-white focus:outline-none focus:border-tvAccent"></div>
+          </div>
+        </div>
+
+  <!-- Add Symbol Modal -->
+  <div id="add-symbol-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-tvPanel border border-tvBorder rounded-lg w-full max-w-sm p-4 shadow-2xl">
+      <div class="flex justify-between items-center mb-4 border-b border-tvBorder pb-2">
+        <h3 class="text-sm font-bold text-white">新增自選商品</h3>
+        <button id="btn-close-modal" class="text-tvTextMuted hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="add-symbol-form" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-tvTextMuted mb-1">分類群組</label>
+          <select id="input-group" class="w-full bg-tvBg border border-tvBorder rounded px-3 py-2 text-white focus:outline-none focus:border-tvAccent">
+            <option value="自選股">自選股</option>
+            <option value="海期">海期</option>
+            <option value="股票">股票</option>
+            <option value="股期">股期</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-tvTextMuted mb-1">商品名稱</label>
+          <input type="text" id="input-name" required placeholder="例如: 台積電" class="w-full bg-tvBg border border-tvBorder rounded px-3 py-2 text-white focus:outline-none focus:border-tvAccent">
+        </div>
+        <div>
+          <label class="block text-tvTextMuted mb-1">商品代號</label>
+          <input type="text" id="input-code" required placeholder="例如: 2330" class="w-full bg-tvBg border border-tvBorder rounded px-3 py-2 text-white focus:outline-none focus:border-tvAccent">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" id="btn-cancel-modal" class="px-3 py-1.5 rounded bg-tvHover text-tvText hover:text-white">取消</button>
+          <button type="submit" class="px-3 py-1.5 rounded bg-tvAccent text-white font-medium hover:bg-blue-600">確定新增</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+      const clockElem = document.getElementById('live-clock');
+      if (clockElem) clockElem.textContent = timeString;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    const defaultIndicatorSettings = {
+      filter: true,
+      ema: false,
+      daily: true,
+      atr: true,
+      vol: false
+    };
+
+    /* 所有指標統一在這裡管理顯示（預設開啟：filter12 / daily / weekly / atrTrend） */
+    let lineVisibility = {
+      filter12: true,
+      ema20: false,
+      ema60: false,
+      daily: true,
+      weekly: true,
+      atrTrend: true,
+      vol: false,       // 成交量副圖
+      vwap: false,      // VWAP
+      mcdx: false,      // MCDX 副圖
+      trendWave: false, // 台指順勢波段副圖
+      zone: true       // 多空必來點（主圖）
+    };
+    /* 指標文字顯示偏好：數值預設開、參數預設關 */
+    let uiPrefs = { showNames: true, showValues: true, showParams: false };
+    /* 底部分頁 ↔ 指標線 對應 */
+    const IND_TAB_LINES = { filter: ['filter12'], ema: ['ema20', 'ema60'], daily: ['daily', 'weekly'], atr: ['atrTrend'], vol: ['vol'], vwap: ['vwap'], mcdx: ['mcdx'], trendWave: ['trendWave'], zone: ['zone'] };
+
+    const symbolLineConfigs = {
+      'TX-1':   { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 },                           
+      'TXAM-1': { filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 },                         
+      'TWN-1':  { filter: 12, ema20: 20, ema60: 60, daily: 80, weekly: 400 },                          
+      'NQ-1':   { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'GC-1':   { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'NK-1':   { filter: 12, ema20: 20, ema60: 60, daily: 92, weekly: 460 },                           
+      'BTCUSDT':   { filter: 12, ema20: 20, ema60: 60, daily: 96, weekly: 480 },
+      'DEFAULT':{ filter: 12, ema20: 20, ema60: 60, daily: 76, weekly: 380 }                         
+    };
+
+
+    if (window.TV_SETTINGS && window.TV_SETTINGS.lines) Object.assign(symbolLineConfigs, window.TV_SETTINGS.lines);   // 均線參數統一由 indicators/trend-wave.js 提供
+
+    /* ---- 價格顯示：K線/報價依商品跳動點決定小數位；均價與指標一律取整數 ---- */
+    function curCode() { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); return it ? it.code : 'TX-1'; }
+    const _T = { 'TX-1': 1, 'TXAM-1': 1, 'TWN-1': 0.05, 'NQ-1': 0.25, 'GC-1': 0.1, 'NK-1': 5, 'BTCUSDT': 0.01 };   // 備援；正式設定在 trend-wave.js
+    function tickOf(code, price) { const S = window.TV_SETTINGS; if (S && S.tickSize) return S.tickSize(code, price); return _T[String(code).toUpperCase()] || ((price || 0) < 1000 ? 0.01 : 1); }
+    function decOf(code, price) { const t = tickOf(code, price); if (t >= 1) return 0; const s = String(t); return s.includes('.') ? s.split('.')[1].length : 0; }
+    function priceOf(code) { const it = getAllWatchlistItems().find(s => s.code === code); return (it && it.price) || (currentCandles.length ? currentCandles[currentCandles.length - 1].close : 0); }
+    function curDec() { const c = curCode(); return decOf(c, priceOf(c)); }
+    function fmtPx(v, code) { if (v == null || isNaN(v)) return '--'; const d = decOf(code, v); return Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+    const fmtInt = v => (v == null || isNaN(v)) ? '--' : Math.round(v).toLocaleString('en-US');
+    const INT_FMT = { type: 'price', precision: 0, minMove: 1 };
+    let _pxKey = '';
+    function applyPxFormat() {
+      try {
+        const c = curCode(), p = priceOf(c), t = tickOf(c, p), k = c + '|' + t;
+        if (k === _pxKey || !candlestickSeries) return; _pxKey = k;
+        const f = { type: 'price', precision: decOf(c, p), minMove: t };
+        candlestickSeries.applyOptions({ priceFormat: f });
+        if (window.__altSeries) Object.values(window.__altSeries).forEach(s => s.applyOptions({ priceFormat: f }));
+      } catch (e) {}
+    }
+
+    function getLineParams(code) {
+      const upper = (code || '').toUpperCase();
+      return symbolLineConfigs[upper] || symbolLineConfigs['DEFAULT'];
+    }
+
+const stockMap = { "CAF": ["1303", "南亞期", "市"], "CBF": ["2002", "中鋼期", "市"], "CCF": ["2303", "聯電期", "市"], "CDF": ["2330", "台積電期", "市"], "QFF": ["2330", "小型台積電期", "市"], "CEF": ["2881", "富邦金期", "市"], "CFF": ["1301", "台塑期", "市"], "CGF": ["2324", "仁寶期", "市"], "CHF": ["2409", "友達期", "市"], "CJF": ["2880", "華南金期", "市"], "CKF": ["2882", "國泰金期", "市"], "CLF": ["2886", "兆豐金期", "市"], "CMF": ["2887", "台新金期", "市"], "CNF": ["2891", "中信金期", "市"], "CQF": ["1216", "統一期", "市"], "CRF": ["1402", "遠東新期", "市"], "CSF": ["1605", "華新期", "市"], "CUF": ["2323", "中環期", "市"], "CWF": ["2352", "佳世達期", "市"], "CXF": ["2371", "大同期", "市"], "CYF": ["2408", "南亞科期", "市"], "CZF": ["2603", "長榮期", "市"], "DAF": ["2609", "陽明期", "市"], "DBF": ["2610", "華航期", "市"], "DCF": ["2801", "彰銀期", "市"], "DEF": ["2890", "永豐金期", "市"], "DFF": ["1101", "台泥期", "市"], "DGF": ["1326", "台化期", "市"], "DHF": ["2317", "鴻海期", "市"], "DIF": ["2337", "旺宏期", "市"], "DJF": ["2357", "華碩期", "市"], "QRF": ["2357", "小型華碩期", "市"], "DKF": ["2382", "廣達期", "市"], "DLF": ["2412", "中華電期", "市"], "DNF": ["2884", "玉山金期", "市"], "DOF": ["2885", "元大金期", "市"], "DPF": ["2892", "第一金期", "市"], "DQF": ["3481", "群創期", "市"], "DSF": ["2353", "宏碁期", "市"], "DVF": ["2454", "聯發科期", "市"], "PUF": ["2454", "小型聯發科期", "市"], "DWF": ["2915", "潤泰全期", "市"], "DXF": ["3231", "緯創期", "市"], "DYF": ["1102", "亞泥期", "市"], "DZF": ["1210", "大成期", "市"], "EEF": ["1312", "國喬期", "市"], "EGF": ["1314", "中石化期", "市"], "EHF": ["1319", "東陽期", "市"], "EKF": ["1440", "南紡期", "市"], "EMF": ["1504", "東元期", "市"], "EPF": ["1590", "亞德客-KY期", "市"], "EYF": ["1718", "中纖期", "市"], "EZF": ["1722", "台肥期", "市"], "FBF": ["2006", "東和鋼鐵期", "市"], "FCF": ["2014", "中鴻期", "市"], "FEF": ["2027", "大成鋼期", "市"], "FFF": ["2049", "上銀期", "市"], "QMF": ["2049", "小型上銀期", "市"], "FGF": ["2059","川湖期", "市"], "SVF": ["2059", "小型川湖期", "市"], "FKF": ["2105", "正新期", "市"], "FNF": ["2201", "裕隆期", "市"], "FQF": ["2301", "光寶科期", "市"], "FRF": ["2308", "台達電期", "市"], "RVF": ["2308", "小型台達電期", "市"], "FSF": ["2312", "金寶期", "市"], "FTF": ["2313", "華通期", "市"], "FVF": ["2331", "精英期", "市"], "FWF": ["2332", "友訊期", "市"], "FYF": ["2340", "台亞期", "市"], "FZF": ["2344", "華邦電期", "市"], "GAF": ["2347", "聯強期", "市"], "GCF": ["2354", "鴻準期", "市"], "GHF": ["2376", "技嘉期", "市"], "SLF": ["2376", "小型技嘉期", "市"], "GIF": ["2377", "微星期", "市"], "GJF": ["2379", "瑞昱期", "市"], "QGF": ["2379", "小型瑞昱期", "市"], "GKF": ["2385", "群光期", "市"], "GLF": ["2392", "正崴期", "市"], "GMF": ["2393", "億光期", "市"], "GNF": ["2401", "聯陽期", "市"], "GOF": ["2404", "漢唐期", "市"], "UZF": ["2404", "小型漢唐期", "市"], "GRF": ["2449", "京元電子期", "市"], "GUF": ["2455", "全新期", "市"], "GVF": ["2457", "飛宏期", "市"], "GWF": ["2458", "義隆期", "市"], "GXF": ["2474", "可成期", "市"], "GYF": ["2481", "強茂期", "市"], "GZF": ["2485", "兆赫期", "市"], "HAF": ["2489", "瑞軒期", "市"], "HBF": ["2492", "華新科期", "市"], "HCF": ["2498", "宏達電期", "市"], "HHF": ["2515", "中工期", "市"], "IHF": ["2913", "農林期", "市"], "IIF": ["3006", "晶豪科期", "市"], "IJF": ["3008", "大立光期", "市"], "OLF": ["3008", "小型大立光期", "市"], "IMF": ["3019", "亞光期", "市"], "IOF": ["3034", "聯詠期", "市"], "IPF": ["3035", "智原期", "市"], "IQF": ["3036", "文曄期", "市"], "IRF": ["3037", "欣興期", "市"], "ITF": ["3042", "晶技期", "市"], "IYF": ["3376", "新日興期", "市"], "IZF": ["3380", "明泰期", "市"], "JBF": ["3443", "創意期", "市"], "JFF": ["3533", "嘉澤期", "市"], "JMF": ["3653", "健策期", "市"], "JNF": ["3673", "TPK-KY期", "市"], "JSF": ["4938", "和碩期", "市"], "JXF": ["6005", "群益證期", "市"], "JZF": ["6153", "嘉聯益期", "市"], "KAF": ["6176", "瑞儀期", "市"], "KBF": ["6213", "聯茂期", "市"], "KCF": ["6239", "力成期", "市"], "KDF": ["6271", "同欣電期", "市"], "KEF": ["6278", "台表科期", "市"], "KFF": ["6282", "康舒期", "市"], "KGF": ["6285", "啟碁期", "市"], "KIF": ["8039", "台虹期", "市"], "KKF": ["8163", "達方期", "市"], "KLF": ["9904", "寶成期", "市"], "KOF": ["9939", "宏全期", "市"], "KPF": ["9945", "潤泰新期", "市"], "KSF": ["1477", "聚陽期", "市"], "SCF": ["1477", "小型聚陽期", "市"], "KUF": ["1802", "台玻期", "市"], "KWF": ["2328", "廣宇期", "市"], "LBF": ["3044", "健鼎期", "市"], "LCF": ["3045", "台灣大期", "市"], "LEF": ["3406", "玉晶光期", "市"], "LIF": ["6269", "台郡期", "市"], "LMF": ["9914", "美利達期", "市"], "LOF": ["5880", "合庫金期", "市"], "LQF": ["2356", "英業達期", "市"], "LRF": ["2883", "凱基金期", "市"], "LTF": ["4904", "遠傳期", "市"], "LUF": ["4958", "臻鼎-KY期", "市"], "LVF": ["5871", "中租-KY期", "市"], "LWF": ["1476", "儒鴻期", "市"], "LXF": ["2327", "國巨*期", "市"], "QEF": ["2327", "小型國巨*期", "市"], "LYF": ["8046", "南電期", "市"], "QSF": ["8046", "小型南電期", "市"], "MAF": ["1707", "葡萄王期", "市"], "MBF": ["2355", "順德期", "市"], "MJF": ["2360", "致茂期", "市"], "VDF": ["2360", "小型致茂期", "市"], "MKF": ["2439", "美律期", "市"], "MQF": ["6257", "矽格期", "市"], "MVF": ["9938", "百和期", "市"], "MYF": ["1565", "精華期","櫃"], "OMF": ["1565", "小型精華期", "櫃"], "NAF": ["3105", "穩懋期", "櫃"], "QIF": ["3105", "小型穩懋期", "櫃"], "NBF": ["3152", "璟德期", "櫃"], "NDF": ["3260", "威剛期", "櫃"], "NEF": ["3264", "欣銓期", "櫃"], "NGF": ["3691", "碩禾期", "櫃"], "NIF": ["4123", "晟德期", "櫃"], "NJF": ["5009", "榮剛期", "櫃"], "NLF": ["5347", "世界期", "櫃"], "NMF": ["3718", "中光電期", "櫃"], "NOF": ["5483", "中美晶期", "櫃"], "NSF": ["6147", "頎邦期", "櫃"], "NUF": ["8044", "網家期", "櫃"], "NVF": ["8069", "元太期", "櫃"], "NWF": ["8299", "群聯期", "櫃"], "QNF": ["8299", "小型群聯期", "櫃"], "NYF": ["0050", "元大台灣50ETF期", "市"], "OEF": ["6116", "彩晶期", "市"], "OHF": ["6279", "胡連期", "櫃"], "OPF": ["2345", "智邦期", "市"], "SEF": ["2345", "小型智邦期", "市"], "OQF": ["6414", "樺漢期", "市"], "ORF": ["1536", "和大期", "市"], "OSF": ["1909", "榮成期", "市"], "OTF": ["3081", "聯亞期", "櫃"], "OUF": ["3552", "同致期", "櫃"], "OVF": ["6274", "台燿期", "櫃"], "OWF": ["6488", "環球晶期", "櫃"], "PBF": ["6488", "小型環球晶期", "櫃"], "OXF": ["6510", "精測期", "櫃"], "OYF": ["6510", "小型精測期", "櫃"], "OZF": ["3711", "日月光投控期", "市"], "PAF": ["3227", "原相期", "櫃"], "PCF": ["4162", "智擎期", "櫃"], "PDF": ["4736", "泰博期", "市"], "PEF": ["5425", "台半期", "櫃"], "PFF": ["0056", "元大高股息ETF期", "市"], "PGF": ["2633", "台灣高鐵期", "市"], "PHF": ["5269", "祥碩期", "市"], "PNF": ["5269", "小型祥碩期", "市"], "PIF": ["3529", "力旺期", "櫃"], "RSF": ["3529", "小型力旺期", "櫃"], "PJF": ["2383", "台光電期", "市"], "SFF": ["2383", "小型台光電期", "市"], "PKF": ["6173", "信昌電期", "櫃"], "PLF": ["6182", "合晶期", "櫃"], "PMF": ["8436", "大江期", "櫃"], "PPF": ["5457", "宣德期", "櫃"], "PQF": ["8358", "金居期", "櫃"], "PRF": ["8086", "宏捷科期", "櫃"], "PSF": ["3706", "神達期", "市"], "PTF": ["3324", "雙鴻期", "櫃"], "ULF": ["3324", "小型雙鴻期", "櫃"], "PVF": ["6669", "緯穎期", "市"], "PWF": ["6669", "小型緯穎期", "市"], "PXF": ["3293", "鈊象期", "櫃"], "PYF": ["3293", "小型鈊象期", "櫃"], "PZF": ["5274", "信驊期", "櫃"], "QAF": ["5274", "小型信驊期", "市"], "QBF": ["3714", "富采期", "市"], "QCF": ["2606", "裕民期", "市"], "QDF": ["3532", "台勝科期", "市"], "QHF": ["3034", "小型聯詠期", "市"], "QJF": ["3406", "小型玉晶光期", "市"], "QKF": ["1907", "永豐餘期", "市"], "QLF": ["3374", "精材期", "櫃"], "QOF": ["1717", "長興期", "市"], "QPF": ["1904", "正隆期", "市"], "QQF": ["3078", "僑威期", "櫃"], "QTF": ["2441", "超豐期", "市"], "QUF": ["8150", "南茂期", "市"], "QVF": ["2338", "光罩期", "市"], "QWF": ["2388", "威盛期", "市"], "QXF": ["2615", "萬海期", "市"], "QYF": ["6547", "高端疫苗期", "櫃"], "QZF": ["6770", "力積電期", "市"], "RAF": ["3017", "奇鋐期", "市"], "UHF": ["3017", "小型奇鋐期", "市"], "RBF": ["5388", "中磊期", "市"], "RCF": ["2634", "漢翔期", "市"], "RDF": ["4128", "中天期", "櫃"], "REF": ["4919", "新唐期", "市"], "RFF": ["3533", "小型嘉澤期", "市"], "RGF": ["3653", "小型健策期", "市"], "RIF": ["00878", "國泰永續高股息ETF期", "市"], "RJF": ["1609", "大亞期", "市"], "RKF": ["2368", "金像電期", "市"], "VGF": ["2368", "小型金像電期", "市"], "RLF": ["6443", "元晶期", "市"], "RNF": ["4743", "合一期", "櫃"], "ROF": ["6245", "立端期", "櫃"], "RPF": ["5904", "寶雅期", "櫃"], "RRF": ["5904", "小型寶雅期", "市"], "RUF": ["9958", "世紀鋼期", "市"], "SWF": ["9958", "小型世紀鋼期", "市"], "RWF": ["3443", "小型創意期", "市"], "RXF": ["00885", "富邦越南ETF期", "市"], "RYF": ["00923", "群益台ESG低碳50ETF期", "市"], "RZF": ["00679B", "元大美債20年ETF期", "櫃"], "SAF": ["1795", "美時期", "市"], "SBF": ["1905", "華紙期", "市"], "SDF": ["1513", "中興電期", "市"], "SGF": ["00893", "國泰智能電動車ETF期", "市"], "SIF": ["00719B", "元大美債1-3ETF期", "櫃"], "SJF": ["3005", "神基期", "市"], "SKF": ["8112", "至上期", "市"], "SMF": ["00919", "群益台灣精選高息ETF期", "市"], "SNF": ["00929", "復華台灣科技優息ETF期", "市"], "SRF": ["0050", "小型元大台灣50ETF期", "市"], "SSF": ["0056", "元大高股息ETF期", "市"], "SUF": ["00940", "元大台灣價值高息ETF期", "市"], "SYF": ["3680", "家登期", "櫃"], "SZF": ["3680", "小型家登期", "市"], "UAF": ["1503", "士電期", "市"], "UBF": ["6139", "亞翔期", "市"], "VKF": ["6139", "小型亞翔期", "市"], "UCF": ["6188", "廣明期", "櫃"], "UEF": ["5876", "上海商銀期", "市"], "UFF": ["6505", "台塑化期", "市"], "UGF": ["6526", "達發期", "市"], "UIF": ["6526", "小型達發期", "市"], "UMF": ["3661", "世芯-KY期", "市"], "UOF": ["3661", "小型世芯-KY期", "市"], "UPF": ["6472", "保瑞期", "市"], "UQF": ["6472", "小型保瑞期", "市"], "UTF": ["2486", "一詮期", "市"], "UUF": ["6757", "台灣虎航期", "市"], "UVF": ["6223", "旺矽期", "櫃"], "UWF": ["6223", "小型旺矽期", "櫃"], "UXF": ["2329", "華泰期", "市"], "UYF": ["6290", "良維期", "櫃"], "VAF": ["1608", "華榮期", "市"], "VBF": ["2367", "燿華期", "市"], "VCF": ["2421", "建準期", "市"], "EOF": ["1560", "中砂期", "市"], "NCF": ["3211", "順達期", "櫃"], "VJF": ["3211", "小型順達期", "櫃"], "VEF": ["3665", "貿聯-KY期", "市"], "VFF": ["3665", "小型貿聯-KY期", "市"], "VHF": ["0052", "富邦科技ETF期", "市"], "HIF": ["2520", "冠德期", "市"], "HLF": ["2542", "興富發期", "市"], "HOF": ["2548", "華固期", "市"], "HQF": ["2605", "新興期", "市"], "HSF": ["2618", "長榮航期", "市"], "IAF": ["2834", "台企銀期", "市"], "IXF": ["3189", "景碩期", "市"], "JPF": ["3702", "大聯大期", "市"], "JWF": ["5534", "長虹期", "市"], "NQF": ["6121", "新普期", "櫃"], "ODF": ["2231", "為升期", "市"], "PAF": ["3227", "原相期", "櫃"] };
+
+    /* ---- 由股池 stockMap 產生「股票」與「股期」群組 ----
+     * 股票：同一股票代號只列一次 (名稱取標準期貨名稱去掉「期」)
+     * 股期：期貨代號 + "-1" (例如 CDF-1)，含小型股期 */
+    function buildStockGroups() {
+      const stocks = new Map(), futs = [];
+      Object.keys(stockMap).forEach(k => {
+        const [no, nm, mk] = stockMap[k];
+        futs.push({ id: 'f_' + k, name: nm, code: k + '-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX', etf: /^00/.test(no) });
+        const mini = nm.startsWith('小型');
+        if (!stocks.has(no) || (stocks.get(no).mini && !mini)) {
+          stocks.set(no, { mini, item: { id: 's_' + no, name: nm.replace(/^小型/, '').replace(/期$/, ''), code: no, price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: mk === '櫃' ? 'TPEX' : 'TWSE', etf: /^00/.test(no) } });
+        }
+      });
+      const byCode = (a, b) => a.code.localeCompare(b.code, 'en', { numeric: true });
+      return {
+        stocks: [...stocks.values()].map(x => x.item).sort(byCode),
+        futs: futs.sort(byCode)
+      };
+    }
+    const _sg = buildStockGroups();
+
+    let activeTabGroup = '自選股';
+
+    let watchlistGroups = [
+      {
+        groupName: '自選股',
+        items: [
+          { id: '1', name: '台指期全', code: 'TX-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
+          { id: '2', name: '台指期日', code: 'TXAM-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
+          { id: '3', name: '加權指數', code: 'TSEA', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
+          { id: '4', name: '櫃買指數', code: 'OTCA', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TPEX' },
+          { id: '5', name: '台積電', code: '2330', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
+          { id: '6', name: '聯發科', code: '2454', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' },
+          { id: '7', name: '富台指', code: 'TWN-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
+          { id: '8', name: '台灣VIX', code: 'TAIWANVIX', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TAIFEX' },
+          { id: '9', name: '元大50反1', code: '00632R', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'TWSE' }
+        ]
+      },
+      {
+        groupName: '海期',
+        items: [
+          { id: '10', name: '納指期', code: 'NQ-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'CME' },
+          { id: '11', name: '黃金', code: 'GC-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'COMEX' },
+          { id: '12', name: '日經225', code: 'NK-1', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'OSE' },
+          { id: '13', name: '比特幣', code: 'BTCUSDT', price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'CRYPTO' }
+        ]
+      },
+      {
+        groupName: '股票',
+        items: _sg.stocks
+      },
+      {
+        groupName: '股期',
+        items: _sg.futs
+      }
+    ];
+
+    let selectedSymbolId = '1';
+    let currentResolution = '15'; 
+    let currentCandles = []; 
+    let chart, candlestickSeries, filter12Series, ema20Series, ema60Series, dailySeries, weeklySeries, atrTrendSeries, volumeSeries;
+
+    let indicatorStates = { ...defaultIndicatorSettings };
+
+    /* ---- 指標偏好：第一次載入用預設值，之後記住使用者的選擇 ---- */
+    const IND_PREF_KEY = 'tvIndPrefs_v1';
+    function saveIndPrefs() {
+      try { localStorage.setItem(IND_PREF_KEY, JSON.stringify({ lineVisibility, uiPrefs, indicatorStates })); } catch (e) {}
+    }
+    (function loadIndPrefs() {
+      try {
+        const st = JSON.parse(localStorage.getItem(IND_PREF_KEY) || 'null');
+        if (st) { Object.assign(lineVisibility, st.lineVisibility); Object.assign(uiPrefs, st.uiPrefs); Object.assign(indicatorStates, st.indicatorStates); return; }
+      } catch (e) {}
+      // 第一次：依 lineVisibility 推導各分頁是否開啟
+      Object.keys(IND_TAB_LINES).forEach(k => { indicatorStates[k] = IND_TAB_LINES[k].some(l => lineVisibility[l]); });
+    })();
+    function applyUiPrefs() {
+      document.body.classList.toggle('hide-name', !uiPrefs.showNames);
+      document.body.classList.toggle('hide-val', !uiPrefs.showValues);
+      document.body.classList.toggle('hide-par', !uiPrefs.showParams);
+    }
+    /* 其他程式註冊「重新計算」函式，載入完成後統一跑一次 */
+    window.__indRefreshers = [];
+    window.runAllIndicators = function () {
+      try { updateIndicatorDisplay(); } catch (e) { console.error(e); }
+      window.__indRefreshers.forEach(f => { try { f(); } catch (e) { console.error(e); } });
+    };
+
+    let columnSettings = {
+      change: true,
+      percent: true,
+      volume: true,
+      volMode: 'auto'
+    };
+
+    let lastQuoteSuccessTime = Date.now();
+    let isDataDelayed = false;
+
+    function setConnectionStatus(status) {
+      const badge = document.getElementById('api-status-badge');
+      const dot = document.getElementById('api-status-dot');
+      const text = document.getElementById('api-status-text');
+      const icon = document.getElementById('api-status-icon');
+
+      if (status === 'delayed') {
+        isDataDelayed = true;
+        badge.className = "flex items-center space-x-1.5 text-amber-400 bg-amber-400/15 px-3 py-1.5 rounded-md border border-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.3)] cursor-pointer hover:bg-amber-400/25 transition-all select-none group";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 soft-breathing";
+        icon.className = "fa-solid fa-rotate text-[10px] text-amber-400";
+        text.textContent = "連線延遲";
+      } else if (status === 'refreshing') {
+        icon.classList.add('fa-spin');
+        text.textContent = "重新整理...";
+      } else {
+        isDataDelayed = false;
+        badge.className = "flex items-center space-x-1.5 text-tvUp bg-tvUp/15 px-3 py-1.5 rounded-md border border-tvUp/50 shadow-[0_0_12px_rgba(8,153,129,0.25)] cursor-pointer hover:bg-tvUp/25 transition-all select-none group";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-tvUp soft-breathing";
+        icon.className = "fa-solid fa-rotate text-[10px] text-tvUp";
+        text.textContent = "即時連線";
+      }
+    }
+
+    setInterval(() => {
+      const now = Date.now();
+      if (now - lastQuoteSuccessTime > 6000 && !isDataDelayed) {
+        setConnectionStatus('delayed');
+      }
+    }, 1000);
+
+    function getAllWatchlistItems() {
+      let items = [];
+      watchlistGroups.forEach(g => items.push(...g.items));
+      return items;
+    }
+
+    function calculateEMA(data, period) {
+      let results = [];
+      if (period <= 0 || data.length === 0) return results;
+      let multiplier = 2 / (period + 1);
+      let prevEMA = null;
+      for (let i = 0; i < data.length; i++) {
+        let close = data[i].close;
+        if (i === 0) {
+          prevEMA = close;
+        } else {
+          prevEMA = (close - prevEMA) * multiplier + prevEMA;
+        }
+        results.push({ time: data[i].time, value: prevEMA });
+      }
+      return results;
+    }
+
+    function calculateAtrTrend(candles, length = 14, multi = 2.0, src_hl = true) {
+      if (!candles || candles.length === 0) return [];
+
+      let trs = [];
+      for (let i = 0; i < candles.length; i++) {
+        let c = candles[i];
+        let prevClose = i > 0 ? candles[i - 1].close : c.open;
+        let tr = Math.max(c.high - c.low, Math.abs(c.high - prevClose), Math.abs(c.low - prevClose));
+        trs.push(tr);
+      }
+
+      let atrValues = [];
+      let alpha = 2 / (length + 1);
+      let prevEmaTr = trs[0];
+      for (let i = 0; i < trs.length; i++) {
+        if (i === 0) {
+          prevEmaTr = trs[0];
+        } else {
+          prevEmaTr = (trs[i] - prevEmaTr) * alpha + prevEmaTr;
+        }
+        atrValues.push(prevEmaTr * multi);
+      }
+
+      let lowerAtr = [];
+      let upperAtr = [];
+      for (let i = 0; i < candles.length; i++) {
+        let startIdx = Math.max(0, i - length + 1);
+        let slice = candles.slice(startIdx, i + 1);
+        if (src_hl) {
+          let lowVal = Math.min(...slice.map(s => s.low));
+          let highVal = Math.max(...slice.map(s => s.high));
+          lowerAtr.push(lowVal);
+          upperAtr.push(highVal);
+        } else {
+          let lowVal = Math.min(...slice.map(s => s.close));
+          let highVal = Math.max(...slice.map(s => s.close));
+          lowerAtr.push(lowVal);
+          upperAtr.push(highVal);
+        }
+      }
+
+      let trendLine = [];
+      let prevTrend = 0;
+      let upDownTrend = null;
+
+      for (let i = 0; i < candles.length; i++) {
+        let direction = 'neutral';
+        if (i > 0) {
+          if (upperAtr[i] > upperAtr[i - 1]) direction = 'up';
+          else if (lowerAtr[i] < lowerAtr[i - 1]) direction = 'down';
+        }
+
+        let c = candles[i];
+        let currentTrend = prevTrend;
+
+        if (direction === 'up') {
+          currentTrend = c.low - atrValues[i];
+          if (i > 0 && currentTrend < prevTrend) currentTrend = prevTrend;
+        } else if (direction === 'down') {
+          currentTrend = c.high + atrValues[i];
+          if (i > 0 && currentTrend > prevTrend) currentTrend = prevTrend;
+        } else {
+          currentTrend = prevTrend !== 0 ? prevTrend : (c.low - atrValues[i]);
+        }
+
+        if (i > 0) {
+          if (currentTrend > prevTrend) upDownTrend = 'up';
+          else if (currentTrend < prevTrend) upDownTrend = 'down';
+        }
+
+        let halfCandle = c.open + ((c.close - c.open) / 2);
+        let lineColor = '#ff0099';
+        if (halfCandle < currentTrend && upDownTrend !== 'down') {
+          lineColor = '#ff4100';
+        } else if (upDownTrend === 'up') {
+          lineColor = '#00cbff';
+        } else if (halfCandle > currentTrend) {
+          lineColor = '#ff4101';
+        }
+
+        prevTrend = currentTrend;
+        trendLine.push({ time: c.time, value: currentTrend, color: lineColor });
+      }
+
+      return trendLine;
+    }
+
+    function initChart() {
+      const container = document.getElementById('chart-container');
+      
+      chart = LightweightCharts.createChart(container, {
+        layout: {
+          background: { type: 'solid', color: '#131722' },
+          textColor: '#ffffff',
+        },
+        grid: {
+          vertLines: { color: '#1e222d' },
+          horzLines: { color: '#1e222d' },
+        },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { 
+          borderColor: '#2a2e39', 
+          textColor: '#ffffff', 
+          autoScale: true,
+          mode: LightweightCharts.PriceScaleMode.Normal,
+          alignLabels: true,
+        },
+        timeScale: {
+          borderColor: '#2a2e39',
+          timeVisible: true,
+          secondsVisible: false,
+          textColor: '#ffffff',
+          tickMarkFormatter: (time) => {
+            const date = new Date(time * 1000);
+            if (currentResolution === '1D') return `${date.getMonth() + 1}/${date.getDate()}`;
+            return date.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
+          }
+        },
+        localization: {
+          locale: 'zh-TW',
+          timeFormatter: timestamp => {
+            const date = new Date(timestamp * 1000);
+            if (currentResolution === '1D') return `${date.getMonth() + 1}/${date.getDate()}`;
+            return date.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+          }
+        },
+      });
+
+      candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#f23645',
+        downColor: '#089981',
+        borderVisible: false,
+        wickUpColor: '#f23645',
+        wickDownColor: '#089981',
+      });
+      candlestickSeries.priceScale().applyOptions({
+        scaleMargins: { top: 0.12, bottom: 0.15 },
+        autoScale: true,
+      });
+
+      filter12Series = chart.addLineSeries({
+        color: '#df8028',
+        lineWidth: 1.5,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+
+      ema20Series = chart.addLineSeries({
+        color: '#ffcc66',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+
+      ema60Series = chart.addLineSeries({
+        color: '#28c6ee',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+
+      dailySeries = chart.addLineSeries({
+        color: '#ee3b76',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+
+      weeklySeries = chart.addLineSeries({
+        color: '#2186c0',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+
+      atrTrendSeries = chart.addLineSeries({
+        color: '#00cbff',
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+      });
+
+      volumeSeries = chart.addHistogramSeries({
+        color: '#26a69a',
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume_pane',
+      });
+
+      chart.priceScale('volume_pane').applyOptions({
+        scaleMargins: { top: 0.75, bottom: 0 },
+        visible: false,
+      });
+
+      [filter12Series, ema20Series, ema60Series, dailySeries, weeklySeries, atrTrendSeries].forEach(s => s.applyOptions({ priceFormat: INT_FMT }));
+      chart.subscribeCrosshairMove(param => {
+        if (!param || !param.time || !currentCandles.length) return;
+        const time = param.time;
+        const allItems = getAllWatchlistItems();
+        const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TX-1' };
+        const params = getLineParams(currentSymbol.code);
+
+        const filterData = calculateEMA(currentCandles, params.filter);
+        const e20Data = calculateEMA(currentCandles, params.ema20);
+        const e60Data = calculateEMA(currentCandles, params.ema60);
+        const dailyData = calculateEMA(currentCandles, params.daily);
+        const weeklyData = calculateEMA(currentCandles, params.weekly);
+        const atrData = calculateAtrTrend(currentCandles);
+
+        const matchFilter = filterData.find(d => d.time === time);
+        const match20 = e20Data.find(d => d.time === time);
+        const match60 = e60Data.find(d => d.time === time);
+        const matchDaily = dailyData.find(d => d.time === time);
+        const matchWeekly = weeklyData.find(d => d.time === time);
+        const matchAtr = atrData.find(d => d.time === time);
+
+        if (indicatorStates.filter) {
+          document.getElementById('legend-filter').textContent = matchFilter ? matchFilter.value.toFixed(0) : '--';
+        }
+        if (indicatorStates.ema) {
+          document.getElementById('legend-ema20').textContent = match20 ? match20.value.toFixed(0) : '--';
+          document.getElementById('legend-ema60').textContent = match60 ? match60.value.toFixed(0) : '--';
+        }
+        if (indicatorStates.daily) {
+          document.getElementById('legend-dailyval').textContent = matchDaily ? matchDaily.value.toFixed(0) : '--';
+          document.getElementById('legend-weeklyval').textContent = matchWeekly ? matchWeekly.value.toFixed(0) : '--';
+        }
+        if (indicatorStates.atr) {
+          document.getElementById('legend-atrval').textContent = matchAtr ? matchAtr.value.toFixed(0) : '--';
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+      });
+      if (window.ResizeObserver) new ResizeObserver(() => chart.applyOptions({ width: container.clientWidth, height: container.clientHeight })).observe(container);
+    }
+
+    function updateIndicatorDisplay() {
+      applyPxFormat();
+      const allItems = getAllWatchlistItems();
+      const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: 'TX-1' };
+      const params = getLineParams(currentSymbol.code);
+
+      document.querySelector('#label-filter .lg-par').textContent = ` EMA${params.filter}`;
+      document.querySelector('#label-ema20 .lg-par').textContent = ` EMA${params.ema20}`;
+      document.querySelector('#label-ema60 .lg-par').textContent = ` EMA${params.ema60}`;
+      document.querySelector('#label-daily .lg-par').textContent = ` EMA${params.daily}`;
+      document.querySelector('#label-weekly .lg-par').textContent = ` EMA${params.weekly}`;
+
+      const rowFilter = document.getElementById('legend-row-filter');
+      const rowEma = document.getElementById('legend-row-ema');
+      const rowDaily = document.getElementById('legend-row-daily');
+      const rowAtr = document.getElementById('legend-row-atr');
+
+      const filterGroup = document.getElementById('legend-filter-group');
+      const ema20Group = document.getElementById('legend-ema20-group');
+      const ema60Group = document.getElementById('legend-ema60-group');
+      const dailyGroup = document.getElementById('legend-daily-group');
+      const weeklyGroup = document.getElementById('legend-weekly-group');
+      const atrGroup = document.getElementById('legend-atr-group');
+
+      if (indicatorStates.filter && currentCandles.length > 0) {
+        rowFilter.style.display = 'flex';
+        if (lineVisibility.filter12) {
+          filter12Series.setData(calculateEMA(currentCandles, params.filter));
+          filter12Series.applyOptions({ visible: true });
+          filterGroup.classList.remove('disabled');
+        } else {
+          filter12Series.setData([]);
+          filter12Series.applyOptions({ visible: false });
+          filterGroup.classList.add('disabled');
+        }
+      } else {
+        filter12Series.setData([]);
+        filter12Series.applyOptions({ visible: false });
+        rowFilter.style.display = 'none';
+      }
+
+      if (indicatorStates.ema && currentCandles.length > 0) {
+        rowEma.style.display = 'flex';
+
+        if (lineVisibility.ema20) {
+          ema20Series.setData(calculateEMA(currentCandles, params.ema20));
+          ema20Series.applyOptions({ visible: true });
+          ema20Group.classList.remove('disabled');
+        } else {
+          ema20Series.setData([]);
+          ema20Series.applyOptions({ visible: false });
+          ema20Group.classList.add('disabled');
+        }
+
+        if (lineVisibility.ema60) {
+          ema60Series.setData(calculateEMA(currentCandles, params.ema60));
+          ema60Series.applyOptions({ visible: true });
+          ema60Group.classList.remove('disabled');
+        } else {
+          ema60Series.setData([]);
+          ema60Series.applyOptions({ visible: false });
+          ema60Group.classList.add('disabled');
+        }
+      } else {
+        ema20Series.setData([]);
+        ema60Series.setData([]);
+        ema20Series.applyOptions({ visible: false });
+        ema60Series.applyOptions({ visible: false });
+        rowEma.style.display = 'none';
+      }
+
+      if (indicatorStates.daily && currentCandles.length > 0) {
+        rowDaily.style.display = 'flex';
+
+        if (lineVisibility.daily) {
+          dailySeries.setData(calculateEMA(currentCandles, params.daily));
+          dailySeries.applyOptions({ visible: true });
+          dailyGroup.classList.remove('disabled');
+        } else {
+          dailySeries.setData([]);
+          dailySeries.applyOptions({ visible: false });
+          dailyGroup.classList.add('disabled');
+        }
+
+        if (lineVisibility.weekly) {
+          weeklySeries.setData(calculateEMA(currentCandles, params.weekly));
+          weeklySeries.applyOptions({ visible: true });
+          weeklyGroup.classList.remove('disabled');
+        } else {
+          weeklySeries.setData([]);
+          weeklySeries.applyOptions({ visible: false });
+          weeklyGroup.classList.add('disabled');
+        }
+      } else {
+        dailySeries.setData([]);
+        weeklySeries.setData([]);
+        dailySeries.applyOptions({ visible: false });
+        weeklySeries.applyOptions({ visible: false });
+        rowDaily.style.display = 'none';
+      }
+
+      if (indicatorStates.atr && currentCandles.length > 0) {
+        rowAtr.style.display = 'flex';
+        if (lineVisibility.atrTrend) {
+          const atrData = calculateAtrTrend(currentCandles);
+          atrTrendSeries.setData(atrData);
+          atrTrendSeries.applyOptions({ visible: true });
+          atrGroup.classList.remove('disabled');
+        } else {
+          atrTrendSeries.setData([]);
+          atrTrendSeries.applyOptions({ visible: false });
+          atrGroup.classList.add('disabled');
+        }
+      } else {
+        atrTrendSeries.setData([]);
+        atrTrendSeries.applyOptions({ visible: false });
+        rowAtr.style.display = 'none';
+      }
+
+      const upCol = '#f23645';
+      const downCol = '#089981';
+
+      if (indicatorStates.vol && currentCandles.length > 0) {
+        const volData = currentCandles.map(c => ({
+          time: c.time,
+          value: c.volume || 1000,
+          color: c.close >= c.open ? upCol : downCol
+        }));
+        volumeSeries.setData(volData);
+        volumeSeries.applyOptions({ visible: true });
+        chart.priceScale('volume_pane').applyOptions({ visible: true });
+      } else {
+        volumeSeries.setData([]);
+        volumeSeries.applyOptions({ visible: false });
+        chart.priceScale('volume_pane').applyOptions({ visible: false });
+      }
+
+      const legend = document.getElementById('chart-legend');
+      if (!indicatorStates.filter && !indicatorStates.ema && !indicatorStates.daily && !indicatorStates.atr) {
+        legend.style.display = 'none';
+      } else {
+        legend.style.display = 'flex';
+      }
+    }
+
+    function getResolutionSeconds(res) {
+      if (res === '1') return 60;
+      if (res === '5') return 300;
+      if (res === '15') return 900;
+      if (res === '60') return 3600;
+      if (res === '1D') return 86400;
+      return 900;
+    }
+
+    async function loadHistoryData(symbolCode, resolution) {
+      currentCandles = []; 
+      const toTime = Math.floor(Date.now() / 1000);
+      const daysToSubtract = resolution === '1D' ? 365 : 60;
+      const fromTime = toTime - (daysToSubtract * 24 * 60 * 60);
+      const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(symbolCode)}&resolution=${resolution}&from=${fromTime}&to=${toTime}&ws=true&metaData=true`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+
+        let candleData = [];
+        const barsData = Array.isArray(data) ? data : (data.bars || []);
+        const normalizeTime = t => t > 1e10 ? Math.floor(t / 1000) : t;
+
+        if (Array.isArray(barsData) && barsData.length > 0) {
+          barsData.forEach(item => {
+            let rawTime = item.time || new Date(item.datetime).getTime();
+            let time = normalizeTime(rawTime);
+            if (resolution === '1D') time -= 86400; 
+            const volume = item.volume !== undefined ? item.volume : (Math.floor(Math.random() * 20000 + 5000));
+            candleData.push({ time, open: item.open, high: item.high, low: item.low, close: item.close, volume });
+          });
+        }
+
+        if (candleData.length > 0) {
+          candleData.sort((a, b) => a.time - b.time);
+          currentCandles = candleData;
+          candlestickSeries.setData(currentCandles);
+          updateIndicatorDisplay();
+
+          if (currentCandles.length > 0) {
+            const allItems = getAllWatchlistItems();
+            const currentSymbol = allItems.find(s => s.id === selectedSymbolId) || { code: symbolCode };
+            const params = getLineParams(currentSymbol.code);
+
+            const lastFilter = calculateEMA(currentCandles, params.filter);
+            const last20 = calculateEMA(currentCandles, params.ema20);
+            const last60 = calculateEMA(currentCandles, params.ema60);
+            const lastDaily = calculateEMA(currentCandles, params.daily);
+            const lastWeekly = calculateEMA(currentCandles, params.weekly);
+            const lastAtr = calculateAtrTrend(currentCandles);
+
+            if (indicatorStates.filter && lastFilter.length > 0) {
+              document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(0);
+            }
+            if (indicatorStates.ema && last20.length > 0) {
+              document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(0);
+              document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(0);
+            }
+            if (indicatorStates.daily && lastDaily.length > 0) {
+              document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(0);
+              document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(0);
+            }
+            if (indicatorStates.atr && lastAtr.length > 0) {
+              document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(0);
+            }
+          }
+
+          const barsCount = currentCandles.length;
+          chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, barsCount - 80), to: barsCount - 1 });
+          chart.priceScale('right').applyOptions({ autoScale: true });
+          return;
+        }
+        throw new Error('API 資料為空');
+      } catch (err) {
+        loadMockHistoryFallback(symbolCode);
+      }
+    }
+
+    function loadMockHistoryFallback(symbolCode) {
+      const now = Math.floor(Date.now() / 1000);
+      let candleData = [];
+      let basePrice = symbolCode === '2330' ? 980 : (symbolCode.includes('TX') ? 22600 : 250);
+      const step = getResolutionSeconds(currentResolution);
+
+      for (let i = 80; i >= 1; i--) {
+        let time = now - (i * step);
+        if (currentResolution === '1D') time -= 86400;
+        const open = basePrice + (Math.random() * 20 - 10);
+        const high = open + Math.random() * 15;
+        const low = open - Math.random() * 15;
+        const close = (open + high + low) / 3;
+        basePrice = close;
+        const volume = Math.floor(Math.abs(high - low) * 1000 + 5000);
+        candleData.push({ time, open, high, low, close, volume });
+      }
+
+      currentCandles = candleData;
+      candlestickSeries.setData(currentCandles);
+      updateIndicatorDisplay();
+
+      if (currentCandles.length > 0) {
+        const params = getLineParams(symbolCode);
+        const lastFilter = calculateEMA(currentCandles, params.filter);
+        const last20 = calculateEMA(currentCandles, params.ema20);
+        const last60 = calculateEMA(currentCandles, params.ema60);
+        const lastDaily = calculateEMA(currentCandles, params.daily);
+        const lastWeekly = calculateEMA(currentCandles, params.weekly);
+        const lastAtr = calculateAtrTrend(currentCandles);
+
+        if (indicatorStates.filter && lastFilter.length > 0) {
+          document.getElementById('legend-filter').textContent = lastFilter[lastFilter.length - 1].value.toFixed(0);
+        }
+        if (indicatorStates.ema && last20.length > 0) {
+          document.getElementById('legend-ema20').textContent = last20[last20.length - 1].value.toFixed(0);
+          document.getElementById('legend-ema60').textContent = last60[last60.length - 1].value.toFixed(0);
+        }
+        if (indicatorStates.daily && lastDaily.length > 0) {
+          document.getElementById('legend-dailyval').textContent = lastDaily[lastDaily.length - 1].value.toFixed(0);
+          document.getElementById('legend-weeklyval').textContent = lastWeekly[lastWeekly.length - 1].value.toFixed(0);
+        }
+        if (indicatorStates.atr && lastAtr.length > 0) {
+          document.getElementById('legend-atrval').textContent = lastAtr[lastAtr.length - 1].value.toFixed(0);
+        }
+      }
+
+      const barsCount = currentCandles.length;
+      chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, barsCount - 80), to: barsCount - 1 });
+      chart.priceScale('right').applyOptions({ autoScale: true });
+    }
+
+    async function fetchRealtimeQuotes() {
+      const allItems = getAllWatchlistItems();
+      if (allItems.length === 0 || currentCandles.length === 0) return;
+      // 小群組(自選股/海期)每次都抓；大群組(股票/股期)只抓目前分頁；另外一定包含選取中的商品
+      const wanted = new Set();
+      watchlistGroups.forEach(g => { if (g.items.length <= 30 || g.groupName === activeTabGroup) g.items.forEach(i => wanted.add(i.code)); });
+      const selItem = allItems.find(i => i.id === selectedSymbolId); if (selItem) wanted.add(selItem.code);
+      const codes = [...wanted], QUOTE_CHUNK = 60, chunks = [];
+      for (let i = 0; i < codes.length; i += QUOTE_CHUNK) chunks.push(codes.slice(i, i + QUOTE_CHUNK));
+
+      try {
+        const parts = await Promise.all(chunks.map(async ch => {
+          const response = await fetch(`https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=${encodeURIComponent(ch.join(','))}`);
+          if (!response.ok) throw new Error('API Error');
+          return response.json();
+        }));
+        const data = [].concat(...parts.filter(Array.isArray));
+
+        if (Array.isArray(data)) {
+          lastQuoteSuccessTime = Date.now();
+          setConnectionStatus('normal');
+
+          data.forEach(quote => {
+            allItems.filter(i => i.code.toUpperCase() === String(quote.symbol).toUpperCase()).forEach(item => {
+            {
+              const newPrice = quote.close || item.price;
+              item.price = newPrice;
+              item.refPrice = quote.prevRef || quote.refRef || item.refRef || item.refPrice;
+              item.volume = quote.volume || item.volume;
+              item.high = quote.high || item.high;
+              item.low = quote.low || item.low;
+
+              if (item.id === selectedSymbolId && newPrice > 0 && candlestickSeries && currentCandles.length > 0) {
+                const stepSeconds = getResolutionSeconds(currentResolution);
+                const nowSec = Math.floor(Date.now() / 1000);
+                const currentBarTime = currentResolution === '1D' 
+                  ? Math.floor(nowSec / 86400) * 86400 - 86400 
+                  : Math.floor(nowSec / stepSeconds) * stepSeconds;
+
+                let lastBar = currentCandles[currentCandles.length - 1];
+
+                if (lastBar.time === currentBarTime) {
+                  lastBar.high = Math.max(lastBar.high, newPrice);
+                  lastBar.low = Math.min(lastBar.low, newPrice);
+                  lastBar.close = newPrice;
+                  candlestickSeries.update(lastBar);
+                } else if (currentBarTime > lastBar.time) {
+                  if (currentBarTime - lastBar.time === stepSeconds) {
+                    const newBar = {
+                      time: currentBarTime,
+                      open: lastBar.close,
+                      high: Math.max(lastBar.close, newPrice),
+                      low: Math.min(lastBar.close, newPrice),
+                      close: newPrice,
+                      volume: item.volume || 1000
+                    };
+                    currentCandles.push(newBar);
+                    candlestickSeries.update(newBar);
+                  } else {
+                    lastBar.high = Math.max(lastBar.high, newPrice);
+                    lastBar.low = Math.min(lastBar.low, newPrice);
+                    lastBar.close = newPrice;
+                    candlestickSeries.update(lastBar);
+                  }
+                }
+
+                const params = getLineParams(item.code);
+                if (indicatorStates.filter && lineVisibility.filter12) {
+                  const filterData = calculateEMA(currentCandles, params.filter);
+                  if (filterData.length > 0) {
+                    filter12Series.update(filterData[filterData.length - 1]);
+                    document.getElementById('legend-filter').textContent = filterData[filterData.length - 1].value.toFixed(0);
+                  }
+                }
+                if (indicatorStates.ema) {
+                  if (lineVisibility.ema20) {
+                    const e20Data = calculateEMA(currentCandles, params.ema20);
+                    if (e20Data.length > 0) {
+                      ema20Series.update(e20Data[e20Data.length - 1]);
+                      document.getElementById('legend-ema20').textContent = e20Data[e20Data.length - 1].value.toFixed(0);
+                    }
+                  }
+                  if (lineVisibility.ema60) {
+                    const e60Data = calculateEMA(currentCandles, params.ema60);
+                    if (e60Data.length > 0) {
+                      ema60Series.update(e60Data[e60Data.length - 1]);
+                      document.getElementById('legend-ema60').textContent = e60Data[e60Data.length - 1].value.toFixed(0);
+                    }
+                  }
+                }
+                if (indicatorStates.daily) {
+                  if (lineVisibility.daily) {
+                    const dailyData = calculateEMA(currentCandles, params.daily);
+                    if (dailyData.length > 0) {
+                      dailySeries.update(dailyData[dailyData.length - 1]);
+                      document.getElementById('legend-dailyval').textContent = dailyData[dailyData.length - 1].value.toFixed(0);
+                    }
+                  }
+                  if (lineVisibility.weekly) {
+                    const weeklyData = calculateEMA(currentCandles, params.weekly);
+                    if (weeklyData.length > 0) {
+                      weeklySeries.update(weeklyData[weeklyData.length - 1]);
+                      document.getElementById('legend-weeklyval').textContent = weeklyData[weeklyData.length - 1].value.toFixed(0);
+                    }
+                  }
+                }
+                if (indicatorStates.atr && lineVisibility.atrTrend) {
+                  const atrData = calculateAtrTrend(currentCandles);
+                  if (atrData.length > 0) {
+                    atrTrendSeries.update(atrData[atrData.length - 1]);
+                    document.getElementById('legend-atrval').textContent = atrData[atrData.length - 1].value.toFixed(0);
+                  }
+                }
+              }
+            }
+            });
+          });
+
+          renderWatchlist();
+          const activeSymbol = allItems.find(s => s.id === selectedSymbolId);
+          if (activeSymbol) {
+            updateActivePriceDisplay(activeSymbol);
+            updateDetailCard(activeSymbol);
+          }
+        }
+      } catch (err) {
+        console.error('Realtime quote error:', err);
+        setConnectionStatus('delayed');
+      }
+    }
+
+    document.getElementById('api-status-badge').addEventListener('click', async () => {
+      setConnectionStatus('refreshing');
+      const allItems = getAllWatchlistItems();
+      const symbol = allItems.find(s => s.id === selectedSymbolId);
+      if (symbol) {
+        await loadHistoryData(symbol.code, currentResolution);
+      }
+      await fetchRealtimeQuotes();
+      setTimeout(() => {
+        const icon = document.getElementById('api-status-icon');
+        if (icon) icon.classList.remove('fa-spin');
+        if (!isDataDelayed) setConnectionStatus('normal');
+      }, 700);
+    });
+
+    function formatSmartVolume(vol) {
+      if (!vol || vol === 0) return '--';
+      if (columnSettings.volMode === 'full') {
+        return vol.toLocaleString();
+      }
+      if (vol >= 1000000000) {
+        return (vol / 1000000000).toFixed(1) + 'G';
+      } else if (vol >= 1000000) {
+        return (vol / 1000000).toFixed(1) + 'M';
+      } else if (vol >= 1000) {
+        return (vol / 1000).toFixed(1) + 'k';
+      }
+      return vol.toLocaleString();
+    }
+
+    /* ---- 清單排序 / 低量過濾 ---- */
+    const VOL_MIN = { '股票': 20000, '股期': 5000 };   // 成交量低於此值的標的不顯示
+    let filterMode = 'vol';                              // vol=過濾成交量 / all=顯示全部 / etf=過濾ETF
+    const FILTER_ORDER = ['vol', 'all', 'etf'];
+    let sortState = { key: null, dir: 'desc' };         // key: price | change | pct | volume
+    const SORT_VAL = {
+      price:  it => it.price,
+      change: it => it.refPrice > 0 ? it.price - it.refPrice : 0,
+      pct:    it => it.refPrice > 0 ? (it.price - it.refPrice) / it.refPrice : 0,
+      volume: it => it.volume || 0
+    };
+    function sortArrow(k) { return sortState.key === k ? (sortState.dir === 'desc' ? ' ▼' : ' ▲') : ''; }
+    function applyWatchlistView(groupName, items) {
+      let list = items;
+      const min = VOL_MIN[groupName];
+      if (min && filterMode === 'vol') list = list.filter(it => (it.volume || 0) >= min);
+      else if (min && filterMode === 'etf') list = list.filter(it => !it.etf);
+      if (sortState.key) {
+        const f = SORT_VAL[sortState.key], sgn = sortState.dir === 'desc' ? -1 : 1;
+        list = list.map((it, i) => ({ it, i }))
+          .sort((a, b) => {
+            const ea = !(a.it.price > 0), eb = !(b.it.price > 0);      // 無報價者固定排最後
+            if (ea !== eb) return ea ? 1 : -1;
+            return (f(a.it) - f(b.it)) * sgn || a.i - b.i;
+          }).map(x => x.it);
+      }
+      return list;
+    }
+    function toggleSort(key) {
+      if (sortState.key !== key) sortState = { key, dir: 'desc' };
+      else if (sortState.dir === 'desc') sortState.dir = 'asc';
+      else sortState = { key: null, dir: 'desc' };                      // 第三次點擊 = 取消排序
+      renderWatchlist();
+    }
+
+    function renderWatchlist() {
+      const headerContainer = document.getElementById('watchlist-header');
+      const container = document.getElementById('watchlist-items');
+      container.innerHTML = '';
+      
+      const currentGroup = watchlistGroups.find(g => g.groupName === activeTabGroup) || { items: [] };
+      const allGroupItems = currentGroup.items;
+      const items = applyWatchlistView(activeTabGroup, allGroupItems);
+      document.getElementById('watchlist-count').textContent = watchlistGroups.reduce((n, g) => n + g.items.length, 0);
+
+      let headerHTML = `
+        <div class="w-[18%] text-left truncate pr-0.5">代號</div>
+        <div class="w-[22%] text-left truncate px-0.5">名稱</div>
+        <div data-sort="price" class="wl-sort w-[24%] text-right truncate px-0.5">成交價${sortArrow('price')}</div>
+      `;
+      if (columnSettings.change) headerHTML += `<div data-sort="change" class="wl-sort w-[18%] text-right truncate px-0.5">漲跌${sortArrow('change')}</div>`;
+      if (columnSettings.percent) headerHTML += `<div data-sort="pct" class="wl-sort w-[18%] text-right truncate px-0.5">漲跌%${sortArrow('pct')}</div>`;
+      if (columnSettings.volume) headerHTML += `<div data-sort="volume" class="wl-sort w-[20%] text-right truncate pl-0.5 pr-1">總量${sortArrow('volume')}</div>`;
+      headerContainer.innerHTML = headerHTML;
+      const minV = VOL_MIN[activeTabGroup];
+      const fb = document.getElementById('vol-filter-btn');
+      if (fb) {
+        fb.classList.toggle('hidden', !minV);
+        if (minV) {
+          const hid = allGroupItems.length - items.length;
+          fb.textContent = filterMode === 'vol' ? `過濾成交量<${minV.toLocaleString()}（隱藏 ${hid}）`
+                         : filterMode === 'etf' ? `過濾ETF（隱藏 ${hid}）` : '顯示全部';
+          fb.classList.toggle('text-white', filterMode !== 'all');
+        }
+      }
+
+      if (items.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-tvTextMuted text-xs font-mono">${allGroupItems.length ? '無符合成交量門檻的商品<br>（尚未取得報價或皆低於門檻）' : '此分類暫無商品'}</div>`;
+        return;
+      }
+
+      items.forEach(item => {
+        const hasRef = item.refPrice > 0;
+        const change = hasRef ? (item.price - item.refPrice) : 0;
+        const changePercent = hasRef ? ((change / item.refPrice) * 100).toFixed(2) : '0.00';
+        const isUp = change >= 0;
+        
+        const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+        const isSelected = item.id === selectedSymbolId;
+
+        const row = document.createElement('div');
+        row.id = `watchlist-row-${item.id}`;
+        row.className = `flex items-center px-2 py-2 compact-table-row cursor-pointer hover:bg-tvHover/70 transition-colors group relative w-full ${
+          isSelected ? 'bg-tvHover/90 border-l-2 border-tvAccent' : ''
+        }`;
+        row.onclick = () => selectSymbol(item.id);
+
+        let rowHTML = `
+          <div class="w-[18%] font-mono text-tvTextMuted text-[11px] truncate pr-0.5">${item.code}</div>
+          <div class="w-[22%] font-bold text-white truncate px-0.5">${item.name}</div>
+          <div class="w-[24%] text-right font-mono font-medium text-white truncate px-0.5">
+            ${item.price > 0 ? fmtPx(item.price, item.code) : '--'}
+          </div>
+        `;
+        if (columnSettings.change) {
+          rowHTML += `
+            <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
+              ${item.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(decOf(item.code, item.price))}` : '--'}
+            </div>
+          `;
+        }
+        if (columnSettings.percent) {
+          rowHTML += `
+            <div class="w-[18%] text-right font-mono font-medium ${colorClass} truncate px-0.5">
+              ${item.price > 0 ? `${isUp ? '+' : ''}${changePercent}%` : '--'}
+            </div>
+          `;
+        }
+        if (columnSettings.volume) {
+          rowHTML += `
+            <div class="w-[20%] text-right font-mono text-tvTextMuted text-[11px] truncate pl-0.5 pr-1">
+              ${formatSmartVolume(item.volume)}
+            </div>
+          `;
+        }
+
+        row.innerHTML = rowHTML;
+        container.appendChild(row);
+      });
+    }
+
+    document.getElementById('watchlist-header').addEventListener('click', e => {
+      const t = e.target.closest('[data-sort]'); if (t) toggleSort(t.dataset.sort);
+    });
+    document.getElementById('vol-filter-btn').addEventListener('click', () => { filterMode = FILTER_ORDER[(FILTER_ORDER.indexOf(filterMode) + 1) % FILTER_ORDER.length]; renderWatchlist(); });
+
+    function selectSymbol(id) {
+      selectedSymbolId = id;
+      currentCandles = [];
+      const allItems = getAllWatchlistItems();
+      const symbol = allItems.find(s => s.id === id);
+      if (symbol) {
+        renderWatchlist();
+        document.getElementById('active-symbol-title').textContent = `${symbol.name} ${symbol.code}`;
+        updateActivePriceDisplay(symbol);
+        updateDetailCard(symbol);
+        loadHistoryData(symbol.code, currentResolution);
+        fetchAndRenderMiniVix();
+      }
+    }
+
+    function updateActivePriceDisplay(symbol) {
+      const hasRef = symbol.refPrice > 0;
+      const change = hasRef ? (symbol.price - symbol.refPrice) : 0;
+      const changePercent = hasRef ? ((change / symbol.refPrice) * 100).toFixed(2) : '0.00';
+      const isUp = change >= 0;
+
+      const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+      const bgClass = isUp ? 'bg-[#f23645]/20' : 'bg-[#089981]/20';
+
+      const priceElem = document.getElementById('active-price');
+      const changeElem = document.getElementById('active-change');
+
+      priceElem.textContent = symbol.price > 0 ? fmtPx(symbol.price, symbol.code) : '--';
+      priceElem.className = `text-sm ${colorClass}`;
+
+      changeElem.textContent = symbol.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(decOf(symbol.code, symbol.price))} (${isUp ? '+' : ''}${changePercent}%)` : '--';
+      changeElem.className = `text-xs px-1.5 py-0.5 rounded ${bgClass} ${colorClass}`;
+    }
+
+    function updateDetailCard(symbol) {
+      const hasRef = symbol.refPrice > 0;
+      const change = hasRef ? (symbol.price - symbol.refPrice) : 0;
+      const changePercent = hasRef ? ((change / symbol.refPrice) * 100).toFixed(2) : '0.00';
+      const isUp = change >= 0;
+
+      const colorClass = isUp ? 'text-[#f23645]' : 'text-[#089981]';
+      const bgClass = isUp ? 'bg-[#f23645]/20' : 'bg-[#089981]/20';
+
+      document.getElementById('card-name').textContent = symbol.name;
+      document.getElementById('card-code').textContent = symbol.code;
+      document.getElementById('card-price').textContent = symbol.price > 0 ? fmtPx(symbol.price, symbol.code) : '--';
+      document.getElementById('card-high').textContent = symbol.high > 0 ? fmtPx(symbol.high, symbol.code) : '--';
+      document.getElementById('card-low').textContent = symbol.low > 0 ? fmtPx(symbol.low, symbol.code) : '--';
+      document.getElementById('card-ref').textContent = symbol.refPrice > 0 ? fmtPx(symbol.refPrice, symbol.code) : '--';
+      document.getElementById('card-vol').textContent = symbol.volume > 0 ? symbol.volume.toLocaleString() : '--';
+
+      const badge = document.getElementById('card-change-badge');
+      badge.textContent = symbol.price > 0 ? `${isUp ? '+' : ''}${change.toFixed(decOf(symbol.code, symbol.price))} (${isUp ? '+' : ''}${changePercent}%)` : '--';
+      badge.className = `font-mono text-right font-bold text-xs px-2 py-0.5 rounded ${bgClass} ${colorClass}`;
+    }
+
+    /* 繪製走勢圖：座標文字改為白色 (#ffffff) */
+    /* ===================== 右下走勢小圖：資料 / 繪製 / 縮放 ===================== */
+    let miniList = [], miniT = [], miniVw = [], miniCode = '', miniView = null, miniHoverX = null, miniExtT = null;
+    /* 與主圖 K 線十字游標同步：
+       主圖 → 走勢圖：window.__miniSync.set(毫秒時間 | null)
+       走勢圖 → 主圖：window.__onMiniHover(毫秒時間 | null)  (由主圖端實作) */
+    let miniExtRaf = 0;
+    window.__miniSync = {
+      set(ms) {
+        if (miniHoverX != null) return;                 // 滑鼠正在走勢圖上時，以自己的游標為主
+        if (miniExtT === ms) return;
+        miniExtT = ms;
+        if (miniExtRaf) return;
+        miniExtRaf = requestAnimationFrame(() => { miniExtRaf = 0; renderMini(); });
+      }
+    };
+    // 二分搜尋：找最接近 ms 的走勢資料索引
+    function miniNearest(ms) {
+      const n = miniT.length; if (!n) return -1;
+      let lo = 0, hi = n - 1;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (miniT[m] < ms) lo = m + 1; else hi = m; }
+      return (lo > 0 && Math.abs(miniT[lo - 1] - ms) <= Math.abs(miniT[lo] - ms)) ? lo - 1 : lo;
+    }
+    const miniShow = { vwap: true, cost: true };
+    try { Object.assign(miniShow, JSON.parse(localStorage.getItem('miniShow') || '{}')); } catch (e) {}
+    const MINI_GEO = { pl: 30, pr: 58, pt: 16, pb: 18 };
+    const miniFmtT = ms => new Date(ms).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
+    const miniNum = v => fmtPx(v, curCode());
+
+    async function fetchAndRenderMiniVix() {
+      const cur = getAllWatchlistItems().find(s => s.id === selectedSymbolId) || { code: 'TAIWANVIX', name: '' };
+      document.getElementById('vix-canvas-title').textContent = `${cur.name} 走勢圖`;
+      if (cur.code !== miniCode) { miniCode = cur.code; miniView = null; miniList = []; miniT = []; miniVw = []; }
+      try {
+        const resp = await fetch(`https://tv-signalr.futures-op.com/history?symbol=${encodeURIComponent(cur.code)}&resolution=1&ws=true&intraday=true`, { cache: 'no-cache' });
+        if (resp.ok) {
+          const json = await resp.json();
+          const list = json && Array.isArray(json.bars) ? json.bars : [];
+          if (list.length && cur.code === miniCode) {
+            miniList = list;
+            miniT = list.map(b => { const t = b.time || Date.now(); return t > 1e11 ? t : t * 1000; });
+            // VWAP：無成交量時以典型價平均代替
+            let cv = 0, cpv = 0, cn = 0, cp = 0;
+            miniVw = list.map(b => {
+              const h = b.high != null ? b.high : b.close, l = b.low != null ? b.low : b.close, tp = (h + l + b.close) / 3, v = b.volume > 0 ? b.volume : 0;
+              cv += v; cpv += tp * v; cn++; cp += tp;
+              return cv > 0 ? cpv / cv : cp / cn;
+            });
+          }
+        }
+      } catch (err) { console.error('Mini chart fetch error:', err); }
+      renderMini();
+    }
+
+    function miniDayRange() {
+      const cur = getAllWatchlistItems().find(s => s.id === selectedSymbolId) || {};
+      let h = cur.high > 0 ? cur.high : -Infinity, l = cur.low > 0 ? cur.low : Infinity;
+      if (!(h > 0 && l > 0)) { miniList.forEach(b => { h = Math.max(h, b.high != null ? b.high : b.close); l = Math.min(l, b.low != null ? b.low : b.close); }); }
+      return { h, l, cost: (h + l) / 2 };
+    }
+
+    function renderMini() {
+      const canvas = document.getElementById('miniVixCanvas');
+      if (!canvas) return;
+      const rect = canvas.parentNode.getBoundingClientRect();
+      const W = rect.width, H = rect.height; if (W <= 0 || H <= 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+
+      const n = miniList.length;
+      const setChip = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v == null ? '--' : fmtInt(v); };
+      if (!n) { setChip('card-vwap', null); setChip('card-cost', null); return; }
+
+      const { pl, pr, pt, pb } = MINI_GEO, gw = W - pl - pr, gh = H - pt - pb;
+      const full0 = miniT[0], full1 = miniT[n - 1], fullSpan = (full1 - full0) || 1;
+      const v0 = miniView ? miniView.a : full0, v1 = miniView ? miniView.b : full1, span = (v1 - v0) || 1;
+      const xOf = t => pl + (t - v0) / span * gw;
+      const closes = miniList.map(b => b.close);
+      const { cost } = miniDayRange();
+
+      // 可視範圍內的資料索引 (含左右各多一根，線條才不會斷)
+      let i0 = 0, i1 = n - 1;
+      while (i0 < n - 1 && miniT[i0 + 1] < v0) i0++;
+      while (i1 > 0 && miniT[i1 - 1] > v1) i1--;
+      let minP = Infinity, maxP = -Infinity;
+      for (let i = i0; i <= i1; i++) {
+        minP = Math.min(minP, closes[i]); maxP = Math.max(maxP, closes[i]);
+        if (miniShow.vwap) { minP = Math.min(minP, miniVw[i]); maxP = Math.max(maxP, miniVw[i]); }
+      }
+      if (miniShow.cost && !miniView) { minP = Math.min(minP, cost); maxP = Math.max(maxP, cost); }
+      if (!isFinite(minP)) return;
+      const padv = ((maxP - minP) || 1) * 0.06; minP -= padv; maxP += padv;
+      const range = (maxP - minP) || 1;
+      const yOf = v => pt + gh - ((v - minP) / range) * gh;
+      const isUp = closes[n - 1] >= closes[0];
+      const lineColor = isUp ? '#f23645' : '#089981';
+
+      // 格線與 Y 刻度
+      ctx.font = '9px monospace'; ctx.lineWidth = 1; ctx.textAlign = 'left';
+      const ySteps = Math.max(3, Math.min(8, Math.floor(gh / 34)));
+      for (let i = 0; i <= ySteps; i++) {
+        const val = minP + range * (ySteps - i) / ySteps, y = pt + gh / ySteps * i;
+        ctx.strokeStyle = '#2a2e39'; ctx.beginPath(); ctx.moveTo(pl, y); ctx.lineTo(pl + gw, y); ctx.stroke();
+        ctx.fillStyle = '#d1d4dc'; ctx.fillText(val.toFixed(curDec()), pl + gw + 5, y + 3);
+      }
+      // X 時間刻度
+      ctx.fillStyle = '#787b86'; ctx.textAlign = 'center';
+      const xTicks = Math.max(2, Math.floor(gw / 70));
+      for (let i = 0; i <= xTicks; i++) {
+        const t = v0 + span * i / xTicks;
+        ctx.fillText(miniFmtT(t), pl + gw * i / xTicks, H - 5);
+      }
+
+      // 以下內容限制在繪圖區內
+      ctx.save(); ctx.beginPath(); ctx.rect(pl, pt - 2, gw, gh + 4); ctx.clip();
+      const pts = []; for (let i = Math.max(0, i0); i <= i1; i++) pts.push({ x: xOf(miniT[i]), y: yOf(closes[i]), i });
+      if (pts.length) {
+        ctx.beginPath(); ctx.strokeStyle = lineColor; ctx.lineWidth = 1.5;
+        pts.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke();
+        ctx.lineTo(pts[pts.length - 1].x, pt + gh); ctx.lineTo(pts[0].x, pt + gh); ctx.closePath();
+        const gr = ctx.createLinearGradient(0, pt, 0, pt + gh);
+        gr.addColorStop(0, isUp ? 'rgba(242,54,69,.25)' : 'rgba(8,153,129,.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gr; ctx.fill();
+      }
+      if (miniShow.cost) {            // 0.5 成本線
+        ctx.setLineDash([4, 3]); ctx.strokeStyle = '#ffb74d'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pl, yOf(cost)); ctx.lineTo(pl + gw, yOf(cost)); ctx.stroke(); ctx.setLineDash([]);
+      }
+      if (miniShow.vwap && pts.length) {   // VWAP
+        ctx.strokeStyle = '#e040fb'; ctx.lineWidth = 1.3; ctx.beginPath();
+        pts.forEach((p, k) => { const y = yOf(miniVw[p.i]); k ? ctx.lineTo(p.x, y) : ctx.moveTo(p.x, y); }); ctx.stroke();
+      }
+      // 十字線
+      // 十字線：來源可能是本圖滑鼠，或主圖 K 線 (miniExtT)
+      let hv = null, hx = 0, hy = 0;
+      if (miniHoverX != null && miniHoverX >= pl && miniHoverX <= pl + gw) {
+        hv = miniNearest(v0 + (miniHoverX - pl) / gw * span);
+      } else if (miniHoverX == null && miniExtT != null) {
+        const bi = miniNearest(miniExtT);
+        if (bi >= 0 && miniT[bi] >= v0 && miniT[bi] <= v1) hv = bi;   // 不在可視範圍就不畫
+      }
+      if (hv != null) {
+        hx = xOf(miniT[hv]); hy = yOf(closes[hv]);
+        ctx.strokeStyle = '#758696'; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(hx, pt); ctx.lineTo(hx, pt + gh); ctx.moveTo(pl, hy); ctx.lineTo(pl + gw, hy); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = lineColor; ctx.beginPath(); ctx.arc(hx, hy, 3, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+      if (hv != null) {               // 價格 / 時間標籤 (類似主圖十字線)
+        ctx.font = '9px monospace'; ctx.fillStyle = '#2a2e39';
+        const py = Math.max(pt + 6, Math.min(pt + gh - 6, hy));
+        ctx.fillRect(pl + gw + 2, py - 6, pr - 3, 12);
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(closes[hv].toFixed(curDec()), pl + gw + 4, py + 3);
+        const tw = 36, tx = Math.max(pl, Math.min(pl + gw - tw, hx - tw / 2));
+        ctx.fillStyle = '#2a2e39'; ctx.fillRect(tx, H - pb + 1, tw, 13);
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(miniFmtT(miniT[hv]), tx + tw / 2, H - 5);
+      }
+
+      // 十字游標資訊框：時間 / 價 / 相對昨收漲跌 / 均價 / 高低 / 量（滑鼠移動或手指按住時顯示）
+      if (hv != null && miniList[hv]) {
+        const b = miniList[hv], cur = getAllWatchlistItems().find(s => s.id === selectedSymbolId) || {}, ref = cur.refPrice, dec = curDec();
+        const chg = ref > 0 ? closes[hv] - ref : null, sg = chg >= 0 ? '+' : '';
+        const rows = [
+          [miniFmtT(miniT[hv]), '#9aa0ad'],
+          ['價 ' + closes[hv].toFixed(dec), '#ffffff'],
+          chg != null ? ['漲跌 ' + sg + chg.toFixed(dec) + ' (' + sg + (chg / ref * 100).toFixed(2) + '%)', chg >= 0 ? '#f23645' : '#089981'] : null,
+          miniShow.vwap ? ['均價 ' + fmtInt(miniVw[hv]), '#e040fb'] : null,
+          b.high != null && b.low != null ? ['高 ' + b.high.toFixed(dec) + '  低 ' + b.low.toFixed(dec), '#d1d4dc'] : null,
+          b.volume > 0 ? ['量 ' + Number(b.volume).toLocaleString(), '#d1d4dc'] : null
+        ].filter(Boolean);
+        ctx.font = '10px monospace';
+        const bw = Math.max(...rows.map(r => ctx.measureText(r[0]).width)) + 14, bh = rows.length * 13 + 8;
+        let tx = hx + 14; if (tx + bw > pl + gw) tx = hx - 14 - bw; tx = Math.max(pl + 2, tx);
+        const ty = pt + 4;
+        ctx.fillStyle = 'rgba(30,34,45,0.92)'; ctx.fillRect(tx, ty, bw, bh);
+        ctx.strokeStyle = '#363a45'; ctx.lineWidth = 1; ctx.strokeRect(tx + 0.5, ty + 0.5, bw - 1, bh - 1);
+        ctx.textAlign = 'left';
+        rows.forEach((r, i) => { ctx.fillStyle = r[1]; ctx.fillText(r[0], tx + 7, ty + 15 + i * 13); });
+      }
+
+      // 右側價格標籤 (成本 / VWAP)
+      const tag = (v, col) => {
+        const y = Math.max(pt + 6, Math.min(pt + gh - 6, yOf(v))), x = pl + gw + 2;
+        ctx.fillStyle = col; ctx.fillRect(x, y - 6, pr - 3, 12);
+        ctx.fillStyle = '#fff'; ctx.font = '9px monospace'; ctx.textAlign = 'left'; ctx.fillText(fmtInt(v), x + 2, y + 3);
+      };
+      if (miniShow.cost) tag(cost, '#c27a1a');
+      if (miniShow.vwap) tag(miniVw[n - 1], '#a21fb5');
+
+      // 滑鼠懸停資訊（右上）
+      ctx.font = '9px monospace'; ctx.textAlign = 'right'; ctx.fillStyle = '#d1d4dc';
+      const k = hv != null ? hv : n - 1;
+      ctx.fillText(`${miniFmtT(miniT[k])}  ${miniNum(closes[k])}` + (miniShow.vwap ? `  VWAP ${fmtInt(miniVw[k])}` : ''), pl + gw, pt - 5);
+
+      setChip('card-vwap', miniVw[n - 1]); setChip('card-cost', cost);
+    }
+
+    function initMiniChart() {
+      const canvas = document.getElementById('miniVixCanvas'); if (!canvas) return;
+      const box = canvas.parentNode; box.style.touchAction = 'none'; box.style.cursor = 'crosshair';
+      const bounds = () => { const n = miniT.length; return { f0: miniT[0], f1: miniT[n - 1] }; };
+      const gwOf = () => box.getBoundingClientRect().width - MINI_GEO.pl - MINI_GEO.pr;
+      const curView = () => { const { f0, f1 } = bounds(); return miniView ? { a: miniView.a, b: miniView.b } : { a: f0, b: f1 }; };
+      function setView(a, b) {
+        if (!miniT.length) return;
+        const { f0, f1 } = bounds(), full = (f1 - f0) || 1;
+        const minSpan = Math.min(full, Math.max(full / 80, 3 * 60000));
+        let span = Math.max(minSpan, Math.min(b - a, full));
+        if (span >= full * 0.999) { miniView = null; renderMini(); return; }
+        a = Math.max(f0, Math.min(a, f1 - span)); miniView = { a, b: a + span }; renderMini();
+      }
+      function zoomAt(x, factor) {
+        const v = curView(), span = v.b - v.a, gw = gwOf(); if (gw <= 0) return;
+        const ratio = Math.max(0, Math.min(1, (x - MINI_GEO.pl) / gw)), ft = v.a + span * ratio, ns = span * factor;
+        setView(ft - ns * ratio, ft - ns * ratio + ns);
+      }
+      const relX = e => (e.touches ? e.touches[0].clientX : e.clientX) - box.getBoundingClientRect().left;
+      // 通知主圖 K 線：游標目前對應的時間 (毫秒)，null = 離開
+      const emitHover = () => {
+        if (!window.__onMiniHover) return;
+        let ms = null;
+        const gw = gwOf();
+        if (miniHoverX != null && miniT.length && miniHoverX >= MINI_GEO.pl && miniHoverX <= MINI_GEO.pl + gw) {
+          const v = curView(); ms = miniT[miniNearest(v.a + (miniHoverX - MINI_GEO.pl) / gw * (v.b - v.a))];
+        }
+        try { window.__onMiniHover(ms); } catch (e) {}
+      };
+
+      box.addEventListener('wheel', e => { e.preventDefault(); zoomAt(relX(e), e.deltaY < 0 ? 0.8 : 1.25); }, { passive: false });
+      let drag = null;
+      box.addEventListener('mousedown', e => { if (e.target.closest('.mini-ctl')) return; drag = { x: e.clientX, v: curView() }; box.style.cursor = 'grabbing'; });
+      window.addEventListener('mouseup', () => { drag = null; box.style.cursor = 'crosshair'; });
+      window.addEventListener('mousemove', e => {
+        if (drag) { const dt = -(e.clientX - drag.x) / gwOf() * (drag.v.b - drag.v.a); setView(drag.v.a + dt, drag.v.b + dt); }
+      });
+      box.addEventListener('mousemove', e => { miniHoverX = relX(e); if (!drag) { renderMini(); emitHover(); } });
+      box.addEventListener('mouseleave', () => { miniHoverX = null; renderMini(); emitHover(); });
+      box.addEventListener('dblclick', () => { miniView = null; renderMini(); });
+
+      // 觸控：單指平移 / 雙指縮放
+      let tch = null;
+      const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+      box.addEventListener('touchstart', e => {
+        const r = box.getBoundingClientRect();
+        if (e.touches.length === 2) tch = { d: dist(e.touches), mid: (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, v: curView() };
+        else if (e.touches.length === 1) { tch = { x: e.touches[0].clientX, v: curView() }; miniHoverX = relX(e); emitHover(); }
+      }, { passive: true });
+      box.addEventListener('touchmove', e => {
+        if (!tch) return; e.preventDefault();
+        if (e.touches.length === 2 && tch.d) {
+          const f = tch.d / dist(e.touches), v = tch.v, span = v.b - v.a, ratio = Math.max(0, Math.min(1, (tch.mid - MINI_GEO.pl) / gwOf())), ft = v.a + span * ratio, ns = span * f;
+          setView(ft - ns * ratio, ft - ns * ratio + ns);
+        } else if (e.touches.length === 1 && tch.x != null) {
+          const dt = -(e.touches[0].clientX - tch.x) / gwOf() * (tch.v.b - tch.v.a); miniHoverX = relX(e); setView(tch.v.a + dt, tch.v.b + dt); emitHover();
+        }
+      }, { passive: false });
+      box.addEventListener('touchend', () => { tch = null; miniHoverX = null; renderMini(); emitHover(); });
+
+      // 按鈕：放大 / 縮小 / 重設
+      const mid = () => MINI_GEO.pl + gwOf() / 2;
+      document.getElementById('mini-zin').onclick = () => zoomAt(mid(), 0.7);
+      document.getElementById('mini-zout').onclick = () => zoomAt(mid(), 1.4);
+      document.getElementById('mini-zreset').onclick = () => { miniView = null; renderMini(); };
+
+      // VWAP / 成本線 開關
+      const syncChips = () => ['vwap', 'cost'].forEach(k => document.getElementById('chip-' + k).classList.toggle('off', !miniShow[k]));
+      ['vwap', 'cost'].forEach(k => document.getElementById('chip-' + k).onclick = () => {
+        miniShow[k] = !miniShow[k];
+        try { localStorage.setItem('miniShow', JSON.stringify(miniShow)); } catch (e) {}
+        syncChips(); renderMini();
+      });
+      syncChips();
+      new ResizeObserver(renderMini).observe(box);
+      setInterval(renderMini, 2000);                 // 報價更新 → 成本線跟著動
+      setInterval(fetchAndRenderMiniVix, 15000);     // 定時更新走勢資料（縮放狀態保留）
+    }
+    document.addEventListener('DOMContentLoaded', initMiniChart);
+
+    /* 左右面板寬度調整 (同時支援 Mouse 及 Touch) */
+    function initPanelResizer() {
+      const resizer = document.getElementById('panel-resizer');
+      const panelWrapper = document.getElementById('watchlist-wrapper');
+      if (!resizer) return;
+
+      let isResizing = false;
+      let startX = 0;
+      let startWidth = 410;
+
+      const onStart = (clientX) => {
+        isResizing = true;
+        startX = clientX;
+        startWidth = panelWrapper.offsetWidth;
+        document.body.style.cursor = 'ew-resize';
+      };
+
+      const onMove = (clientX) => {
+        if (!isResizing) return;
+        let newWidth = startWidth + (startX - clientX);
+        newWidth = Math.max(300, Math.min(newWidth, 680));
+        panelWrapper.style.width = `${newWidth}px`;
+        if (chart) {
+          const container = document.getElementById('chart-container');
+          chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+        }
+      };
+
+      const onEnd = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = '';
+      };
+
+      resizer.addEventListener('mousedown', (e) => {
+        onStart(e.clientX);
+        const handleMouseMove = (e) => onMove(e.clientX);
+        const handleMouseUp = () => {
+          onEnd();
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+        };
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+      });
+    }
+
+    /* 下方詳細面板上下高度拖曳調整 (支援 Touch + Mouse，阻止畫面被拖動) */
+    function initBottomResizer() {
+      const resizer = document.getElementById('bottom-resizer');
+      const detailCard = document.getElementById('symbol-detail-card');
+      const watchlistWrapper = document.getElementById('watchlist-wrapper');
+      if (!resizer || !detailCard) return;
+
+      let isResizing = false;
+      let startY = 0;
+      let startHeight = 380;
+
+      const handleStart = (clientY) => {
+        isResizing = true;
+        startY = clientY;
+        startHeight = detailCard.offsetHeight;
+        document.body.style.cursor = 'ns-resize';
+      };
+
+      const handleMove = (clientY) => {
+        if (!isResizing) return;
+        let newHeight = startHeight + (startY - clientY);
+        const maxHeight = detailCard.parentNode.clientHeight - 70;
+        newHeight = Math.max(280, Math.min(newHeight, maxHeight));
+        detailCard.style.height = `${newHeight}px`;
+        renderMini(); // 即時重繪 Canvas
+      };
+
+      const handleEnd = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = '';
+      };
+
+      // Mouse 事件
+      resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        handleStart(e.clientY);
+
+        const onMouseMove = (e) => handleMove(e.clientY);
+        const onMouseUp = () => {
+          handleEnd();
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      // Touch 觸控事件 (手機版專用，徹底阻擋穿透與頁面滾動)
+      resizer.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleStart(e.touches[0].clientY);
+        }
+      }, { passive: false });
+
+      resizer.addEventListener('touchmove', (e) => {
+        if (isResizing && e.touches.length === 1) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleMove(e.touches[0].clientY);
+        }
+      }, { passive: false });
+
+      resizer.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handleEnd();
+      }, { passive: false });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      initPanelResizer();
+      initBottomResizer();
+      renderWatchlist();
+      selectSymbol(selectedSymbolId);
+
+      fetchRealtimeQuotes();
+      setInterval(fetchRealtimeQuotes, 2000);
+
+      /* 三大 Tab 切換事件綁定 */
+      document.querySelectorAll('.group-tab-btn').forEach(tabBtn => {
+        tabBtn.addEventListener('click', (e) => {
+          document.querySelectorAll('.group-tab-btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          activeTabGroup = e.target.getAttribute('data-group');
+          renderWatchlist();
+        });
+      });
+
+      document.querySelectorAll('.ind-tab').forEach(btn => {
+        const indKey = btn.getAttribute('data-ind');
+        if (indicatorStates[indKey]) {
+          btn.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
+        }
+      });
+      updateIndicatorDisplay();
+
+      document.querySelectorAll('.legend-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const lineName = item.getAttribute('data-line');
+          if (lineName === 'filter12') {
+            lineVisibility.filter12 = !lineVisibility.filter12;
+          } else if (lineName === 'ema20' || lineName === 'ema60') {
+            lineVisibility[lineName] = !lineVisibility[lineName];
+          } else if (lineName && lineVisibility.hasOwnProperty(lineName)) {
+            lineVisibility[lineName] = !lineVisibility[lineName];
+          }
+          saveIndPrefs();
+          updateIndicatorDisplay();
+        });
+      });
+
+      const settingsBtn = document.getElementById('btn-settings-3');
+      const settingsDropdown = document.getElementById('settings-dropdown');
+
+      settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleWatchlist(false);
+        settingsDropdown.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', () => {
+        settingsDropdown.classList.add('hidden');
+      });
+
+      settingsDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      document.getElementById('col-change').addEventListener('change', (e) => {
+        columnSettings.change = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('col-percent').addEventListener('change', (e) => {
+        columnSettings.percent = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('col-volume').addEventListener('change', (e) => {
+        columnSettings.volume = e.target.checked;
+        renderWatchlist();
+      });
+      document.getElementById('vol-mode-select').addEventListener('change', (e) => {
+        columnSettings.volMode = e.target.value;
+        renderWatchlist();
+      });
+
+      /* 指標顯示偏好（數值 / 參數） */
+      const cbVal = document.getElementById('ind-show-val'), cbPar = document.getElementById('ind-show-par');
+      const cbName = document.getElementById('ind-show-name');
+      cbName.checked = uiPrefs.showNames; cbVal.checked = uiPrefs.showValues; cbPar.checked = uiPrefs.showParams; applyUiPrefs();
+      cbName.addEventListener('change', e => { uiPrefs.showNames = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
+      document.getElementById('ind-only-val').addEventListener('click', () => {
+        uiPrefs.showNames = false; uiPrefs.showParams = false; uiPrefs.showValues = true;
+        cbName.checked = false; cbPar.checked = false; cbVal.checked = true; applyUiPrefs(); saveIndPrefs();
+      });
+      cbVal.addEventListener('change', e => { uiPrefs.showValues = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
+      cbPar.addEventListener('change', e => { uiPrefs.showParams = e.target.checked; applyUiPrefs(); saveIndPrefs(); });
+
+      const toggleWatchlistBtn = document.getElementById('toggle-watchlist-btn');
+      const watchlistWrapper = document.getElementById('watchlist-wrapper');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const resizer = document.getElementById('panel-resizer');
+      const closeDrawerBtn = document.getElementById('btn-close-drawer');
+
+      function isMobileScreen() {
+        return window.innerWidth < 768;
+      }
+
+      const trendBtn = document.getElementById('btn-trend');
+      /* 手機：走勢圖按鈕點亮＝K 線 + 走勢圖；未點亮＝K 線佔滿整個畫面；清單按鈕＝顯示自選清單 */
+      let trendOn = true;
+      try { trendOn = localStorage.getItem('tvTrendOn') !== '0'; } catch (e) {}
+      function applyMobileView() {
+        const list = document.body.classList.contains('show-list');
+        document.body.classList.toggle('hide-trend', !trendOn);
+        toggleWatchlistBtn.classList.toggle('active', list);
+        trendBtn.classList.toggle('active', trendOn && !list);
+        if (list) settingsDropdown.classList.add('hidden');
+        setTimeout(() => { try { renderMini(); } catch (e) {} window.dispatchEvent(new Event('resize')); }, 60);
+      }
+      function toggleWatchlist(force) {
+        const on = typeof force === 'boolean' ? force : !document.body.classList.contains('show-list');
+        document.body.classList.toggle('show-list', on);
+        applyMobileView();
+      }
+      trendBtn.addEventListener('click', () => {
+        if (document.body.classList.contains('show-list')) { trendOn = true; document.body.classList.remove('show-list'); }
+        else trendOn = !trendOn;
+        try { localStorage.setItem('tvTrendOn', trendOn ? '1' : '0'); } catch (e) {}
+        applyMobileView();
+      });
+      applyMobileView();
+
+      const indBtn = document.getElementById('btn-ind-toggle');
+      function applyIndHidden(v) {
+        document.body.classList.toggle('ind-hidden', v);
+        indBtn.classList.toggle('active', v);
+        indBtn.querySelector('i').className = 'fa-solid ' + (v ? 'fa-eye-slash' : 'fa-eye') + ' text-sm';
+        try { localStorage.setItem('tvIndHidden', v ? '1' : '0'); } catch (e) {}
+      }
+      indBtn.addEventListener('click', () => applyIndHidden(!document.body.classList.contains('ind-hidden')));
+      try { applyIndHidden(localStorage.getItem('tvIndHidden') === '1'); } catch (e) {}
+
+      toggleWatchlistBtn.addEventListener('click', toggleWatchlist);
+      if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', toggleWatchlist);
+      if (backdrop) backdrop.addEventListener('click', toggleWatchlist);
+
+      window.addEventListener('symbolSelected', () => {
+        /* 手機：選商品後留在清單，點「走勢」才切換到走勢圖 */
+      });
+
+      document.querySelectorAll('.ind-tab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const indKey = e.target.getAttribute('data-ind');
+          indicatorStates[indKey] = !indicatorStates[indKey];
+          const grp = IND_TAB_LINES[indKey] || [];
+          if (grp.length === 1) lineVisibility[grp[0]] = indicatorStates[indKey];
+          else if (indicatorStates[indKey] && !grp.some(l => lineVisibility[l])) grp.forEach(l => lineVisibility[l] = true);   // 全部被關掉時，打開分頁就全部重新顯示
+          saveIndPrefs();
+
+          if (indicatorStates[indKey]) {
+            e.target.className = 'ind-tab text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
+          } else {
+            e.target.className = 'ind-tab text-tvTextMuted hover:text-white transition-colors';
+          }
+
+          updateIndicatorDisplay();
+        });
+      });
+
+      document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const targetRes = e.target.getAttribute('data-res');
+          document.querySelectorAll('.tf-btn').forEach(b => {
+            if (b.getAttribute('data-res') === targetRes) {
+              b.classList.add('bg-tvHover', 'text-white', 'font-medium', 'shadow');
+              b.classList.remove('text-tvTextMuted');
+            } else {
+              b.classList.remove('bg-tvHover', 'text-white', 'font-medium', 'shadow');
+              b.classList.add('text-tvTextMuted');
+            }
+          });
+
+          currentResolution = targetRes;
+          currentCandles = []; 
+          const allItems = getAllWatchlistItems();
+          const symbol = allItems.find(s => s.id === selectedSymbolId);
+          if (symbol) loadHistoryData(symbol.code, currentResolution);
+        });
+      });
+
+      const modal = document.getElementById('add-symbol-modal');
+      const openBtn = document.getElementById('btn-open-modal');
+      const closeBtn = document.getElementById('btn-close-modal');
+      const cancelBtn = document.getElementById('btn-cancel-modal');
+      const form = document.getElementById('add-symbol-form');
+
+      const closeModal = () => modal.classList.add('hidden');
+      openBtn.onclick = () => modal.classList.remove('hidden');
+      closeBtn.onclick = closeModal;
+      cancelBtn.onclick = closeModal;
+
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const groupTarget = document.getElementById('input-group').value;
+        const name = document.getElementById('input-name').value;
+        const code = document.getElementById('input-code').value.toUpperCase();
+        if (name && code) {
+          const newSymbol = { id: Date.now().toString(), name, code, price: 0, refPrice: 0, volume: 0, high: 0, low: 0, exch: 'CUSTOM' };
+          const targetGroup = watchlistGroups.find(g => g.groupName === groupTarget);
+          if (targetGroup) targetGroup.items.push(newSymbol);
+
+          activeTabGroup = groupTarget;
+          document.querySelectorAll('.group-tab-btn').forEach(b => {
+            if (b.getAttribute('data-group') === groupTarget) b.classList.add('active');
+            else b.classList.remove('active');
+          });
+
+          renderWatchlist();
+          selectSymbol(newSymbol.id);
+          form.reset();
+          closeModal();
+        }
+      };
+    });
+
+    const originalSelectSymbol = selectSymbol;
+    selectSymbol = function(id) {
+      originalSelectSymbol(id);
+      window.dispatchEvent(new Event('symbolSelected'));
+    }
+  </script>
+  <script>
+/* ===================== TradingView 風格擴充 =====================
+ * 1) 圖表類型 (K線 / 美國線 / 折線 / 面積)
+ * 2) 左側繪圖工具列 (趨勢線 / 水平線 / 垂直線 / 矩形 / 斐波那契 / 磁吸 / 刪除)
+ * 3) 十字線 OHLC 資訊列、浮水印、% / log / 自動 價格軸
+ * 4) 截圖、全螢幕
+ * 繪圖資料以「商品+週期」為 key 存在 localStorage
+ */
+(function () {
+  const $ = id => document.getElementById(id);
+  const UP = '#f23645', DOWN = '#089981';          // 台股慣例：紅漲綠跌
+  const alt = {};
+  let chartType = 'candle', scaleMode = 0, hovering = false;
+
+  /* 第一次歷史資料載入完成後，自動把所有已開啟的指標更新一次 */
+  const _loadHistory = loadHistoryData; let firstRun = false;
+  loadHistoryData = async function () {
+    const r = await _loadHistory.apply(this, arguments);
+    if (!firstRun && currentCandles.length) { firstRun = true; window.runAllIndicators(); }
+    return r;
+  };
+
+  const _initChart = initChart;
+  initChart = function () { _initChart(); try { initTV(); } catch (e) { console.error('TV UI init failed', e); } };
+
+  const S = () => (chartType === 'candle' ? candlestickSeries : alt[chartType]);
+  const toLine = c => ({ time: c.time, value: c.close });
+  const fmt = v => (v == null || isNaN(v)) ? '--' : Number(v).toLocaleString('en-US', { minimumFractionDigits: curDec(), maximumFractionDigits: curDec() });
+
+  function initTV() {
+    const ts = chart.timeScale();
+    const box = $('chart-container');
+
+    /* ---------- 外觀 ---------- */
+    chart.applyOptions({
+      layout: { textColor: '#b2b5be', fontSize: 12, fontFamily: "-apple-system,'Trebuchet MS',Roboto,Ubuntu,sans-serif" },
+      grid: { vertLines: { color: 'rgba(42,46,57,.5)' }, horzLines: { color: 'rgba(42,46,57,.5)' } },
+      crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal,
+        vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
+        horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' }
+      },
+      watermark: { visible: true, text: '', fontSize: 54, horzAlign: 'center', vertAlign: 'center', color: 'rgba(120,123,134,0.10)' },
+      timeScale: { rightOffset: 8, barSpacing: 8 }
+    });
+
+    /* ---------- 其他圖表類型：同步餵資料 ---------- */
+    alt.bar  = chart.addBarSeries({ upColor: UP, downColor: DOWN, visible: false });
+    alt.line = chart.addLineSeries({ color: '#2962ff', lineWidth: 2, visible: false });
+    alt.area = chart.addAreaSeries({ lineColor: '#2962ff', topColor: 'rgba(41,98,255,.35)', bottomColor: 'rgba(41,98,255,0)', lineWidth: 2, visible: false });
+    window.__altSeries = alt;
+    const sd = candlestickSeries.setData.bind(candlestickSeries);
+    const su = candlestickSeries.update.bind(candlestickSeries);
+    candlestickSeries.setData = d => { sd(d); alt.bar.setData(d); const l = d.map(toLine); alt.line.setData(l); alt.area.setData(l); };
+    candlestickSeries.update = b => { su(b); alt.bar.update(b); const l = toLine(b); alt.line.update(l); alt.area.update(l); };
+
+    const TYPES = { candle: ['fa-chart-simple', 'K線'], bar: ['fa-bars-progress', '美國線'], line: ['fa-chart-line', '折線'], area: ['fa-chart-area', '面積'] };
+    function setType(t) {
+      chartType = t;
+      candlestickSeries.applyOptions({ visible: t === 'candle' });
+      ['bar', 'line', 'area'].forEach(k => alt[k].applyOptions({ visible: t === k }));
+      $('ct-icon').className = 'fa-solid ' + TYPES[t][0] + ' text-sm';
+      document.querySelectorAll('.ct-item').forEach(el => el.classList.toggle('text-white', el.dataset.type === t));
+      $('ct-menu').classList.add('hidden');
+    }
+    $('ct-btn').onclick = e => { e.stopPropagation(); $('ct-menu').classList.toggle('hidden'); };
+    document.addEventListener('click', () => $('ct-menu').classList.add('hidden'));
+    document.querySelectorAll('.ct-item').forEach(el => el.onclick = () => setType(el.dataset.type));
+
+    /* ---------- 價格軸模式 ---------- */
+    function setScale(m) {
+      scaleMode = (scaleMode === m) ? 0 : m;
+      chart.priceScale('right').applyOptions({ mode: scaleMode });
+      $('sc-pct').classList.toggle('on', scaleMode === 2);
+      $('sc-log').classList.toggle('on', scaleMode === 1);
+    }
+    $('sc-pct').onclick = () => setScale(2);
+    $('sc-log').onclick = () => setScale(1);
+    $('sc-auto').onclick = () => { chart.priceScale('right').applyOptions({ autoScale: true }); ts.scrollToRealTime(); };
+
+    /* ---------- 截圖 / 全螢幕 ---------- */
+    $('btn-shot').onclick = () => {
+      try {
+        const c = chart.takeScreenshot(), x = c.getContext('2d');
+        x.drawImage(cv, 0, 0, c.width, c.height);
+        const a = document.createElement('a');
+        a.download = 'chart-' + curKey().replace('|', '-') + '.png';
+        a.href = c.toDataURL('image/png'); a.click();
+      } catch (e) { alert('截圖失敗：' + e.message); }
+    };
+    $('btn-full').onclick = () => {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+    };
+
+
+    /* ---------- VWAP ---------- */
+    const vwapSeries = chart.addLineSeries({ color: '#e040fb', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, title: 'VWAP', priceFormat: INT_FMT });
+    let vwapOn = !!lineVisibility.vwap, vwapMap = new Map();
+    const sig = {}, prev = {};
+    /* 交易日分組：夜盤(15:00起)與隔日日盤同一組；日K不重置 */
+    const sess = t => Math.floor((t - 7 * 3600) / 86400);
+
+    function calcVwap() {
+      const out = []; let cv = 0, cpv = 0, key = null;
+      for (const c of currentCandles) {
+        const k = currentResolution === '1D' ? 'all' : sess(c.time);
+        if (k !== key) { key = k; cv = 0; cpv = 0; }
+        const tp = (c.high + c.low + c.close) / 3, v = c.volume > 0 ? c.volume : 0;
+        cv += v; cpv += tp * v;
+        out.push({ time: c.time, value: cv > 0 ? cpv / cv : tp });
+      }
+      return out;
+    }
+    function feed(series, key, arr) {
+      const p = prev[key], n = arr.length;
+      if (n && p && p.f === arr[0].time) {
+        if (p.n === n && p.t === arr[n - 1].time) { series.update(arr[n - 1]); }
+        else if (p.n + 1 === n && p.t === arr[n - 2].time) { series.update(arr[n - 1]); }
+        else series.setData(arr);
+      } else series.setData(arr);
+      prev[key] = n ? { n, t: arr[n - 1].time, f: arr[0].time } : null;
+    }
+    function refreshOverlays() {
+      try {
+        zoneRefresh();
+        if (!currentCandles.length) return;
+        const last = currentCandles[currentCandles.length - 1];
+        const base = currentCandles.length + '|' + last.time + '|' + last.close + '|' + last.volume + '|' + curKey();
+        if (vwapOn) {
+          if (sig.v !== base) { const a = calcVwap(); vwapMap = new Map(a.map(p => [p.time, p.value])); feed(vwapSeries, 'v', a); sig.v = base; }
+        } else if (sig.v) { vwapSeries.setData([]); vwapMap = new Map(); sig.v = ''; prev.v = null; }
+      } catch (err) { console.error('overlay refresh', err); }
+    }
+    const TAB_ON = 'text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
+    const TAB_OFF = 'text-tvTextMuted hover:text-white transition-colors py-2 px-1';
+    const bindTab = (id, get, set) => {
+      const b = $(id); b.className = get() ? TAB_ON : TAB_OFF;
+      b.onclick = () => { set(!get()); b.className = get() ? TAB_ON : TAB_OFF; refreshOverlays(); };
+    };
+    bindTab('tab-vwap', () => vwapOn, v => { vwapOn = v; lineVisibility.vwap = v; saveIndPrefs(); });
+    /* ---------- 多空必來點（依商品交易時段統計，疊在主圖） ----------
+       預期振幅 = 長期線性加權平均×0.5 + 短期平均×0.3 + 昨日振幅×0.2
+       多空線 = 前一交易日收盤價（或今開）；多/空方目標 = ±0.25×預期振幅；區間頂/底 = ±0.5×預期振幅
+       ※ 每個「交易日時段」獨立統計高低點；夜盤歸入隔一個交易日，週末自動順延到週一
+       ※ 統計資料固定用 15 分K 計算，圖表切換任何週期、任何商品，同一交易日的點位都一致
+       ※ 商品時段可在 indicators/trend-wave.js 的 zoneSessions 修改 (closeAt: 'session' 以整個時段收盤為前收；'day' 以日盤收盤為前收) */
+    const ZONE_DEF = { tz: 'Asia/Taipei', start: 525, evening: false, weekend: false, day: null, closeAt: 'session', label: '日盤' };
+    const ZONE_SESS = {
+      'TX-1':    { tz: 'Asia/Taipei', start: 900, evening: true, day: [525, 825], label: '全日盤 15:00~13:45' },
+      'TXAM-1':  { tz: 'Asia/Taipei', start: 525, evening: false, label: '日盤 08:45~13:45' },
+      'TWN-1':   { tz: 'Asia/Taipei', start: 525, evening: false, day: [525, 825], label: '全日盤 08:45~次日05:15' },
+      'NQ-1':    { tz: 'America/New_York', start: 1080, evening: true, label: 'CME 美東18:00~17:00' },
+      'GC-1':    { tz: 'America/New_York', start: 1080, evening: true, label: 'COMEX 美東18:00~17:00' },
+      'NK-1':    { tz: 'Asia/Tokyo', start: 990, evening: true, day: [525, 945], label: '全日盤 夜盤+日盤' },
+      'BTCUSDT': { tz: 'UTC', start: 0, evening: false, weekend: true, label: '24H（UTC 00:00 換日）' }
+    };
+    if (window.TV_SETTINGS && window.TV_SETTINGS.zoneSessions) Object.assign(ZONE_SESS, window.TV_SETTINGS.zoneSessions);
+    const ZCFG = Object.assign({ sessMode: 'auto', baseMode: 'prev', lookback: 20, shortN: 5, wLong: 0.5, wShort: 0.3, wLast: 0.2, linear: true, kTarget: 0.25, kRange: 0.5 }, (window.TV_SETTINGS && window.TV_SETTINGS.zone) || {});
+    const ZLS = 'tvZoneCfg_v1';
+    try { Object.assign(ZCFG, JSON.parse(localStorage.getItem(ZLS) || '{}')); } catch (e) {}
+    const ZN = ['區間頂', '多方目標', '多空線', '空方目標', '區間底'];
+    const ZC = ['#f23645', 'rgba(242,54,69,.65)', '#00B0FF', 'rgba(8,153,129,.65)', '#089981'];
+    const ZCS = ['#f23645', '#ff8a95', '#00B0FF', '#3fcfb4', '#089981'];
+    const ZW = [2, 1, 2, 1, 2];
+    const hhmm = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+
+    function zSess(code) { return Object.assign({}, ZONE_DEF, ZONE_SESS[String(code).toUpperCase()] || {}); }
+    const zOffCache = {}, zFmt = {};
+    function zOffMin(tz, t) {
+      if (tz === 'Asia/Taipei') return 480;
+      if (tz === 'Asia/Tokyo') return 540;
+      if (tz === 'UTC') return 0;
+      const ck = tz + '|' + Math.floor(t / 3600);
+      if (zOffCache[ck] !== undefined) return zOffCache[ck];
+      const f = zFmt[tz] || (zFmt[tz] = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }));
+      const p = {}; f.formatToParts(new Date(t * 1000)).forEach(x => { p[x.type] = +x.value; });
+      return (zOffCache[ck] = Math.round(Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute) / 60000 - Math.floor(t / 60)));
+    }
+    function zKey(t, S) {
+      const lm = Math.floor(t / 60) + zOffMin(S.tz, t);
+      const m = ((lm % 1440) + 1440) % 1440;
+      let d = Math.floor((lm - S.start) / 1440) + (S.evening ? 1 : 0);
+      if (!S.weekend) { const wd = (d + 4) % 7; if (wd === 6) d += 2; else if (wd === 0) d += 1; }
+      return { d, m };
+    }
+    function zExp(a) {
+      const L = Math.min(ZCFG.lookback, a.length), N = Math.min(ZCFG.shortN, a.length);
+      if (!L) return null;
+      let num = 0, den = 0, s = 0;
+      for (let i = 0; i < L; i++) { const w = ZCFG.linear ? (L - i) : 1; num += w * a[a.length - 1 - i]; den += w; }
+      for (let i = 0; i < N; i++) s += a[a.length - 1 - i];
+      const ws = ZCFG.wLong + ZCFG.wShort + ZCFG.wLast, lv = num / den;
+      return ws > 0 ? (ZCFG.wLong * lv + ZCFG.wShort * (s / N) + ZCFG.wLast * a[a.length - 1]) / ws : lv;
+    }
+    const zLevels = (b, R, rnd) => [b + ZCFG.kRange * R, b + ZCFG.kTarget * R, b, b - ZCFG.kTarget * R, b - ZCFG.kRange * R].map(rnd);
+    function zBuild(bars, S, dayMode) {
+      const out = []; let cur = null;
+      for (const b of bars) {
+        const z = zKey(b.time, S), inDay = !!S.day && z.m >= S.day[0] && z.m <= S.day[1];
+        if (dayMode && !inDay) continue;
+        if (!cur || cur.d !== z.d) { cur = { d: z.d, t0: b.time, open: b.open, high: b.high, low: b.low, close: b.close, dayClose: null }; out.push(cur); }
+        else { if (b.high > cur.high) cur.high = b.high; if (b.low < cur.low) cur.low = b.low; cur.close = b.close; }
+        if (inDay) cur.dayClose = b.close;
+      }
+      return out;
+    }
+    /* 統計資料來源：固定抓 15 分K（不受圖表週期、圖表載入天數影響），分段抓取避免單次資料過多 */
+    const zBars = { code: '', from: 0, at: 0, ver: 0, bars: [], loading: null, tok: 0, failAt: 0 };
+    async function zFetchChunk(code, a, b) {
+      const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(code)}&resolution=15&from=${Math.floor(a)}&to=${Math.floor(b)}&ws=true&metaData=true`;
+      const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json(), arr = Array.isArray(j) ? j : (j.bars || []);
+      return arr.map(x => { const raw = x.time || new Date(x.datetime).getTime(); return { time: raw > 1e10 ? Math.floor(raw / 1000) : raw, open: x.open, high: x.high, low: x.low, close: x.close }; });
+    }
+    async function zFetchBars(code, from, to) {
+      const CH = 30 * 86400, jobs = [];
+      for (let a = from; a < to; a += CH) jobs.push(zFetchChunk(code, a, Math.min(a + CH, to)));
+      const res = await Promise.allSettled(jobs);
+      if (res[res.length - 1].status !== 'fulfilled') throw res[res.length - 1].reason;   // 最新一段失敗就視為失敗
+      const m = new Map();
+      res.forEach(p => { if (p.status === 'fulfilled') p.value.forEach(b => { if (b.time && b.high != null && b.low != null) m.set(b.time, b); }); });
+      return [...m.values()].sort((x, y) => x.time - y.time);
+    }
+    /* 需要多早的資料：長期統計天數 × 1.5 (含週末假日) + 緩衝；日K圖只需近期 */
+    function zNeedFrom(daily, firstT) {
+      const warm = (Math.max(+ZCFG.lookback || 20, +ZCFG.shortN || 5) * 1.5 + 6) * 86400, now = Math.floor(Date.now() / 1000);
+      return Math.floor((daily ? now : Math.min(firstT, now)) - warm);
+    }
+    function zEnsureBars(code, needFrom, force) {
+      const now = Date.now();
+      if (zBars.loading && zBars.loading.code === code && zBars.loading.from <= needFrom) return;
+      if (now - zBars.failAt < 10000) return;
+      const have = zBars.code === code && zBars.from <= needFrom;
+      if (have && now - zBars.at < (force ? 15000 : 300000)) return;
+      zLoad(code, have ? Math.min(zBars.from, needFrom) : needFrom);
+    }
+    async function zLoad(code, from) {
+      const tok = ++zBars.tok; zBars.loading = { code, from };
+      try {
+        const bars = await zFetchBars(code, from, Math.floor(Date.now() / 1000));
+        if (tok !== zBars.tok) return;
+        if (bars.length) { Object.assign(zBars, { code, from, at: Date.now(), bars }); zBars.ver++; zoneSig = ''; } else zBars.failAt = Date.now();
+      } catch (e) { if (tok === zBars.tok) zBars.failAt = Date.now(); console.warn('必來點統計資料載入失敗', code, e); }
+      if (tok === zBars.tok) zBars.loading = null;
+    }
+    function zStat(ranges) {
+      const avg = k => { const s = Math.min(k, ranges.length); if (!s) return null; let t = 0; for (let i = 0; i < s; i++) t += ranges[ranges.length - 1 - i]; return t / s; };
+      return { R: ranges.length ? zExp(ranges) : null, a: [1, 5, 10, 20].map(avg) };
+    }
+    /* 逐交易日時段：預期振幅 = 之前「已完成」各時段(高-低)的加權平均；多空線 = 前一時段收盤(或本時段開盤) */
+    function calcZone() {
+      const cs = currentCandles, n = cs.length, code = curCode();
+      if (!n || zBars.code !== code || !zBars.bars.length) return null;
+      const S = zSess(code), px = cs[n - 1].close;
+      const tk = tickOf(code, px) > 0 ? tickOf(code, px) : 1, dec = decOf(code, px);
+      const rnd = v => +(Math.round(v / tk) * tk).toFixed(dec);
+      const daily = currentResolution === '1D' || isNaN(Number(currentResolution));
+      const dayMode = ZCFG.sessMode === 'day' && !!S.day;
+      const ss = zBuild(zBars.bars, S, dayMode);
+      if (ss.length < 3) return null;                         // 第 1 個時段可能資料不完整，不納入統計
+      const closeOf = s => (S.closeAt === 'day' && s.dayClose != null) ? s.dayClose : s.close;
+      const lvMap = new Map(), ranges = [];
+      for (let i = 1; i < ss.length; i++) {
+        if (i >= 2) { ranges.push(ss[i - 1].high - ss[i - 1].low); if (ranges.length > 60) ranges.shift(); }
+        if (!ranges.length) continue;
+        const R = zExp(ranges), b = ZCFG.baseMode === 'open' ? ss[i].open : closeOf(ss[i - 1]);
+        lvMap.set(ss[i].d, { lv: zLevels(b, R, rnd), R });
+      }
+      const last = ss[ss.length - 1];
+      if (daily) {
+        const dNow = zKey(Date.now() / 1000, S).d;
+        let e = lvMap.get(dNow), st = zStat(ranges);
+        if (!e && dNow > last.d) {                             // 下一個交易日尚無資料 → 以最新完成時段的收盤推算
+          const rr = ranges.concat([last.high - last.low]); st = zStat(rr);
+          e = { lv: zLevels(closeOf(last), st.R, rnd), R: st.R };
+        }
+        if (!e) e = lvMap.get(last.d);
+        return e ? { daily: true, S, R: e.R, lv: e.lv, stat: st } : null;
+      }
+      const resMin = Number(currentResolution) || 1;
+      const out = [[], [], [], [], []], map = new Map(); let missing = false;
+      const blank = t => { for (let j = 0; j < 5; j++) out[j].push({ time: t }); };
+      for (let i = 0; i < n; i++) {
+        const c = cs[i], z = zKey(c.time, S);
+        if (dayMode && (z.m + resMin <= S.day[0] || z.m > S.day[1])) { blank(c.time); continue; }
+        const e = lvMap.get(z.d);
+        if (!e) { blank(c.time); if (i === n - 1 && z.d > last.d) missing = true; continue; }
+        map.set(c.time, e.lv);
+        for (let j = 0; j < 5; j++) out[j].push({ time: c.time, value: e.lv[j] });
+      }
+      return { daily: false, S, R: (lvMap.get(zKey(cs[n - 1].time, S).d) || {}).R, out, map, dayMode, missing, stat: zStat(ranges) };
+    }
+
+    
+const zSer = ZN.map((nm, i) => chart.addLineSeries({ color: ZC[i], lineWidth: ZW[i], priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false, title: nm, priceFormat: INT_FMT }));
+    let zoneOn = !!lineVisibility.zone, zoneRes = null, zoneSig = '', zLines = [], zPxKey = '', zInfoKey = '';
+    function clearZLines() { zLines.forEach(([s, l]) => { try { s.removePriceLine(l); } catch (e) {} }); zLines = []; }
+    function zClear() { zSer.forEach(s => s.setData([])); clearZLines(); zoneRes = null; zoneSig = ''; for (let i = 0; i < 5; i++) prev['z' + i] = null; }
+    function zUpdateInfo(r) {
+      const code = curCode(), S = zSess(code), R = r && r.R != null ? r.R : null;
+      const k = code + '|' + ZCFG.sessMode + '|' + (R == null ? '' : Math.round(R * 100)); if (k === zInfoKey) return; zInfoKey = k;
+      const eff = (ZCFG.sessMode === 'day' && S.day) ? '日盤 ' + hhmm(S.day[0]) + '~' + hhmm(S.day[1]) : S.label;
+      const f = v => v == null ? '-' : fmtPx(v, code);
+      const a = $('zone-sess-info'); if (a) a.textContent = eff + (R != null ? ' ｜預期振幅 ' + f(R) : '');
+      const b = $('zone-sess'); if (b) b.disabled = !S.day;
+      const t = $('tab-zone'); if (t) t.title = '多空必來點｜' + eff + (R != null ? '｜預期振幅 ' + f(R) + '｜平均振幅 近1日 ' + f(r.stat.a[0]) + ' / 近5日 ' + f(r.stat.a[1]) + ' / 近10日 ' + f(r.stat.a[2]) + ' / 近20日 ' + f(r.stat.a[3]) : '');
+    }
+    function zoneRefresh() {
+      zUpdateInfo(zoneRes);
+      if (!zoneOn || !currentCandles.length) { if (zoneSig || zoneRes) zClear(); return; }
+      const cs = currentCandles, f = cs[0], l = cs[cs.length - 1], c = curCode();
+      const daily = currentResolution === '1D' || isNaN(Number(currentResolution));
+      zEnsureBars(c, zNeedFrom(daily, f.time), false);
+      if (zBars.code !== c || !zBars.bars.length) { if (zoneSig || zoneRes) zClear(); return; }   // 統計資料載入中
+      const sg = [cs.length, f.time, l.time, curKey(), JSON.stringify(ZCFG), zBars.ver, daily ? zKey(Date.now() / 1000, zSess(c)).d : ''].join('|');
+      if (sg === zoneSig) return;
+      const r = calcZone(); zoneSig = sg; zoneRes = r; clearZLines();
+      if (r && r.missing) zEnsureBars(c, zNeedFrom(daily, f.time), true);   // 新時段開始、統計資料尚未含新時段 → 重抓
+      const p = priceOf(c), t = tickOf(c, p), pk = c + '|' + t;
+      if (pk !== zPxKey) { zPxKey = pk; const pf = { type: 'price', precision: decOf(c, p), minMove: t }; zSer.forEach(s => s.applyOptions({ priceFormat: pf })); }
+      zUpdateInfo(r);
+      if (!r || r.daily) {
+        zSer.forEach(s => s.setData([])); for (let i = 0; i < 5; i++) prev['z' + i] = null;
+        if (r) zSer.forEach((s, i) => zLines.push([s, s.createPriceLine({ price: r.lv[i], color: ZC[i], lineWidth: ZW[i], lineStyle: (i === 1 || i === 3) ? 2 : 0, axisLabelVisible: true, title: ZN[i] })]));
+        return;
+      }
+      zSer.forEach((s, i) => feed(s, 'z' + i, r.out[i]));
+    }
+    
+function zoneLegend(c) {
+      if (!zoneRes) return '';
+      const lv = zoneRes.daily ? zoneRes.lv : zoneRes.map.get(c.time); if (!lv) return '';
+      return ZN.map((nm, i) => `<span style="color:${ZCS[i]}"><span class="lg-name">${nm}</span><span class="lg-val"> ${fmtPx(lv[i], curCode())}</span></span>`).join('');
+    }
+    /* 設定選單：統計時段 / 多空線基準 / 長期、短期統計天數 */
+    [['zone-sess', 'sessMode'], ['zone-base', 'baseMode'], ['zone-long', 'lookback', 1], ['zone-short', 'shortN', 1]].forEach(([id, key, num]) => {
+      const el = $(id); if (!el) return; el.value = ZCFG[key];
+      el.onchange = () => {
+        let v = el.value;
+        if (num) { v = Math.max(+el.min, Math.min(+el.max, parseInt(v, 10) || ZCFG[key])); el.value = v; }
+        ZCFG[key] = v; try { localStorage.setItem(ZLS, JSON.stringify(ZCFG)); } catch (e) {}
+        zoneRefresh();
+      };
+    });
+    bindTab('tab-zone', () => zoneOn, v => { zoneOn = v; lineVisibility.zone = v; saveIndPrefs(); });
+    window.__indRefreshers.push(refreshOverlays);
+    setInterval(refreshOverlays, 500);
+
+    /* ---------- OHLC 資訊列 ---------- */
+    function showOhlc(c) {
+      const el = $('ohlc-bar');
+      if (!c) { el.innerHTML = ''; return; }
+      const i = currentCandles.indexOf(c), prev = i > 0 ? currentCandles[i - 1].close : c.open;
+      const chg = c.close - prev, pct = prev ? chg / prev * 100 : 0;
+      const col = chg >= 0 ? UP : DOWN, s = chg >= 0 ? '+' : '';
+      el.innerHTML =
+        `<span class="text-tvTextMuted">開</span><span style="color:${col}">${fmt(c.open)}</span>` +
+        `<span class="text-tvTextMuted">高</span><span style="color:${col}">${fmt(c.high)}</span>` +
+        `<span class="text-tvTextMuted">低</span><span style="color:${col}">${fmt(c.low)}</span>` +
+        `<span class="text-tvTextMuted">收</span><span style="color:${col}">${fmt(c.close)}</span>` +
+        `<span style="color:${col}">${s}${fmt(chg)} (${s}${pct.toFixed(2)}%)</span>` +
+        (c.volume != null ? `<span class="text-tvTextMuted">量</span><span style="color:${col}">${Number(c.volume).toLocaleString()}</span>` : '') +
+        (vwapOn && vwapMap.has(c.time) ? `<span style="color:#e040fb"><span class="lg-name">VWAP</span><span class="lg-val"> ${fmtInt(vwapMap.get(c.time))}</span></span>` : '') +
+        (zoneOn ? zoneLegend(c) : '');
+    }
+    let fromMini = false;
+    chart.subscribeCrosshairMove(p => {
+      const has = !!(p && p.time);
+      if (!fromMini && window.__miniSync) window.__miniSync.set(has ? p.time * 1000 : null);
+      if (!has) { hovering = false; return; }
+      hovering = true;
+      showOhlc(currentCandles.find(c => c.time === p.time));
+    });
+    window.__onMiniHover = ms => {
+      fromMini = true;
+      try {
+        let c = null;
+        if (ms != null && currentCandles.length) {
+          const t = ms / 1000; let lo = 0, hi = currentCandles.length - 1;
+          while (lo < hi) { const m = (lo + hi + 1) >> 1; if (currentCandles[m].time <= t) lo = m; else hi = m - 1; }
+          if (currentCandles[lo].time <= t) c = currentCandles[lo];
+        }
+        if (c) chart.setCrosshairPosition(c.close, c.time, S()); else chart.clearCrosshairPosition();
+      } catch (e) {}
+      fromMini = false;
+    };
+    setInterval(() => { if (!hovering && currentCandles.length) showOhlc(currentCandles[currentCandles.length - 1]); }, 500);
+
+
+    /* ---------- 副圖共用：時間軸只顯示在最下方的圖 ---------- */
+    const paneState = { vol: false, mcdx: false };
+    const extraPanes = [];
+    let vchartRef = null, mchartRef = null;
+    function attachPaneResizer(pane, key) {
+      if (!pane || pane.querySelector(':scope > .pane-resizer')) return;
+      const h = document.createElement('div');
+      h.className = 'pane-resizer'; h.title = '上下拖曳調整副圖高度（雙擊還原）';
+      pane.insertBefore(h, pane.firstChild);
+      const LS = 'tvPaneH_' + key, defH = pane.style.height;
+      try { const v = parseInt(localStorage.getItem(LS), 10); if (v >= 40) pane.style.height = v + 'px'; } catch (e) {}
+      let sy = 0, sh = 0, drag = false;
+      const limits = () => { const par = pane.parentElement; return [parseInt(pane.style.minHeight, 10) || 56, Math.max(80, (par ? par.clientHeight : 600) * 0.6)]; };
+      h.addEventListener('pointerdown', e => { drag = true; sy = e.clientY; sh = pane.offsetHeight; h.classList.add('dragging'); try { h.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); });
+      h.addEventListener('pointermove', e => {
+        if (!drag) return;
+        const [mn, mx] = limits();
+        pane.style.height = Math.round(Math.max(mn, Math.min(mx, sh + (sy - e.clientY)))) + 'px';
+      });
+      const end = () => { if (!drag) return; drag = false; h.classList.remove('dragging'); try { localStorage.setItem(LS, parseInt(pane.style.height, 10)); } catch (e) {} };
+      h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
+      h.addEventListener('dblclick', () => { pane.style.height = defH; try { localStorage.removeItem(LS); } catch (e) {} });
+    }
+    attachPaneResizer($('vol-pane'), 'vol');
+    attachPaneResizer($('mcdx-pane'), 'mcdx');
+    function layoutAxes() {
+      const order = [['vol', paneState.vol, vchartRef], ['mcdx', paneState.mcdx, mchartRef], ...extraPanes.map(p => [p.id, p.on, p.chart])];
+      const lastOn = order.filter(o => o[1]).pop();
+      chart.applyOptions({ timeScale: { visible: !lastOn } });
+      order.forEach(([id, , c]) => c && c.applyOptions({ timeScale: { visible: !!lastOn && lastOn[0] === id } }));
+    }
+
+    /* ================= 成交量副圖 (獨立 pane，與主圖時間軸/十字線同步) ================= */
+    (function initVolumePane() {
+      const pane = $('vol-pane'), vbox = $('vol-container');
+      let lock = false;
+      const base = {
+        layout: { background: { type: 'solid', color: '#131722' }, textColor: '#b2b5be', fontSize: 11 },
+        grid: { vertLines: { color: 'rgba(42,46,57,.5)' }, horzLines: { color: 'rgba(42,46,57,.5)' } },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+          vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
+          horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' }
+        },
+        rightPriceScale: { borderColor: '#2a2e39', minimumWidth: 72, scaleMargins: { top: 0.12, bottom: 0 } },
+        timeScale: {
+          borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 8, barSpacing: 8,
+          tickMarkFormatter: t => {
+            const d = new Date(t * 1000);
+            if (currentResolution === '1D') return `${d.getMonth() + 1}/${d.getDate()}`;
+            return d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
+          }
+        },
+        localization: { locale: 'zh-TW' },
+        handleScroll: false, handleScale: false
+      };
+      const vchart = LightweightCharts.createChart(vbox, base);
+      const vseries = vchart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceLineVisible: false });
+      chart.applyOptions({ rightPriceScale: { minimumWidth: 72 } });
+
+      volumeSeries = {
+        setData(d) { vseries.setData(d); show(d.length > 0); syncRange(); },
+        update(d) { vseries.update(d); },
+        applyOptions() {}
+      };
+      function syncRange() {
+        const r = chart.timeScale().getVisibleLogicalRange();
+        if (r) { lock = true; try { vchart.timeScale().setVisibleLogicalRange(r); } catch (e) {} lock = false; }
+      }
+      function show(on) {
+        if (pane.classList.contains('hidden') !== !on) {
+          pane.classList.toggle('hidden', !on);
+          paneState.vol = on; vchartRef = vchart; layoutAxes();
+          requestAnimationFrame(() => {
+            const r = chart.timeScale().getVisibleLogicalRange();
+            if (r) vchart.timeScale().setVisibleLogicalRange(r);
+          });
+        }
+      }
+      new ResizeObserver(() => {
+        const w = vbox.clientWidth, h = vbox.clientHeight;
+        if (w > 0 && h > 0) { vchart.applyOptions({ width: w, height: h }); syncRange(); }
+      }).observe(vbox);
+
+      const link = (a, b) => a.timeScale().subscribeVisibleLogicalRangeChange(r => {
+        if (!r || lock) return; lock = true;
+        try { b.timeScale().setVisibleLogicalRange(r); } catch (e) {}
+        lock = false;
+      });
+      link(chart, vchart);
+
+      let xl = false;
+      chart.subscribeCrosshairMove(p => {
+        if (xl) return; xl = true;
+        try {
+          if (p && p.time) { const c = currentCandles.find(k => k.time === p.time); if (c) vchart.setCrosshairPosition(c.volume || 0, p.time, vseries); }
+          else vchart.clearCrosshairPosition();
+        } catch (e) {}
+        xl = false;
+      });
+      vchart.subscribeCrosshairMove(p => {
+        if (xl) return; xl = true;
+        try {
+          if (p && p.time) { const c = currentCandles.find(k => k.time === p.time); if (c) chart.setCrosshairPosition(c.close, p.time, S()); }
+          else chart.clearCrosshairPosition();
+        } catch (e) {}
+        xl = false;
+      });
+    })();
+
+    /* ================= MCDX 副圖 (由 Pine Script 移植) ================= */
+    (function initMcdxPane() {
+      const pane = $('mcdx-pane'), mbox = $('mcdx-container');
+      const CFG = { lenMode: 'auto', manualLen: 100, autoOffset: true, offsetV: 5.0, maLen: 10 };
+      const C = { bkStrong: '#f52f2f', bkWeak: '#dfa59f', rtStrong: '#048000', rtWeak: '#8ed984', hot: '#fcf52d', rtMA: '#1b41bd', bkMA: '#8d0d0d', hotMA: '#ff7d03' };
+
+      const emaSeries = (arr, len) => {
+        const a = 2 / (len + 1); let p = null;
+        return arr.map(v => { if (v == null) return null; p = p == null ? v : a * v + (1 - a) * p; return p; });
+      };
+      const gt = (a, b) => a != null && b != null && a > b;
+      const lenAt = i => CFG.lenMode === 'auto' ? (i < 100 ? (i < 3 ? 3 : i) : 100) : CFG.lenMode === 'manual' ? CFG.manualLen : Number(CFG.lenMode);
+      function offFor(res) {
+        if (!CFG.autoOffset) return CFG.offsetV;
+        if (res === '1D') return 5.0;
+        return Number(res) <= 5 ? 0.5 : 2.5;
+      }
+      function calc(cs, off) {
+        const n = cs.length, pcA = Array(n).fill(null), fcA = Array(n).fill(null);
+        const ema20 = emaSeries(cs.map(c => c.close), 20);
+        for (let i = 0; i < n; i++) {
+          const len = lenAt(i), s = i - len + 1; if (s < 0) continue;
+          let h = -Infinity, l = Infinity;
+          for (let j = s; j <= i; j++) { if (cs[j].high > h) h = cs[j].high; if (cs[j].low < l) l = cs[j].low; }
+          const c = cs[i], src = c.close, r = Math.max(h - l, 0.00001), avg = (h + l) / 2;
+          let avg50 = null;
+          if (i >= 49) { let h5 = -Infinity, l5 = Infinity; for (let j = i - 49; j <= i; j++) { if (cs[j].high > h5) h5 = cs[j].high; if (cs[j].low < l5) l5 = cs[j].low; } avg50 = (h5 + l5) / 2; }
+          const pcRaw = ((src - l) / r * 100 + (src - avg) / r * 100) / 2 + 25 + off;
+          pcA[i] = Math.min(100, Math.max(0, pcRaw));
+          const e = ema20[i], base = 100 - (h - src) / r * 100 + 25, big = len >= 100;
+          const f1 = big ? src > c.open && l > e && l > avg && gt(l, avg50) : src > c.open && l > e && l > avg;
+          const f2 = big ? src > c.open && src > e && src > avg && gt(src, avg50) : src > c.open && src > e && src > avg;
+          const f3 = big ? src > e && c.open > avg && gt(c.open, avg50) && gt(src, avg50) && src > avg : src > e && c.open > avg && src > avg;
+          const f4 = big ? src >= c.open && c.high > avg && gt(src, avg50) : src >= c.open && c.high > avg && src > avg;
+          fcA[i] = (f1 || f2 || f3 || f4) ? 100 : Math.min(100, Math.max(0, base));
+        }
+        return { pc: pcA, fc: fcA, epc: emaSeries(pcA, CFG.maLen), efc: emaSeries(fcA, CFG.maLen), elc: emaSeries(fcA.map(v => v == null ? null : 100 - v), CFG.maLen) };
+      }
+
+      const mchart = LightweightCharts.createChart(mbox, {
+        layout: { background: { type: 'solid', color: '#131722' }, textColor: '#b2b5be', fontSize: 11 },
+        grid: { vertLines: { color: 'rgba(42,46,57,.5)' }, horzLines: { color: 'rgba(42,46,57,.5)' } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal, vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' }, horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' } },
+        rightPriceScale: { borderColor: '#2a2e39', minimumWidth: 72, scaleMargins: { top: 0.05, bottom: 0.05 } },
+        timeScale: {
+          borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 8, barSpacing: 8,
+          tickMarkFormatter: t => { const d = new Date(t * 1000); return currentResolution === '1D' ? `${d.getMonth() + 1}/${d.getDate()}` : d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' }); }
+        },
+        handleScroll: false, handleScale: false
+      });
+      mchartRef = mchart;
+      const fix = { autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }), priceLineVisible: false, lastValueVisible: false };
+      const sRetail = mchart.addHistogramSeries({ ...fix, priceFormat: { type: 'price', precision: 0, minMove: 1 } });
+      const sHot    = mchart.addHistogramSeries({ ...fix, priceFormat: { type: 'price', precision: 0, minMove: 1 } });
+      const sBank   = mchart.addHistogramSeries({ ...fix, priceFormat: { type: 'price', precision: 0, minMove: 1 } });
+      const lBank = mchart.addLineSeries({ ...fix, color: C.bkMA, lineWidth: 2, crosshairMarkerVisible: false });
+      const lHot  = mchart.addLineSeries({ ...fix, color: C.hotMA, lineWidth: 2, crosshairMarkerVisible: false });
+      const lRet  = mchart.addLineSeries({ ...fix, color: C.rtMA, lineWidth: 2, crosshairMarkerVisible: false });
+      [[25, 1], [50, 2], [75, 1]].forEach(([p, w]) => sBank.createPriceLine({ price: p, color: '#5d606b', lineWidth: w, lineStyle: 0, axisLabelVisible: true, title: '' }));
+
+      let on = false, tblOn = false, res = null, idx = new Map(), lastSig = '';
+      const sync = () => { const r = chart.timeScale().getVisibleLogicalRange(); if (r) try { mchart.timeScale().setVisibleLogicalRange(r); } catch (e) {} };
+      chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && on) try { mchart.timeScale().setVisibleLogicalRange(r); } catch (e) {} });
+      new ResizeObserver(() => {
+        const w = mbox.clientWidth, h = mbox.clientHeight;
+        if (w > 0 && h > 0) { mchart.applyOptions({ width: w, height: h }); sync(); }
+      }).observe(mbox);
+
+      const legend = $('mcdx-legend');
+      function setLegend(i) {
+        if (!res || i == null || res.pc[i] == null) { legend.textContent = ''; return; }
+        const pc = Math.round(res.pc[i]), fc = res.fc[i];
+        const part = (col, name, v) => `<span style="color:${col}"><span class="lg-name">${name}</span><span class="lg-val"> ${v}%</span></span>`;
+        legend.innerHTML = part('#f52f2f', '莊家', pc) + ' ' + part('#fcf52d', '游資', Math.round(Math.max(fc - res.pc[i], 0))) + ' ' + part('#8ed984', '散戶', Math.round(100 - fc));
+      }
+      let xl = false;
+      chart.subscribeCrosshairMove(p => {
+        if (!on) return;
+        const i = p && p.time ? idx.get(p.time) : currentCandles.length - 1;
+        setLegend(i);
+        if (xl) return; xl = true;
+        try { if (p && p.time && res && res.pc[i] != null) mchart.setCrosshairPosition(res.pc[i], p.time, sBank); else mchart.clearCrosshairPosition(); } catch (e) {}
+        xl = false;
+      });
+      mchart.subscribeCrosshairMove(p => {
+        if (xl || !on) return; xl = true;
+        try { if (p && p.time) { const c = currentCandles.find(k => k.time === p.time); if (c) chart.setCrosshairPosition(c.close, p.time, S()); } else chart.clearCrosshairPosition(); } catch (e) {}
+        xl = false;
+      });
+
+      function refreshMain(force) {
+        if (!on || !currentCandles.length) return;
+        const last = currentCandles[currentCandles.length - 1];
+        const sg = currentCandles.length + '|' + last.time + '|' + last.close + '|' + last.high + '|' + last.low + '|' + curKey() + '|' + CFG.lenMode;
+        if (!force && sg === lastSig) return; lastSig = sg;
+        res = calc(currentCandles, offFor(currentResolution));
+        idx = new Map(currentCandles.map((c, i) => [c.time, i]));
+        const A = { r: [], h: [], b: [], lb: [], lh: [], lr: [] };
+        currentCandles.forEach((c, i) => {
+          if (res.pc[i] == null) return;
+          const t = c.time, pc = res.pc[i], fc = res.fc[i];
+          A.r.push({ time: t, value: 100, color: pc >= res.epc[i] ? C.rtWeak : C.rtStrong });
+          A.h.push({ time: t, value: fc, color: C.hot });
+          A.b.push({ time: t, value: pc, color: pc > res.epc[i] ? C.bkStrong : C.bkWeak });
+          A.lb.push({ time: t, value: res.epc[i] }); A.lh.push({ time: t, value: res.efc[i] }); A.lr.push({ time: t, value: res.elc[i] });
+        });
+        feed(sRetail, 'mr', A.r); feed(sHot, 'mh', A.h); feed(sBank, 'mb', A.b);
+        feed(lBank, 'mlb', A.lb); feed(lHot, 'mlh', A.lh); feed(lRet, 'mlr', A.lr);
+        if (!hovering) setLegend(currentCandles.length - 1);
+      }
+
+      const TF = [['5', '5M'], ['15', '15M'], ['60', '60M']];
+      const tf = {}; let tfKey = '', tfBusy = false;
+      async function fetchBars(code, r) {
+        const to = Math.floor(Date.now() / 1000), from = to - 60 * 86400;
+        const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(code)}&resolution=${r}&from=${from}&to=${to}&ws=true&metaData=true`;
+        const j = await (await fetch(url)).json();
+        const arr = Array.isArray(j) ? j : (j.bars || []);
+        return arr.map(b => ({ time: (b.time || new Date(b.datetime).getTime()) > 1e10 ? Math.floor((b.time || new Date(b.datetime).getTime()) / 1000) : (b.time || new Date(b.datetime).getTime() / 1000), open: b.open, high: b.high, low: b.low, close: b.close })).sort((a, b) => a.time - b.time);
+      }
+      async function loadTf() {
+        if (tfBusy) return; tfBusy = true;
+        const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); const code = it ? it.code : null;
+        if (code) {
+          if (code !== tfKey) { Object.keys(tf).forEach(k => delete tf[k]); renderTable(); }
+          for (const [r] of TF) {
+            try {
+              const bars = await fetchBars(code, r);
+              if (bars.length > 5) { const o = calc(bars, offFor(r)), i = bars.length - 1; tf[r] = { pc: o.pc[i], fc: o.fc[i], epc: o.epc[i] }; }
+            } catch (e) {}
+          }
+          tfKey = code; renderTable();
+        }
+        tfBusy = false;
+      }
+      function renderTable() {
+        const el = $('mcdx-table'); el.style.display = tblOn && on ? 'block' : 'none';
+        const a = v => v == null ? 0.8 : 0.8;
+        let score = 0, rows = '';
+        TF.forEach(([r, name]) => {
+          const d = tf[r];
+          if (!d || d.pc == null) { rows += `<tr><td class="h">${name}</td><td colspan="3" style="color:#787b86">載入中…</td></tr>`; return; }
+          if (d.pc > 50 && 100 - d.fc < 25) score++;
+          rows += `<tr><td class="h">${name}</td>` +
+            `<td style="background:${d.pc > d.epc ? C.bkStrong : C.bkWeak}">${Math.round(d.pc)}%</td>` +
+            `<td style="background:#ccc8c8">${Math.round(Math.max(d.fc - d.pc, 0))}%</td>` +
+            `<td style="background:#3ac019">${Math.round(100 - d.fc)}%</td></tr>`;
+        });
+        const txt = ['震盪洗盤', '趨勢偏多', '多頭強勁', '強勢噴發'][score], col = [C.rtStrong, '#ffab91', '#ff5252', C.bkStrong][score];
+        el.innerHTML = `<table><tr><td></td><td class="s">莊</td><td class="s">游</td><td class="s">散</td></tr>${rows}<tr><td colspan="4" style="background:${col};color:#fff">${txt}</td></tr></table>`;
+      }
+
+      function setOn(v) {
+        on = v; pane.classList.toggle('hidden', !on);
+        lineVisibility.mcdx = v; indicatorStates.mcdx = v; saveIndPrefs(); layoutAxes();
+        const b = $('tab-mcdx'); b.className = on ? TAB_ON : TAB_OFF;
+        if (on) { lastSig = ''; requestAnimationFrame(() => { sync(); refreshMain(true); }); loadTf(); }
+        renderTable();
+      }
+      $('tab-mcdx').onclick = () => setOn(!on);
+      $('mcdx-tbl-btn').onclick = () => { tblOn = !tblOn; renderTable(); };
+      $('mcdx-len').onchange = e => { CFG.lenMode = e.target.value; refreshMain(true); loadTf(); };
+      $('tab-mcdx').className = TAB_OFF;
+      window.__indRefreshers.push(() => { if (on) { refreshMain(true); loadTf(); } });
+      if (lineVisibility.mcdx) setOn(true);
+      setInterval(() => refreshMain(false), 600);
+      setInterval(() => { if (on) loadTf(); }, 20000);
+      setInterval(() => { if (on) { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); if (it && it.code !== tfKey) loadTf(); } }, 1500);
+    })();
+
+    /* ================= 指標外掛框架 ================= */
+    (function initIndicatorHost() {
+      let tabAnchor = $('tab-mcdx'), paneAnchor = $('mcdx-pane');
+      const mounted = {};
+
+      const host = {
+        LightweightCharts, UP, DOWN,
+        candles: () => currentCandles,
+        resolution: () => currentResolution,
+        symbol: () => { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); return it ? it.code : null; },
+        resSeconds: r => (r === '1D' ? 86400 : (Number(r) || 1) * 60),
+        ema(values, len) {
+          const out = Array(values.length).fill(null), a = 2 / (len + 1); let prev = null, sum = 0, cnt = 0;
+          for (let i = 0; i < values.length; i++) {
+            const v = values[i]; if (v == null) continue;
+            if (prev == null) { sum += v; cnt++; if (cnt === len) { prev = sum / len; out[i] = prev; } }
+            else { prev = a * v + (1 - a) * prev; out[i] = prev; }
+          }
+          return out;
+        },
+        async fetchBars(code, res, from, to) {
+          to = to || Math.floor(Date.now() / 1000);
+          const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(code)}&resolution=${res}&from=${Math.floor(from)}&to=${to}&ws=true&metaData=true`;
+          const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json(), arr = Array.isArray(j) ? j : (j.bars || []);
+          return arr.map(b => {
+            const raw = b.time || new Date(b.datetime).getTime(); let t = raw > 1e10 ? Math.floor(raw / 1000) : raw;
+            if (res === '1D') t -= 86400;
+            return { time: t, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume };
+          }).sort((a, b) => a.time - b.time);
+        }
+      };
+
+      const paneOptions = () => ({
+        layout: { background: { type: 'solid', color: '#131722' }, textColor: '#b2b5be', fontSize: 11 },
+        grid: { vertLines: { color: 'rgba(42,46,57,.5)' }, horzLines: { color: 'rgba(42,46,57,.5)' } },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+          vertLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' },
+          horzLine: { color: '#758696', width: 1, style: 3, labelBackgroundColor: '#2a2e39' }
+        },
+        rightPriceScale: { borderColor: '#2a2e39', minimumWidth: 72, scaleMargins: { top: 0.1, bottom: 0.1 } },
+        timeScale: {
+          borderColor: '#2a2e39', timeVisible: true, secondsVisible: false, rightOffset: 8, barSpacing: 8, visible: false,
+          tickMarkFormatter: t => {
+            const d = new Date(t * 1000);
+            return currentResolution === '1D' ? `${d.getMonth() + 1}/${d.getDate()}` : d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false, hour: '2-digit', minute: '2-digit' });
+          }
+        },
+        localization: { locale: 'zh-TW' },
+        handleScroll: false, handleScale: false
+      });
+
+      function mount(def) {
+        if (!def || !def.id || mounted[def.id] || typeof def.compute !== 'function') { console.warn('指標註冊失敗', def); return; }
+        const id = def.id, vk = def.visKey || id;
+        if (!(vk in lineVisibility)) lineVisibility[vk] = false;
+        const pane = document.createElement('div');
+        pane.className = 'hidden relative border-t border-tvBorder shrink-0';
+        pane.style.cssText = `height:${def.height || '12%'};min-height:${def.minHeight || '56px'};max-height:60%`;
+        const head = document.createElement('div');
+        head.className = 'absolute top-1 left-2 right-2 z-10 flex items-center gap-2 text-[11px] font-mono pointer-events-none';
+        const title = document.createElement('span'); title.className = 'text-white font-bold lg-name'; title.textContent = def.name;
+        const legend = document.createElement('span'); head.append(title, legend);
+        const box = document.createElement('div'); box.className = 'w-full h-full overflow-hidden';
+        pane.append(head, box);
+        attachPaneResizer(pane, id);
+        paneAnchor.insertAdjacentElement('afterend', pane); paneAnchor = pane;
+        const btn = document.createElement('button');
+        btn.className = TAB_OFF; btn.textContent = def.tab || def.name; btn.title = def.name;
+        tabAnchor.insertAdjacentElement('afterend', btn); tabAnchor = btn;
+
+        const c = LightweightCharts.createChart(box, paneOptions());
+        const ser = {};
+        (def.series || []).forEach(sd => {
+          const opt = Object.assign({ priceLineVisible: false, lastValueVisible: false }, sd.options || {});
+          if (def.yRange) opt.autoscaleInfoProvider = () => ({ priceRange: { minValue: def.yRange[0], maxValue: def.yRange[1] } });
+          ser[sd.key] = sd.type === 'line' ? c.addLineSeries(opt) : c.addHistogramSeries(opt);
+        });
+        const firstKey = (def.series && def.series[0] && def.series[0].key);
+        (def.priceLines || []).forEach(pl => ser[firstKey].createPriceLine(Object.assign({ lineWidth: 1, lineStyle: 2, color: '#5d606b', axisLabelVisible: true, title: '' }, pl)));
+
+        const st = { id, on: false, chart: c };
+        extraPanes.push(st);
+        mounted[id] = st;
+
+        const sync = () => { const r = chart.timeScale().getVisibleLogicalRange(); if (r) try { c.timeScale().setVisibleLogicalRange(r); } catch (e) {} };
+        chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && st.on) try { c.timeScale().setVisibleLogicalRange(r); } catch (e) {} });
+        new ResizeObserver(() => {
+          const w = box.clientWidth, h = box.clientHeight;
+          if (w > 0 && h > 0) { c.applyOptions({ width: w, height: h }); sync(); }
+        }).observe(box);
+
+        let result = null, tmap = new Map(), busy = false, lastSig = '', lastKey = '', shown = {};
+        const setLegend = t => {
+          let html = '';
+          try { if (def.legend && result) html = def.legend(t != null ? t : (currentCandles.length ? currentCandles[currentCandles.length - 1].time : null), result) || ''; } catch (e) {}
+          legend.innerHTML = html;
+        };
+        function apply(res, full) {
+          Object.keys(ser).forEach(k => {
+            const arr = res[k] || [], n = arr.length, p = shown[k];
+            if (!full && p && n && p.n === n && p.f === arr[0].time && p.t === arr[n - 1].time) ser[k].update(arr[n - 1]);
+            else if (!full && p && n && p.n + 1 === n && p.f === arr[0].time && p.t === arr[n - 2].time) ser[k].update(arr[n - 1]);
+            else ser[k].setData(arr);
+            shown[k] = n ? { n, f: arr[0].time, t: arr[n - 1].time } : null;
+          });
+          result = res;
+          tmap = new Map(((res[firstKey]) || []).map(p => [p.time, p.value]));
+          if (!hovering) setLegend(null);
+        }
+        async function refresh(force) {
+          if (!st.on || busy || !currentCandles.length) return;
+          const last = currentCandles[currentCandles.length - 1];
+          const sig = currentCandles.length + '|' + last.time + '|' + last.close + '|' + curKey();
+          if (!force && sig === lastSig) return;
+          busy = true; const key0 = curKey();
+          try {
+            const res = await def.compute(currentCandles, host, !!force);
+            if (res && curKey() === key0 && st.on) { apply(res, !!force || lastKey !== key0); lastSig = sig; lastKey = key0; }
+          } catch (e) { console.error('[指標 ' + id + ']', e); }
+          busy = false;
+        }
+
+        let xl = false;
+        chart.subscribeCrosshairMove(p => {
+          if (!st.on) return;
+          setLegend(p && p.time ? p.time : null);
+          if (xl) return; xl = true;
+          try {
+            if (p && p.time && tmap.has(p.time)) c.setCrosshairPosition(tmap.get(p.time), p.time, ser[firstKey]);
+            else c.clearCrosshairPosition();
+          } catch (e) {}
+          xl = false;
+        });
+        c.subscribeCrosshairMove(p => {
+          if (xl || !st.on) return; xl = true;
+          try {
+            if (p && p.time) { const k = currentCandles.find(q => q.time === p.time); if (k) chart.setCrosshairPosition(k.close, k.time, S()); }
+            else c.clearCrosshairPosition();
+          } catch (e) {}
+          xl = false;
+        });
+
+        function setOn(v) {
+          st.on = v; pane.classList.toggle('hidden', !v); btn.className = v ? TAB_ON : TAB_OFF;
+          lineVisibility[vk] = v; indicatorStates[vk] = v; saveIndPrefs(); layoutAxes();
+          if (v) { lastSig = ''; requestAnimationFrame(() => { sync(); refresh(true); }); }
+        }
+        btn.onclick = () => setOn(!st.on);
+        setInterval(() => refresh(false), 600);
+        setInterval(() => refresh(true), def.refreshMs || 15000);
+        window.__indRefreshers.push(() => refresh(true));
+        if (lineVisibility[vk]) setOn(true);
+      }
+
+      window.TVIndicators._attach(def => { try { mount(def); } catch (e) { console.error('指標載入失敗', def && def.id, e); } });
+
+      const files = [].concat(window.TV_INDICATOR_FILES || []);
+      try { const q = new URLSearchParams(location.search).get('ind'); if (q) files.push(...q.split(',').map(x => x.trim()).filter(x => /^indicators\/[\w.-]+\.js$/.test(x))); } catch (e) {}
+      const loadFile = (f, retry) => {
+        if (/trend-wave\.js$/.test(f) && mounted['trend-wave']) return;
+        const sc = document.createElement('script'); sc.src = f;
+        sc.onerror = () => {
+          console.warn('找不到指標檔：' + f);
+          if (retry && f.indexOf('/') > -1) loadFile(f.split('/').pop(), false);
+        };
+        document.body.appendChild(sc);
+      };
+      files.forEach(f => loadFile(f, true));
+    })();
+
+    /* ================= 繪圖工具 ================= */
+    const cv = document.createElement('canvas');
+    cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5';
+    box.appendChild(cv);
+    const ctx = cv.getContext('2d');
+    let W = 0, H = 0, dpr = 1;
+    new ResizeObserver(() => {
+      dpr = window.devicePixelRatio || 1; W = box.clientWidth; H = box.clientHeight;
+      cv.width = W * dpr; cv.height = H * dpr;
+      if (W > 0 && H > 0) chart.applyOptions({ width: W, height: H });
+    }).observe(box);
+    const fixScroll = () => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; };
+    window.addEventListener('resize', fixScroll);
+    document.addEventListener('fullscreenchange', () => { fixScroll(); setTimeout(fixScroll, 150); });
+
+    let tool = 'cursor', magnet = false, hidden = false, color = '#2962ff';
+    let drawings = [], cur = null, sel = null, drag = null, loadedKey = '', startXY = null;
+    const NEED = { trend: 2, rect: 2, fib: 2, hline: 1, vline: 1 };
+    const FIB = [[0, '#787b86'], [0.236, '#f23645'], [0.382, '#ff9800'], [0.5, '#4caf50'], [0.618, '#089981'], [0.786, '#00bcd4'], [1, '#787b86']];
+
+    function curKey() {
+      const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId);
+      return (it ? it.code : '?') + '|' + currentResolution;
+    }
+    function save() {
+      try { const st = JSON.parse(localStorage.getItem('tvdraw') || '{}'); st[loadedKey] = drawings; localStorage.setItem('tvdraw', JSON.stringify(st)); } catch (e) {}
+    }
+    function load(k) {
+      try { drawings = (JSON.parse(localStorage.getItem('tvdraw') || '{}')[k]) || []; } catch (e) { drawings = []; }
+      cur = null; sel = null; drag = null;
+    }
+
+    const plotW = () => { let w = 60; try { w = chart.priceScale('right').width() || 60; } catch (e) {} return W - w; };
+    const plotH = () => { let h = 26; try { if (typeof ts.height === 'function') h = ts.height(); } catch (e) {} return H - h; };
+    const px = p => ({ x: ts.logicalToCoordinate(p.l), y: S().priceToCoordinate(p.p) });
+
+    function evPt(e) {
+      const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+      const r = box.getBoundingClientRect();
+      return { x: t.clientX - r.left, y: t.clientY - r.top };
+    }
+    function toData(x, y) {
+      let l = ts.coordinateToLogical(x), p = S().coordinateToPrice(y);
+      if (l == null || p == null) return null;
+      if (magnet) {
+        const c = currentCandles[Math.round(l)];
+        if (c) {
+          l = Math.round(l);
+          p = [c.open, c.high, c.low, c.close].reduce((a, b) => Math.abs(b - p) < Math.abs(a - p) ? b : a);
+        }
+      }
+      return { l, p };
+    }
+
+    function dSeg(x, y, a, b) {
+      const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
+      let t = L ? ((x - a.x) * dx + (y - a.y) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+      return Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy));
+    }
+    function hitTest(x, y) {
+      for (let i = drawings.length - 1; i >= 0; i--) {
+        const d = drawings[i], q = d.pts.map(px);
+        if (q.some(o => o.x == null || o.y == null)) continue;
+        for (let h = 0; h < q.length; h++) if (Math.hypot(x - q[h].x, y - q[h].y) < 9) return { d, handle: h };
+        let ok = false;
+        if (d.type === 'trend') ok = dSeg(x, y, q[0], q[1]) < 6;
+        else if (d.type === 'hline') ok = Math.abs(y - q[0].y) < 6;
+        else if (d.type === 'vline') ok = Math.abs(x - q[0].x) < 6;
+        else ok = x >= Math.min(q[0].x, q[1].x) && x <= Math.max(q[0].x, q[1].x) && y >= Math.min(q[0].y, q[1].y) && y <= Math.max(q[0].y, q[1].y);
+        if (ok) return { d, handle: -1 };
+      }
+      return null;
+    }
+
+    function down(e) {
+      if (hidden) return;
+      const { x, y } = evPt(e);
+      if (x > plotW() || y > plotH()) return;
+      const stop = () => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); };
+      if (tool !== 'cursor') {
+        stop();
+        const pt = toData(x, y); if (!pt) return;
+        if (tool === 'hline' || tool === 'vline') { addDrawing(tool, [pt]); return; }
+        if (!cur) { cur = { type: tool, pts: [pt, { ...pt }], color }; startXY = { x, y }; }
+        else { cur.pts[1] = pt; finish(); }
+        return;
+      }
+      const h = hitTest(x, y);
+      if (h) {
+        stop(); sel = h.d;
+        drag = { d: h.d, handle: h.handle, start: toData(x, y), orig: h.d.pts.map(p => ({ ...p })) };
+      } else sel = null;
+    }
+    function move(e) {
+      const { x, y } = evPt(e);
+      if (cur) { const pt = toData(x, y); if (pt) cur.pts[1] = pt; if (e.cancelable && e.touches) e.preventDefault(); return; }
+      if (drag) {
+        const pt = toData(x, y); if (!pt) return;
+        if (drag.handle >= 0) drag.d.pts[drag.handle] = pt;
+        else { const dl = pt.l - drag.start.l, dp = pt.p - drag.start.p; drag.d.pts = drag.orig.map(o => ({ l: o.l + dl, p: o.p + dp })); }
+        if (e.cancelable && e.touches) e.preventDefault();
+        return;
+      }
+      if (tool === 'cursor' && !hidden && !e.touches) {
+        const inPlot = x <= plotW() && y <= plotH(), h = inPlot && hitTest(x, y);
+        box.style.cursor = h ? (h.handle >= 0 ? 'pointer' : 'move') : '';
+      }
+    }
+    function up(e) {
+      if (cur && startXY) { const { x, y } = evPt(e); if (Math.hypot(x - startXY.x, y - startXY.y) > 8) finish(); }
+      if (drag) { drag = null; save(); }
+    }
+    function finish() {
+      const p = cur.pts; cur = null; startXY = null;
+      if (p[0].l === p[1].l && p[0].p === p[1].p) return;
+      addDrawing(null, p, true);
+    }
+    let lastType = null;
+    function addDrawing(type, pts, fromCur) {
+      const t = fromCur ? (lastType || tool) : type;
+      drawings.push({ id: Date.now() + Math.random(), type: t, pts, color });
+      sel = drawings[drawings.length - 1];
+      save(); setTool('cursor');
+    }
+    const _setToolType = t => { lastType = t; };
+
+    box.addEventListener('mousedown', down, true);
+    box.addEventListener('touchstart', down, { capture: true, passive: false });
+    window.addEventListener('mousemove', move);
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchend', up);
+    window.addEventListener('keydown', e => {
+      if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      if ((e.key === 'Delete' || e.key === 'Backspace') && sel) delSel();
+      if (e.key === 'Escape') { cur = null; sel = null; setTool('cursor'); }
+    });
+
+    function delSel() { if (!sel) return; drawings = drawings.filter(d => d !== sel); sel = null; save(); }
+
+    function setTool(t) {
+      tool = t; if (t !== 'cursor') { lastType = t; cur = null; }
+      document.querySelectorAll('.draw-tool').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
+      box.classList.toggle('tool-active', t !== 'cursor');
+    }
+    document.querySelectorAll('.draw-tool').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+    $('dt-magnet').onclick = e => { magnet = !magnet; e.currentTarget.classList.toggle('active', magnet); };
+    $('dt-eye').onclick = e => {
+      hidden = !hidden;
+      e.currentTarget.classList.toggle('active', hidden);
+      e.currentTarget.querySelector('i').className = hidden ? 'fa-solid fa-eye-slash text-sm' : 'fa-solid fa-eye text-sm';
+    };
+    $('dt-del').onclick = () => { if (sel) delSel(); else if (drawings.length && confirm('清除此商品/週期的所有繪圖？')) { drawings = []; save(); } };
+    $('dt-color').oninput = e => { color = e.target.value; if (sel) { sel.color = color; save(); } };
+
+    function drawOne(d, isSel) {
+      const q = d.pts.map(px); if (q.some(o => o.x == null || o.y == null)) return;
+      const c = d.color || '#2962ff';
+      ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = isSel ? 2 : 1.5; ctx.setLineDash([]);
+      const pw = plotW();
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, pw, plotH()); ctx.clip();
+      if (d.type === 'trend') { ctx.beginPath(); ctx.moveTo(q[0].x, q[0].y); ctx.lineTo(q[1].x, q[1].y); ctx.stroke(); }
+      else if (d.type === 'hline') { ctx.beginPath(); ctx.moveTo(0, q[0].y); ctx.lineTo(pw, q[0].y); ctx.stroke(); }
+      else if (d.type === 'vline') { ctx.beginPath(); ctx.moveTo(q[0].x, 0); ctx.lineTo(q[0].x, H); ctx.stroke(); }
+      else if (d.type === 'rect') {
+        const x = Math.min(q[0].x, q[1].x), y = Math.min(q[0].y, q[1].y), w = Math.abs(q[1].x - q[0].x), h = Math.abs(q[1].y - q[0].y);
+        ctx.globalAlpha = .15; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; ctx.strokeRect(x, y, w, h);
+      } else if (d.type === 'fib') {
+        const x1 = Math.min(q[0].x, q[1].x), x2 = Math.max(q[0].x, q[1].x);
+        const p0 = d.pts[1].p, p1 = d.pts[0].p;
+        ctx.font = '11px sans-serif'; ctx.textBaseline = 'bottom';
+        let prevY = null, prevC = null;
+        FIB.forEach(([lv, col]) => {
+          const price = p0 + (p1 - p0) * lv, y = S().priceToCoordinate(price); if (y == null) return;
+          if (prevY != null) { ctx.globalAlpha = .08; ctx.fillStyle = col; ctx.fillRect(x1, Math.min(y, prevY), x2 - x1, Math.abs(y - prevY)); ctx.globalAlpha = 1; }
+          ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+          ctx.fillStyle = col; ctx.fillText(`${lv} (${fmt(price)})`, x1 + 4, y - 2);
+          prevY = y; prevC = col;
+        });
+        ctx.strokeStyle = '#787b86'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(q[0].x, q[0].y); ctx.lineTo(q[1].x, q[1].y); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.restore();
+      if (d.type === 'hline') label(pw, q[0].y, fmt(d.pts[0].p), c);
+      if (isSel) {
+        const hs = d.type === 'hline' || d.type === 'vline' ? [q[0]] : q;
+        hs.forEach(o => { ctx.beginPath(); ctx.arc(o.x, o.y, 5, 0, 7); ctx.fillStyle = '#131722'; ctx.fill(); ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.stroke(); });
+      }
+    }
+    function label(x, y, text, bg) {
+      ctx.font = '11px sans-serif'; ctx.textBaseline = 'middle';
+      const w = ctx.measureText(text).width + 10;
+      ctx.fillStyle = bg; ctx.fillRect(x, y - 9, W - x, 18);
+      ctx.fillStyle = '#fff'; ctx.fillText(text, x + 5, y + 1);
+    }
+    function frame() {
+      requestAnimationFrame(frame);
+      if (!W) return;
+      try {
+        const k = curKey();
+        if (k !== loadedKey) {
+          if (loadedKey) save();
+          loadedKey = k; load(k);
+          const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId);
+          const rl = { '1': '1m', '5': '5m', '15': '15m', '60': '1h', '1D': '日' }[currentResolution] || currentResolution;
+          chart.applyOptions({ watermark: { text: it ? `${it.name}, ${rl}` : '' } });
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        if (hidden) return;
+        drawings.forEach(d => drawOne(d, d === sel));
+        if (cur) drawOne(cur, true);
+      } catch (e) {}
+    }
+    frame();
+    setTool('cursor');
+  }
+})();
+  </script>
+</body>
+</html>
+</html>

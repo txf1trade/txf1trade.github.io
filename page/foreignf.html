@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>海外期貨即時行情監控</title>
+    <style>
+        :root {
+            --bg-color: #131722;
+            --card-bg: #1e222d;
+            --border-color: #2a2e39;
+            --text-main: #d1d4dc;
+            --text-sub: #9b9ef5;
+            --text-muted: #848e9c;
+            
+            --red-color: #ff4d5a;
+            --green-color: #26a69a;
+            --flat-color: #b2b5be;
+            --star-color: #f0b90b;
+
+            --table-font-size: 13px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 10px;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* 獨立第一層：標題欄 */
+        .top-header {
+            background: var(--card-bg);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-weight: 600;
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        /* 獨立第二層：設定與搜尋工具列 */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 8px;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .controls-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 10px;
+        }
+
+        /* 顯眼下拉選單樣式 */
+        .select-style {
+            background-color: var(--bg-color);
+            background-image: url("data:image/svg+xml;utf8,<svg fill='%239b9ef5' height='12' viewBox='0 0 24 24' width='12' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            border: 1px solid #2962ff;
+            color: var(--text-main);
+            padding: 4px 26px 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            transition: all 0.2s ease;
+        }
+
+        .select-style:hover {
+            border-color: #5c8aff;
+            background-color: #1a1e2c;
+        }
+
+        .search-input {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+            width: 130px;
+        }
+
+        /* 頁籤與右上角選單按鈕 */
+        .tabs-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+
+        .tab-btn:hover, .tab-btn.active {
+            color: #ffffff;
+            border-color: #2962ff;
+            background: #2962ff;
+        }
+
+        /* 透過控制項動態隱藏指定頁籤 */
+        body.hide-holiday-tab #tab-holiday { display: none !important; }
+        body.hide-commodity-tab #tab-commodity { display: none !important; }
+        body.hide-fx-tab #tab-fx { display: none !important; }
+        body.hide-usstock-tab #tab-usstock { display: none !important; }
+
+        .menu-btn {
+            background: #2962ff;
+            color: #fff;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        .menu-btn:hover { background: #1e53e5; }
+
+        .drawer-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: transparent;
+            z-index: 99;
+            display: none;
+        }
+        .drawer-overlay.show { display: block; }
+
+        /* 自訂欄位面板 */
+        .drawer-panel {
+            position: absolute;
+            top: 36px; right: 0;
+            width: 280px;
+            background: #1e222d;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            z-index: 100;
+            padding: 14px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+            display: none;
+        }
+        .drawer-panel.show { display: block; }
+
+        .drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .preset-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .preset-btn {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 4px 0;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .preset-btn:hover { border-color: #2962ff; color: #fff; }
+
+        .font-slider-group {
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .font-slider-header {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-sub);
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .font-slider-group input[type="range"] {
+            width: 100%;
+            accent-color: #2962ff;
+            cursor: pointer;
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px 8px;
+        }
+
+        .checkbox-grid label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* 右下角浮動 AI 助理按鈕 */
+        .ai-floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #181c27;
+            border: 2px solid #2962ff;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(41, 98, 255, 0.4);
+            cursor: pointer;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+        .ai-floating-btn:hover {
+            transform: scale(1.08);
+        }
+        .ai-floating-icon {
+            font-size: 22px;
+            line-height: 1;
+        }
+        .ai-floating-badge {
+            font-size: 9px;
+            font-weight: bold;
+            color: #ffffff;
+            background: #2962ff;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        /* 右下角 AI 彈出對話面板 (預設隱藏) */
+        .ai-dialog-panel {
+            position: fixed;
+            bottom: 85px;
+            right: 20px;
+            width: 330px;
+            max-height: 480px;
+            background: #1e222d;
+            border: 1px solid #2962ff;
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+        }
+        .ai-dialog-panel.show { display: flex; }
+
+        .ai-dialog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #ffffff;
+            font-size: 13px;
+        }
+
+        .ai-dialog-body {
+            color: var(--text-main);
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-line;
+            overflow-y: auto;
+            max-height: 390px;
+            scrollbar-width: thin;
+        }
+
+        /* 報價表格容器 */
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .table-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        th, td {
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--border-color);
+            font-variant-numeric: tabular-nums;
+            font-size: var(--table-font-size);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: calc(var(--table-font-size) - 1px);
+            background: #181c27;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s ease;
+        }
+
+        th:hover {
+            color: #ffffff;
+            background: #252a3a;
+        }
+
+        th.sort-active {
+            color: #9b9ef5;
+        }
+
+        th:nth-child(1), td:nth-child(1),
+        th:nth-child(2), td:nth-child(2),
+        th:nth-child(3), td:nth-child(3) { text-align: left; }
+
+        tr:hover { background-color: #2a2e39; }
+
+        .star-btn {
+            cursor: pointer;
+            font-size: var(--table-font-size);
+            color: var(--text-muted);
+            user-select: none;
+            transition: color 0.15s ease;
+        }
+        .star-btn.active { color: var(--star-color); }
+
+        .symbol-code { font-weight: 700; color: #ffffff; cursor: pointer; }
+        .symbol-code:hover { color: #9b9ef5; text-decoration: underline; }
+        .symbol-name { color: var(--text-sub); cursor: pointer; }
+        .symbol-name:hover { color: #ffffff; text-decoration: underline; }
+
+        .change-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            min-width: 68px;
+            text-align: right;
+            font-size: var(--table-font-size);
+        }
+
+        .bs-b { color: var(--red-color); font-weight: bold; }
+        .bs-s { color: var(--green-color); font-weight: bold; }
+
+        .color-red { color: var(--red-color); }
+        .color-green { color: var(--green-color); }
+        .color-flat { color: var(--flat-color); }
+
+        .bg-red { background: rgba(255, 77, 90, 0.22); color: var(--red-color); }
+        .bg-green { background: rgba(38, 166, 154, 0.22); color: var(--green-color); }
+        .bg-flat { background: rgba(178, 181, 190, 0.12); color: var(--flat-color); }
+
+        /* 動態隱藏控制 */
+        .hide-change .col-change,
+        .hide-changePct .col-changePct,
+        .hide-bid .col-bid, 
+        .hide-ask .col-ask,
+        .hide-high .col-high, 
+        .hide-low .col-low,
+        .hide-prevRef .col-prevRef, 
+        .hide-qty .col-qty,
+        .hide-volume .col-volume,
+        .hide-datetime .col-datetime { display: none !important; }
+
+        /* 隱藏右下角 AI 助理按鈕與對話窗 */
+        .hide-ai-assistant #ai-floating-btn,
+        .hide-ai-assistant #ai-dialog {
+            display: none !important;
+        }
+
+        .flash-up { animation: flashGreen 0.4s ease-out; }
+        .flash-down { animation: flashRed 0.4s ease-out; }
+
+        @keyframes flashGreen { 0% { background-color: rgba(38, 166, 154, 0.4); } 100% { background-color: transparent; } }
+        @keyframes flashRed { 0% { background-color: rgba(255, 77, 90, 0.4); } 100% { background-color: transparent; } }
+
+        /* ================= VIX 風格走勢彈出面板樣式 ================= */
+        .vix-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        .vix-modal-overlay.active { display: flex; }
+
+        .vix-card {
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .vix-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            user-select: none;
+        }
+
+        .vix-title-clickable {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .vix-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .vix-stats-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        /* ✕ 關閉按鈕樣式 */
+        .vix-close-btn {
+            background: #2a2e39;
+            color: #b2b5be;
+            border: none;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, color 0.2s;
+            margin-left: 10px;
+        }
+        .vix-close-btn:hover {
+            background: #f23645;
+            color: #ffffff;
+        }
+
+        .vix-content-area {
+            width: 100%;
+            height: 180px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .vix-card canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .vix-details-view {
+            display: none;
+            width: 100%;
+            height: 100%;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 4px;
+            align-content: center;
+        }
+        .vix-details-view.active { display: grid; }
+
+        .vix-canvas-wrap { width: 100%; height: 100%; }
+        .vix-canvas-wrap.hidden { display: none; }
+
+        .grid-cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1px;
+            background: #131722;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: 1px solid #2a2e39;
+        }
+        .grid-label { font-size: 10px; color: #787b86; line-height: 1; }
+        .grid-val { font-size: 13px; font-family: monospace; font-weight: bold; line-height: 1.2; }
+
+        .up { color: #f23645; }
+        .down { color: #089981; }
+        .neutral { color: #e0e0e0; }
+    </style>
+<script>
+// 在 index 外殼裡：深淺模式由外殼統一控制。淺色 = 把這頁原本的深色配色整頁反相（單獨開啟本頁時不受影響）
+(function () {
+  if (window.parent === window) return;
+  var root = document.documentElement;
+  root.classList.add("in-shell");
+  function set(t) { root.setAttribute("data-theme", t === "light" ? "light" : "dark"); }
+  var st = null;
+  try { st = localStorage.getItem("shellTheme"); } catch (e) {}
+  if (st !== "light" && st !== "dark") st = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  set(st);
+  addEventListener("message", function (e) {
+    var m = e.data;
+    if (e.source !== parent || !m || m.type !== "shell-theme" || (m.theme !== "light" && m.theme !== "dark")) return;
+    set(m.theme);
+  });
+})();
+</script>
+<style>
+html[data-theme="light"] { background:#131722; filter:invert(1) hue-rotate(180deg); }
+html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) hue-rotate(180deg); }
+</style>
+</head>
+<body class="hide-commodity-tab hide-fx-tab">
+
+    <!-- 獨立第一層：標題欄 -->
+    <div class="top-header">
+        📊 海外期貨即時行情監控
+    </div>
+
+    <!-- 獨立第二層：設定與搜尋工具列 -->
+    <div class="top-bar">
+        <div class="controls-group">
+            <label style="color: var(--text-muted); font-size: 12px; display: flex; align-items: center; gap: 4px;">顯示風格：
+                <select id="color-style" class="select-style" onchange="renderTable()">
+                    <option value="RED_UP" selected>紅漲綠跌</option>
+                    <option value="GREEN_UP">綠漲紅跌</option>
+                </select>
+            </label>
+            <input type="text" id="search-box" class="search-input" placeholder="搜尋代碼/名稱..." oninput="renderTable()">
+            <span id="update-time" style="color: var(--text-muted); font-size: 12px;">更新中...</span>
+        </div>
+    </div>
+
+    <!-- 頁籤列 + 右上角選單按鈕 -->
+    <div class="tabs-wrapper">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="filterCategory('ALL')">全部 (39)</button>
+            <button class="tab-btn" onclick="filterCategory('WATCHLIST')" id="tab-watchlist">自選 (0)</button>
+            <button class="tab-btn" onclick="filterCategory('HOLIDAY')" id="tab-holiday">連假</button>
+            <button class="tab-btn" onclick="filterCategory('INDEX')">指數期</button>
+            <button class="tab-btn" onclick="filterCategory('COMMODITY')" id="tab-commodity">能源/金屬</button>
+            <button class="tab-btn" onclick="filterCategory('FX')" id="tab-fx">外匯期</button>
+            <button class="tab-btn" onclick="filterCategory('US_STOCK')" id="tab-usstock">美股/ADR</button>
+        </div>
+
+        <button class="menu-btn" onclick="toggleDrawer(event)">☰</button>
+
+        <!-- 自訂欄位彈出面板 -->
+        <div id="drawer-panel" class="drawer-panel" onclick="event.stopPropagation()">
+            <div class="drawer-header">
+                <span>自訂欄位與功能</span>
+                <span style="cursor:pointer;" onclick="closeDrawer()">✕</span>
+            </div>
+
+            <div class="preset-group">
+                <button class="preset-btn" onclick="applyPreset('simple')">精簡</button>
+                <button class="preset-btn" onclick="applyPreset('trading')">交易</button>
+                <button class="preset-btn" onclick="applyPreset('full')">完整</button>
+            </div>
+
+            <div class="checkbox-grid">
+                <label><input type="checkbox" id="chk-change" checked onchange="updateColumnVisibility()"> 漲跌</label>
+                <label><input type="checkbox" id="chk-changePct" checked onchange="updateColumnVisibility()"> 漲跌幅</label>
+                <label><input type="checkbox" id="chk-bid" onchange="updateColumnVisibility()"> 買價</label>
+                <label><input type="checkbox" id="chk-ask" onchange="updateColumnVisibility()"> 賣價</label>
+                <label><input type="checkbox" id="chk-high" onchange="updateColumnVisibility()"> 最高</label>
+                <label><input type="checkbox" id="chk-low" onchange="updateColumnVisibility()"> 最低</label>
+                <label><input type="checkbox" id="chk-qty" onchange="updateColumnVisibility()"> 單量/盤</label>
+                <label><input type="checkbox" id="chk-volume" checked onchange="updateColumnVisibility()"> 總成交量</label>
+                <label><input type="checkbox" id="chk-prevRef" checked onchange="updateColumnVisibility()"> 昨收</label>
+                <label><input type="checkbox" id="chk-datetime" checked onchange="updateColumnVisibility()"> 時間</label>
+            </div>
+
+            <!-- 字體大小調整滑桿 -->
+            <div class="font-slider-group">
+                <div class="font-slider-header">
+                    <span>🔤 表格字體大小</span>
+                    <span id="font-size-val">13px</span>
+                </div>
+                <input type="range" id="font-size-range" min="10" max="18" value="13" oninput="changeFontSize(this.value)">
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                <div style="color: var(--text-muted); font-size: 11px; font-weight: bold; margin-top: 2px;">群組頁籤顯示</div>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-holiday-tab" checked onchange="updateColumnVisibility()"> 連假
+                </label>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-commodity-tab" onchange="updateColumnVisibility()"> 能源金屬
+                </label>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-fx-tab" onchange="updateColumnVisibility()"> 外匯
+                </label>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-usstock-tab" checked onchange="updateColumnVisibility()"> 美股
+                </label>
+
+                <div style="color: var(--text-muted); font-size: 11px; font-weight: bold; margin-top: 6px;">其他功能</div>
+                <label style="color: var(--text-main); font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="chk-ai" checked onchange="updateColumnVisibility()"> AI 助理按鈕
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+
+    <!-- 報價表格容器 -->
+    <div class="table-container" id="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 30px; text-align: center;">★</th>
+                    <th onclick="handleSort('symbol')">代碼 <span id="sort-symbol"></span></th>
+                    <th onclick="handleSort('name')">商品名稱 <span id="sort-name"></span></th>
+                    <th onclick="handleSort('close')">成交價 <span id="sort-close"></span></th>
+                    <th class="col-change" onclick="handleSort('change')">漲跌 <span id="sort-change"></span></th>
+                    <th class="col-changePct" onclick="handleSort('changePct')">漲跌幅 <span id="sort-changePct"></span></th>
+                    <th class="col-bid" onclick="handleSort('bid')">買價 <span id="sort-bid"></span></th>
+                    <th class="col-ask" onclick="handleSort('ask')">賣價 <span id="sort-ask"></span></th>
+                    <th class="col-high" onclick="handleSort('high')">最高 <span id="sort-high"></span></th>
+                    <th class="col-low" onclick="handleSort('low')">最低 <span id="sort-low"></span></th>
+                    <th class="col-prevRef" onclick="handleSort('prevRef')">昨收價 <span id="sort-prevRef"></span></th>
+                    <th class="col-qty" onclick="handleSort('qty')">單量/盤 <span id="sort-qty"></span></th>
+                    <th class="col-volume" onclick="handleSort('volume')">總成交量 <span id="sort-volume"></span></th>
+                    <th class="col-datetime" onclick="handleSort('datetime')">更新時間 <span id="sort-datetime"></span></th>
+                </tr>
+            </thead>
+            <tbody id="quote-tbody">
+                <tr><td colspan="14" style="text-align: center; color: var(--text-muted); padding: 20px;">資料載入中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 右下角浮動 AI 助理按鈕 (BETA) -->
+    <div class="ai-floating-btn" id="ai-floating-btn" onclick="toggleAIDialog()">
+        <span class="ai-floating-icon">🤖</span>
+        <span class="ai-floating-badge">BETA</span>
+    </div>
+
+    <!-- 右下角 AI 分析對話彈窗 (預設隱藏) -->
+    <div id="ai-dialog" class="ai-dialog-panel">
+        <div class="ai-dialog-header">
+            <span id="ai-dialog-title">🤖 AI 總經智算面板</span>
+            <span style="cursor:pointer;" onclick="toggleAIDialog(false)">✕</span>
+        </div>
+        <div id="ai-dialog-body" class="ai-dialog-body">讀取即時數據分析中...</div>
+    </div>
+
+    <!-- ================= 商品 VIX 風格走勢彈出面板 ================= -->
+    <div class="vix-modal-overlay" id="symbolVixModal" onclick="handleModalOutsideClick(event)">
+        <div class="vix-card">
+            <div class="vix-card-header">
+                <!-- 點擊標題區塊可切換「走勢圖 / 詳細資料」 -->
+                <div class="vix-title-clickable" onclick="toggleModalVixView()" title="點擊切換圖表與詳細資訊">
+                    <div class="vix-title-group">
+                        <svg id="modal-mini-candle" width="14" height="28" viewBox="0 0 22 46" style="display:none;">
+                            <line id="modal-wick" x1="11" y1="2" x2="11" y2="44" stroke-width="2" />
+                            <rect id="modal-body" x="5" width="12" rx="1" ry="1" />
+                        </svg>
+                        <span id="modal-card-title-text">商品即時走勢</span>
+                    </div>
+                    <div class="vix-stats-group">
+                        <span id="modal-current-val" class="neutral">--</span>
+                        <span id="modal-change-val" class="neutral">--</span>
+                        <span id="modal-pct-val" class="neutral">--%</span>
+                    </div>
+                </div>
+                <!-- ✕ 打叉關閉按鈕 -->
+                <button class="vix-close-btn" onclick="closeSymbolModal()">✕ 關閉</button>
+            </div>
+
+            <div class="vix-content-area" onclick="toggleModalVixView()" title="點擊切換圖表與詳細資訊">
+                <!-- 圖表視圖 -->
+                <div class="vix-canvas-wrap" id="modalCanvasWrap">
+                    <canvas id="modalCanvas"></canvas>
+                </div>
+
+                <!-- 詳細數據視圖 -->
+                <div class="vix-details-view" id="modalDetailsView">
+                    <div class="grid-cell"><span class="grid-label">成交</span><span class="grid-val neutral" id="m-close">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">開盤</span><span class="grid-val neutral" id="m-open">--</span></div>    
+                    <div class="grid-cell"><span class="grid-label">漲跌</span><span class="grid-val neutral" id="m-change">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">昨收</span><span class="grid-val neutral" id="m-prevref">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">最高</span><span class="grid-val neutral" id="m-high">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">最低</span><span class="grid-val neutral" id="m-low">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">漲跌幅</span><span class="grid-val neutral" id="m-pct">--</span></div>
+                    <div class="grid-cell"><span class="grid-label">成交量</span><span class="grid-val neutral" id="m-vol">--</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=TX-1,TXAM-1,TWN-1,TAIWANVIX,NK-1,CN-1,HSI-1,HCEI-1,YM-1,NQ-1,ES-1,RTY-1,FDX-1,CL-1,NG-1,GC-1,PL-1,HG-1,SI-1,DX-1,JY-1,EC-1,BP-1,SF-1,AD-1,CD-1,BTCUSDT,NVDA,GOOGL,AAPL,MSFT,AMZN,META,TSLA,TSM,SPCX,AVGO,MU,INTC,AMD,ASML,ORCL";
+
+        // 連假觀察清單 (自動扣重)[cite: 1]
+        const HOLIDAY_SYMBOLS = ["TX-1", "TXAM-1", "TWN-1", "TAIWANVIX", "YM-1", "NQ-1", "CL-1", "ES-1", "GC-1", "HG-1", "DX-1", "JY-1", "NVDA", "GOOGL", "AAPL", "TSM", "META", "MU", "BTCUSDT"];
+
+        const SYMBOL_META = {
+            "TX-1": { name: "台指期", category: "INDEX" },
+            "TXAM-1": { name: "台指期早盤", category: "INDEX" },
+            "TWN-1": { name: "富台指", category: "INDEX" },
+            "TAIWANVIX": { name: "波動率", category: "INDEX" },
+            "NK-1": { name: "日經225", category: "INDEX" },
+            "CN-1": { name: "中國A50", category: "INDEX" },
+            "HSI-1": { name: "恆生期", category: "INDEX" },
+            "HCEI-1": { name: "國企期", category: "INDEX" },
+            "YM-1": { name: "道瓊期", category: "INDEX" },
+            "NQ-1": { name: "納指期", category: "INDEX" },
+            "ES-1": { name: "標普期", category: "INDEX" },
+            "RTY-1": { name: "羅素期", category: "INDEX" },
+            "FDX-1": { name: "德指期", category: "INDEX" },
+            "CL-1": { name: "紐約原油", category: "COMMODITY" },
+            "NG-1": { name: "天然氣", category: "COMMODITY" },
+            "GC-1": { name: "黃金", category: "COMMODITY" },
+            "SI-1": { name: "白銀", category: "COMMODITY" },
+            "PL-1": { name: "鉑金", category: "COMMODITY" },
+            "HG-1": { name: "銅期貨", category: "COMMODITY" },
+            "DX-1": { name: "美元指數", category: "FX" },
+            "JY-1": { name: "日圓", category: "FX" },
+            "EC-1": { name: "歐元", category: "FX" },
+            "BP-1": { name: "英鎊", category: "FX" },
+            "SF-1": { name: "瑞郎", category: "FX" },
+            "AD-1": { name: "澳幣", category: "FX" },
+            "CD-1": { name: "加幣", category: "FX" },
+            "BTCUSDT": { name: "比特幣", category: "CRYPTO" },
+            "NVDA": { name: "輝達", category: "US_STOCK" },
+            "GOOGL": { name: "谷歌", category: "US_STOCK" },
+            "AAPL": { name: "蘋果", category: "US_STOCK" },
+            "MSFT": { name: "微軟", category: "US_STOCK" },
+            "AMZN": { name: "亞馬遜", category: "US_STOCK" },
+            "META": { name: "Meta", category: "US_STOCK" },
+            "TSLA": { name: "特斯拉", category: "US_STOCK" },
+            "TSM": { name: "台積電 ADR", category: "US_STOCK" },
+            "SPCX": { name: "SPCX ETF", category: "US_STOCK" },
+            "AVGO": { name: "博通", category: "US_STOCK" },
+            "MU": { name: "美光", category: "US_STOCK" },
+            "INTC": { name: "英特爾", category: "US_STOCK" },
+            "AMD": { name: "超微", category: "US_STOCK" },
+            "ASML": { name: "艾斯摩爾", category: "US_STOCK" },
+            "ORCL": { name: "甲骨文", category: "US_STOCK" }
+        };
+
+        const quotesData = {};
+        let currentCategory = "ALL";
+        let watchlist = JSON.parse(localStorage.getItem("user_watchlist") || "[]");
+
+        let currentSortField = "";
+        let currentSortOrder = "desc";
+
+        // ================= 彈出面板與互動走勢邏輯 =================
+        let activeModalSymbol = null;
+        let isModalDetailsView = false;
+        let modalFetchInterval = null;
+
+        function openSymbolModal(symbol, event) {
+            if (event) event.stopPropagation();
+            activeModalSymbol = symbol;
+            isModalDetailsView = false;
+            
+            document.getElementById('modalCanvasWrap').classList.remove('hidden');
+            document.getElementById('modalDetailsView').classList.remove('active');
+            
+            const meta = SYMBOL_META[symbol] || { name: symbol };
+            document.getElementById('modal-card-title-text').innerText = `${meta.name} (${symbol})`;
+
+            document.getElementById('symbolVixModal').classList.add('active');
+            fetchAndRenderModalData();
+            if (modalFetchInterval) clearInterval(modalFetchInterval);
+            modalFetchInterval = setInterval(fetchAndRenderModalData, 1000);
+        }
+
+        function closeSymbolModal() {
+            document.getElementById('symbolVixModal').classList.remove('active');
+            activeModalSymbol = null;
+            if (modalFetchInterval) {
+                clearInterval(modalFetchInterval);
+                modalFetchInterval = null;
+            }
+        }
+
+        function handleModalOutsideClick(event) {
+            if (event.target.id === 'symbolVixModal') {
+                closeSymbolModal();
+            }
+        }
+
+        function toggleModalVixView() {
+            isModalDetailsView = !isModalDetailsView;
+            const canvasWrap = document.getElementById('modalCanvasWrap');
+            const detailsView = document.getElementById('modalDetailsView');
+            const meta = SYMBOL_META[activeModalSymbol] || { name: activeModalSymbol };
+
+            if (isModalDetailsView) {
+                canvasWrap.classList.add('hidden');
+                detailsView.classList.add('active');
+                document.getElementById('modal-card-title-text').innerText = `${meta.name} (${activeModalSymbol}) [詳細]`;
+            } else {
+                canvasWrap.classList.remove('hidden');
+                detailsView.classList.remove('active');
+                document.getElementById('modal-card-title-text').innerText = `${meta.name} (${activeModalSymbol})`;
+            }
+        }
+
+        function renderMicroCandle(wickEl, bodyEl, svgEl, open, high, low, close) {
+            const maxP = Math.max(open, high, low, close);
+            const minP = Math.min(open, high, low, close);
+            const range = (maxP - minP) || 1;
+
+            const svgHeight = 42; 
+            const paddingTop = 2;
+            const getY = (price) => paddingTop + (maxP - price) / range * svgHeight;
+
+            const isCandleUp = close >= open;
+            const colorHex = isCandleUp ? '#f23645' : '#089981';
+
+            wickEl.setAttribute('y1', getY(high));
+            wickEl.setAttribute('y2', getY(low));
+            wickEl.setAttribute('stroke', colorHex);
+
+            bodyEl.setAttribute('y', Math.min(getY(open), getY(close)));
+            bodyEl.setAttribute('height', Math.max(Math.abs(getY(close) - getY(open)), 3));
+            bodyEl.setAttribute('fill', colorHex);
+
+            svgEl.style.display = 'block';
+        }
+
+        async function fetchAndRenderModalData() {
+            if (!activeModalSymbol) return;
+            try {
+                const url = `https://tv-signalr.futures-op.com/history?symbol=${activeModalSymbol}&resolution=1&ws=true&intraday=true`;
+                const response = await fetch(url, { cache: "no-cache" });
+                if (!response.ok) return;
+
+                const json = await response.json();
+                const list = json && Array.isArray(json.bars) ? json.bars : (Array.isArray(json) ? json : []);
+                if (list.length === 0) return;
+
+                const prevRef = json.prevRef !== undefined ? json.prevRef : 
+                                (json.meta && json.meta.prevRef !== undefined ? json.meta.prevRef : (quotesData[activeModalSymbol]?.prevRef || list[0].open));
+                
+                const latest = list[list.length - 1];
+                const currentVal = latest.close;
+                const openPrice = list[0].open;
+                const totalVol = list.reduce((acc, item) => acc + (item.volume || 0), 0);
+
+                let highVal = -Infinity, lowVal = Infinity;
+                let highIdx = 0, lowIdx = 0;
+
+                list.forEach((item, idx) => {
+                    if (item.high > highVal) { highVal = item.high; highIdx = idx; }
+                    if (item.low < lowVal) { lowVal = item.low; lowIdx = idx; }
+                });
+
+                const changeVal = currentVal - prevRef;
+                const changePct = prevRef ? (changeVal / prevRef) * 100 : 0;
+                const isUp = changeVal >= 0;
+                const colorClass = isUp ? 'up' : 'down';
+                const sign = changeVal > 0 ? '+' : '';
+
+                // 1. 更新標題列統計數值
+                document.getElementById('modal-current-val').innerText = fmt(currentVal);
+                document.getElementById('modal-current-val').className = colorClass;
+                document.getElementById('modal-change-val').innerText = `${sign}${fmt(changeVal)}`;
+                document.getElementById('modal-change-val').className = colorClass;
+                document.getElementById('modal-pct-val').innerText = `${sign}${fmt(changePct)}%`;
+                document.getElementById('modal-pct-val').className = colorClass;
+
+                // 2. 更新詳細矩陣數據
+                document.getElementById('m-close').innerText = fmt(currentVal);
+                document.getElementById('m-close').className = `grid-val ${colorClass}`;
+                document.getElementById('m-change').innerText = `${sign}${fmt(changeVal)}`;
+                document.getElementById('m-change').className = `grid-val ${colorClass}`;
+                document.getElementById('m-open').innerText = fmt(openPrice);
+                document.getElementById('m-open').className = 'grid-val neutral';
+                document.getElementById('m-prevref').innerText = fmt(prevRef);
+                document.getElementById('m-prevref').className = 'grid-val neutral';
+                document.getElementById('m-high').innerText = fmt(highVal);
+                document.getElementById('m-high').className = 'grid-val up';
+                document.getElementById('m-low').innerText = fmt(lowVal);
+                document.getElementById('m-low').className = 'grid-val down';
+                document.getElementById('m-pct').innerText = `${sign}${fmt(changePct)}%`;
+                document.getElementById('m-pct').className = `grid-val ${colorClass}`;
+                document.getElementById('m-vol').innerText = totalVol > 0 ? totalVol.toLocaleString() : '0';
+                document.getElementById('m-vol').className = 'grid-val neutral';
+
+                // 3. 微型 K 棒
+                renderMicroCandle(
+                    document.getElementById('modal-wick'),
+                    document.getElementById('modal-body'),
+                    document.getElementById('modal-mini-candle'),
+                    openPrice, highVal, lowVal, currentVal
+                );
+
+                // 4. 繪製走勢圖 Canvas
+                if (!isModalDetailsView) {
+                    const canvas = document.getElementById('modalCanvas');
+                    const ctx = canvas.getContext('2d');
+                    const dpr = window.devicePixelRatio || 1;
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = rect.width * dpr;
+                    canvas.height = rect.height * dpr;
+                    ctx.scale(dpr, dpr);
+
+                    const width = rect.width;
+                    const height = rect.height;
+                    ctx.clearRect(0, 0, width, height);
+
+                    const prices = list.map(item => item.close);
+                    const minP = Math.min(...prices);
+                    const maxP = Math.max(...prices);
+                    const range = (maxP - minP) || 1;
+
+                    const paddingLeft = 35;
+                    const paddingRight = 55;
+                    const paddingTop = 20;
+                    const paddingBottom = 30;
+
+                    const graphWidth = width - paddingLeft - paddingRight;
+                    const graphHeight = height - paddingTop - paddingBottom;
+                    const lineColor = isUp ? '#f23645' : '#089981';
+
+                    // Y 軸格線
+                    ctx.font = '10px monospace';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#2a2e39';
+                    ctx.lineWidth = 1;
+
+                    const ySteps = 4;
+                    for (let i = 0; i <= ySteps; i++) {
+                        const val = minP + (range * (ySteps - i) / ySteps);
+                        const y = paddingTop + (graphHeight / ySteps) * i;
+                        ctx.beginPath();
+                        ctx.moveTo(paddingLeft, y);
+                        ctx.lineTo(width - paddingRight, y);
+                        ctx.stroke();
+                        ctx.textAlign = 'left';
+                        ctx.fillText(fmt(val), width - paddingRight + 8, y + 3);
+                    }
+
+                    // X 軸時間標籤
+                    const startTimeMs = list[0].time ? list[0].time : Date.now();
+                    const endTimeMs = list[list.length - 1].time ? list[list.length - 1].time : Date.now();
+                    const totalDuration = endTimeMs - startTimeMs || 1;
+
+                    const xSteps = 4;
+                    for (let i = 0; i <= xSteps; i++) {
+                        const targetTimeMs = startTimeMs + (totalDuration * (i / xSteps));
+                        const targetDate = new Date(targetTimeMs);
+                        const timeStr = targetDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+                        const x = paddingLeft + (graphWidth / xSteps) * i;
+                        ctx.beginPath();
+                        ctx.moveTo(x, paddingTop);
+                        ctx.lineTo(x, paddingTop + graphHeight);
+                        ctx.stroke();
+                        ctx.textAlign = 'center';
+                        ctx.fillText(timeStr, x, height - 8);
+                    }
+
+                    // 繪製座標與折線
+                    const points = prices.map((val, idx) => {
+                        const itemTime = list[idx].time ? list[idx].time : startTimeMs;
+                        const ratio = totalDuration === 0 ? 0 : Math.max(0, Math.min(1, (itemTime - startTimeMs) / totalDuration));
+                        return {
+                            x: paddingLeft + ratio * graphWidth,
+                            y: paddingTop + graphHeight - ((val - minP) / range) * graphHeight
+                        };
+                    });
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = lineColor;
+                    ctx.lineWidth = 2;
+                    points.forEach((pt, idx) => {
+                        if (idx === 0) ctx.moveTo(pt.x, pt.y);
+                        else ctx.lineTo(pt.x, pt.y);
+                    });
+                    ctx.stroke();
+
+                    // 填滿漸層
+                    const lastPt = points[points.length - 1];
+                    ctx.lineTo(lastPt.x, paddingTop + graphHeight);
+                    ctx.lineTo(points[0].x, paddingTop + graphHeight);
+                    ctx.closePath();
+                    const gradient = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
+                    gradient.addColorStop(0, isUp ? 'rgba(242, 54, 69, 0.2)' : 'rgba(8, 153, 129, 0.2)');
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+
+                    // 極值標記
+                    const highPt = points[highIdx];
+                    const lowPt = points[lowIdx];
+                    ctx.font = 'bold 11px monospace';
+
+                    ctx.fillStyle = '#f23645';
+                    ctx.textAlign = 'left';
+                    let highX = highPt.x + 6;
+                    let highY = highPt.y - 4;
+                    if (highX + 50 > width - paddingRight) highX = highPt.x - 55;
+                    ctx.fillText(`▼ ${fmt(highVal)}`, highX, highY);
+
+                    // ctx.fillStyle = '#089981';
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.textAlign = 'left';
+                    let lowX = lowPt.x + 6;
+                    let lowY = lowPt.y + 14;
+                    if (lowX + 50 > width - paddingRight) lowX = lowPt.x - 55;
+                    if (lowY > paddingTop + graphHeight - 10) lowY = lowPt.y - 6;
+                    ctx.fillText(`▲ ${fmt(lowVal)}`, lowX, lowY);
+                }
+            } catch (e) {
+                console.error("modal fetch error:", e);
+            }
+        }
+        // ==========================================================
+
+        function handleSort(field) {
+            if (currentSortField === field) {
+                currentSortOrder = currentSortOrder === "asc" ? "desc" : "asc";
+            } else {
+                currentSortField = field;
+                currentSortOrder = "desc";
+            }
+            renderTable();
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll("th").forEach(th => th.classList.remove("sort-active"));
+            ["symbol", "name", "close", "change", "changePct", "bid", "ask", "high", "low", "prevRef", "qty", "volume", "datetime"].forEach(f => {
+                const el = document.getElementById(`sort-${f}`);
+                if (el) el.innerText = "";
+            });
+
+            if (currentSortField) {
+                const indicatorEl = document.getElementById(`sort-${currentSortField}`);
+                if (indicatorEl) {
+                    indicatorEl.innerText = currentSortOrder === "asc" ? " ▲" : " ▼";
+                    indicatorEl.closest("th")?.classList.add("sort-active");
+                }
+            }
+        }
+
+        function saveWatchlist() {
+            localStorage.setItem("user_watchlist", JSON.stringify(watchlist));
+            updateWatchlistTabLabel();
+        }
+
+        function toggleWatchlist(symbol, event) {
+            event.stopPropagation();
+            const index = watchlist.indexOf(symbol);
+            if (index > -1) {
+                watchlist.splice(index, 1);
+            } else {
+                watchlist.push(symbol);
+            }
+            saveWatchlist();
+            renderTable();
+        }
+
+        function updateWatchlistTabLabel() {
+            document.getElementById("tab-watchlist").innerText = `自選 (${watchlist.length})`;
+        }
+
+        function fmt(n, dec = 2) {
+            if (n === undefined || n === null) return "-";
+            return Number(n).toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        }
+
+        function fmtTime(iso) {
+            if (!iso) return "-";
+            const date = new Date(iso);
+            if (isNaN(date.getTime())) return iso.substring(11, 19);
+            return date.toLocaleTimeString('zh-TW', { hour12: false });
+        }
+
+        function getColorStyles(diff) {
+            if (diff === 0) return { cls: "color-flat", bgCls: "bg-flat", sign: "" };
+            const mode = document.getElementById("color-style").value;
+            const isUp = diff > 0;
+            const useRed = (mode === "RED_UP") ? isUp : !isUp;
+            return {
+                cls: useRed ? "color-red" : "color-green",
+                bgCls: useRed ? "bg-red" : "bg-green",
+                sign: isUp ? "+" : ""
+            };
+        }
+
+        function changeFontSize(val) {
+            document.documentElement.style.setProperty('--table-font-size', `${val}px`);
+            document.getElementById('font-size-val').innerText = `${val}px`;
+            localStorage.setItem("user_table_font_size", val);
+        }
+
+        function initFontSize() {
+            const savedSize = localStorage.getItem("user_table_font_size") || 13;
+            document.getElementById('font-size-range').value = savedSize;
+            changeFontSize(savedSize);
+        }
+
+        function toggleAIDialog(forceState) {
+            const dialog = document.getElementById("ai-dialog");
+            const isShow = typeof forceState === "boolean" ? forceState : !dialog.classList.contains("show");
+            dialog.classList.toggle("show", isShow);
+            if (isShow) runAIAnalysis();
+        }
+
+        function runAIAnalysis() {
+            const bodyEl = document.getElementById("ai-dialog-body");
+            const titleEl = document.getElementById("ai-dialog-title");
+
+            const now = new Date();
+            const hour = now.getHours();
+            const isNightSession = (hour >= 15 || hour < 5);
+
+            titleEl.innerText = isNightSession ? "🌙 AI 夜盤總經智算" : "☀️ AI 日盤總經智算";
+
+            const getSymbolInfo = (sym) => {
+                const q = quotesData[sym];
+                if (!q) return { close: 0, prevRef: 0, diff: 0, pct: 0 };
+                const diff = q.close - q.prevRef;
+                const pct = q.prevRef ? (diff / q.prevRef) * 100 : 0;
+                return { close: q.close, prevRef: q.prevRef, diff, pct };
+            };
+
+            const oil = getSymbolInfo("CL-1");
+            const gold = getSymbolInfo("GC-1");
+            const nq = getSymbolInfo("NQ-1");
+            const tx = getSymbolInfo("TX-1");
+            const tsm = getSymbolInfo("TSM");
+            const nvda = getSymbolInfo("NVDA");
+
+            let statusTag = "", riskAssessment = "", actionSuggestion = "";
+
+            if (oil.pct > 1.5 || gold.pct > 1.0) {
+                statusTag = "⚠️ 地緣升溫 / 避險需求抬頭";
+                riskAssessment = `紐約原油目前報 ${fmt(oil.close)}，高於昨收基準 ${fmt(oil.prevRef)}。`;
+            } else if (oil.pct < -1.2) {
+                statusTag = "📉 恐慌釋放 / 能源溢價回落";
+                riskAssessment = `原油走弱至 ${fmt(oil.close)}（昨收 ${fmt(oil.prevRef)}）。`;
+            } else {
+                statusTag = "⚖️ 總經橫盤 / 避險資產狹幅震盪";
+                riskAssessment = `紐約原油維持在昨收 ${fmt(oil.prevRef)} 附近整理。`;
+            }
+
+            if (isNightSession) {
+                if (tsm.pct >= 0 || nq.pct >= 0) {
+                    actionSuggestion = `台積電 ADR 與納指期展現強韌防禦力，夜盤台指期容易開啟反彈。`;
+                } else {
+                    actionSuggestion = `海外科技股偏弱，密切關注台指期昨收線 ${fmt(tx.prevRef)} 支撐。`;
+                }
+            } else {
+                actionSuggestion = `日盤持續觀察原油與黃金防線，等待短線情緒消化。`;
+            }
+
+            let content = `📌 【關鍵價格基準】\n` +
+                `• 原油 (CL-1)：${fmt(oil.prevRef)}\n` +
+                `• 黃金 (GC-1)：${fmt(gold.prevRef)}\n` +
+                `• 納指 (NQ-1)：${fmt(nq.prevRef)}\n` +
+                `• 台指 (TX-1)：${fmt(tx.prevRef)}\n\n` +
+                `📊 【市場狀態】\n${statusTag}\n${riskAssessment}\n\n` +
+                `💡 【策略建議】\n${actionSuggestion}`;
+
+            bodyEl.innerText = content;
+        }
+
+        function toggleDrawer(e) {
+            e.stopPropagation();
+            const panel = document.getElementById("drawer-panel");
+            const overlay = document.getElementById("drawer-overlay");
+            const isShow = panel.classList.contains("show");
+            if (isShow) {
+                closeDrawer();
+            } else {
+                panel.classList.add("show");
+                overlay.classList.add("show");
+            }
+        }
+
+        function closeDrawer() {
+            document.getElementById("drawer-panel").classList.remove("show");
+            document.getElementById("drawer-overlay").classList.remove("show");
+        }
+
+        function applyPreset(type) {
+            const keys = ["change", "changePct", "bid", "ask", "high", "low", "qty", "volume", "prevRef", "datetime"];
+            const configs = {
+                simple: ["change", "changePct", "volume", "prevRef", "datetime"],
+                trading: ["change", "changePct", "bid", "ask", "qty", "volume", "prevRef"],
+                full: keys
+            };
+            const activeKeys = configs[type] || [];
+            keys.forEach(k => { document.getElementById(`chk-${k}`).checked = activeKeys.includes(k); });
+            updateColumnVisibility();
+        }
+
+        function updateColumnVisibility() {
+            const container = document.getElementById("table-container");
+            const body = document.body;
+
+            const cols = ["change", "changePct", "bid", "ask", "high", "low", "qty", "volume", "prevRef", "datetime"];
+            cols.forEach(col => {
+                const isChecked = document.getElementById(`chk-${col}`).checked;
+                container.classList.toggle(`hide-${col}`, !isChecked);
+            });
+
+            const isHolidayTabChecked = document.getElementById("chk-holiday-tab").checked;
+            body.classList.toggle("hide-holiday-tab", !isHolidayTabChecked);
+            if (!isHolidayTabChecked && currentCategory === "HOLIDAY") filterCategory('ALL');
+
+            const isCommodityTabChecked = document.getElementById("chk-commodity-tab").checked;
+            body.classList.toggle("hide-commodity-tab", !isCommodityTabChecked);
+            if (!isCommodityTabChecked && currentCategory === "COMMODITY") filterCategory('ALL');
+
+            const isFxTabChecked = document.getElementById("chk-fx-tab").checked;
+            body.classList.toggle("hide-fx-tab", !isFxTabChecked);
+            if (!isFxTabChecked && currentCategory === "FX") filterCategory('ALL');
+
+            const isUsStockTabChecked = document.getElementById("chk-usstock-tab").checked;
+            body.classList.toggle("hide-usstock-tab", !isUsStockTabChecked);
+            if (!isUsStockTabChecked && currentCategory === "US_STOCK") filterCategory('ALL');
+
+            const isAIChecked = document.getElementById("chk-ai").checked;
+            body.classList.toggle("hide-ai-assistant", !isAIChecked);
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("quote-tbody");
+            const filterKeyword = document.getElementById("search-box").value.toUpperCase();
+            tbody.innerHTML = "";
+
+            updateSortIndicators();
+
+            let items = [];
+            Object.keys(SYMBOL_META).forEach(symbol => {
+                const meta = SYMBOL_META[symbol];
+                const q = quotesData[symbol];
+
+                if (currentCategory === "WATCHLIST" && !watchlist.includes(symbol)) return;
+                if (currentCategory === "HOLIDAY" && !HOLIDAY_SYMBOLS.includes(symbol)) return;
+                if (currentCategory !== "ALL" && currentCategory !== "WATCHLIST" && currentCategory !== "HOLIDAY" && meta.category !== currentCategory) return;
+                if (filterKeyword && !symbol.includes(filterKeyword) && !meta.name.includes(filterKeyword)) return;
+                if (!q) return;
+
+                items.push({ symbol, meta, q });
+            });
+
+            if (currentSortField) {
+                items.sort((a, b) => {
+                    let valA, valB;
+                    switch (currentSortField) {
+                        case "symbol": valA = a.symbol; valB = b.symbol; break;
+                        case "name": valA = a.meta.name; valB = b.meta.name; break;
+                        case "close": valA = a.q.close ?? 0; valB = b.q.close ?? 0; break;
+                        case "change":
+                            valA = (a.q.close ?? 0) - (a.q.prevRef ?? 0);
+                            valB = (b.q.close ?? 0) - (b.q.prevRef ?? 0);
+                            break;
+                        case "changePct":
+                            const diffA = (a.q.close ?? 0) - (a.q.prevRef ?? 0);
+                            const diffB = (b.q.close ?? 0) - (b.q.prevRef ?? 0);
+                            valA = a.q.prevRef ? (diffA / a.q.prevRef) * 100 : 0;
+                            valB = b.q.prevRef ? (diffB / b.q.prevRef) * 100 : 0;
+                            break;
+                        case "bid": valA = a.q.bid ?? 0; valB = b.q.bid ?? 0; break;
+                        case "ask": valA = a.q.ask ?? 0; valB = b.q.ask ?? 0; break;
+                        case "high": valA = a.q.high ?? 0; valB = b.q.high ?? 0; break;
+                        case "low": valA = a.q.low ?? 0; valB = b.q.low ?? 0; break;
+                        case "prevRef": valA = a.q.prevRef ?? 0; valB = b.q.prevRef ?? 0; break;
+                        case "qty": valA = a.q.qty ?? 0; valB = b.q.qty ?? 0; break;
+                        case "volume": valA = a.q.volume ?? 0; valB = b.q.volume ?? 0; break;
+                        case "datetime": valA = a.q.datetime || ""; valB = b.q.datetime || ""; break;
+                        default: return 0;
+                    }
+                    if (typeof valA === "string") {
+                        return currentSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    } else {
+                        return currentSortOrder === "asc" ? valA - valB : valB - valA;
+                    }
+                });
+            }
+
+            items.forEach(({ symbol, meta, q }) => {
+                const isStarred = watchlist.includes(symbol);
+                const diff = q.close - q.prevRef;
+                const pct = q.prevRef ? (diff / q.prevRef) * 100 : 0;
+                const { cls, bgCls, sign } = getColorStyles(diff);
+                const bsUpper = (q.bs || "").toUpperCase();
+
+                const tr = document.createElement("tr");
+                tr.id = `row-${symbol}`;
+                tr.innerHTML = `
+                    <td style="text-align: center;"><span class="star-btn ${isStarred ? 'active' : ''}" onclick="toggleWatchlist('${symbol}', event)">${isStarred ? '★' : '☆'}</span></td>
+                    <td><span class="symbol-code" onclick="openSymbolModal('${symbol}', event)" title="點擊檢視即時走勢">${q.symbol}</span></td>
+                    <td><span class="symbol-name" onclick="openSymbolModal('${symbol}', event)" title="點擊檢視即時走勢">${meta.name}</span></td>
+                    <td class="${cls}" style="font-weight: 700;">${fmt(q.close)}</td>
+                    <td class="col-change ${cls}">${sign}${fmt(diff)}</td>
+                    <td class="col-changePct"><span class="change-badge ${bgCls}">${sign}${fmt(pct)}%</span></td>
+                    <td class="col-bid">${fmt(q.bid)}</td>
+                    <td class="col-ask">${fmt(q.ask)}</td>
+                    <td class="col-high">${fmt(q.high)}</td>
+                    <td class="col-low">${fmt(q.low)}</td>
+                    <td class="col-prevRef">${fmt(q.prevRef)}</td>
+                    <td class="col-qty">${q.qty ?? 0} <span class="bs-${q.bs}">${bsUpper}</span></td>
+                    <td class="col-volume">${fmt(q.volume, 0)}</td>
+                    <td class="col-datetime" style="color: var(--text-muted); font-size: 12px;">${fmtTime(q.datetime)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (items.length === 0) {
+                const msg = currentCategory === "WATCHLIST" ? "尚未加入任何自訂商品 (點擊 ☆ 即可加入)" : "無符合條件商品";
+                tbody.innerHTML = `<tr><td colspan="14" style="text-align: center; color: var(--text-muted); padding: 30px;">${msg}</td></tr>`;
+            }
+        }
+
+        function updateRow(item) {
+            const old = quotesData[item.symbol];
+            quotesData[item.symbol] = item;
+
+            const row = document.getElementById(`row-${item.symbol}`);
+            if (!row) { renderTable(); return; }
+
+            const diff = item.close - item.prevRef;
+            const pct = item.prevRef ? (diff / item.prevRef) * 100 : 0;
+            const { cls, bgCls, sign } = getColorStyles(diff);
+            const bsUpper = (item.bs || "").toUpperCase();
+
+            if (old && item.close !== old.close) {
+                row.classList.remove("flash-up", "flash-down");
+                void row.offsetWidth;
+                row.classList.add(item.close > old.close ? "flash-up" : "flash-down");
+            }
+
+            row.cells[3].className = cls; row.cells[3].innerText = fmt(item.close);
+            row.cells[4].className = `col-change ${cls}`; row.cells[4].innerText = `${sign}${fmt(diff)}`;
+            row.cells[5].innerHTML = `<span class="change-badge ${bgCls}">${sign}${fmt(pct)}%</span>`;
+            row.cells[6].innerText = fmt(item.bid);
+            row.cells[7].innerText = fmt(item.ask);
+            row.cells[8].innerText = fmt(item.high);
+            row.cells[9].innerText = fmt(item.low);
+            row.cells[10].innerText = fmt(item.prevRef);
+            row.cells[11].innerHTML = `${item.qty ?? 0} <span class="bs-${item.bs}">${bsUpper}</span>`;
+            row.cells[12].innerText = fmt(item.volume, 0);
+            row.cells[13].innerText = fmtTime(item.datetime);
+        }
+
+        async function fetchQuotes() {
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) return;
+                const list = await res.json();
+                if (Array.isArray(list)) {
+                    list.forEach(updateRow);
+                }
+                document.getElementById("update-time").innerText = `更新於 ${new Date().toLocaleTimeString('zh-TW', { hour12: false })}`;
+            } catch (e) {
+                document.getElementById("update-time").innerText = "連線異常";
+            }
+        }
+
+        function filterCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderTable();
+        }
+
+        // 初始化
+        initFontSize();
+        updateWatchlistTabLabel();
+        updateColumnVisibility();
+        fetchQuotes();
+        setInterval(fetchQuotes, 1000);
+    </script>
+</body>
+</html>

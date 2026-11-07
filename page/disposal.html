@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>處置 / 注意股卡片速查</title>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-hover: #1e40af;
+      --bg: #d8dcde;         /* 護眼沈穩灰底 */
+      --card-bg: #e6eaed;    /* 容器與卡片背景 */
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+      --badge-disposal-bg: #ea580c;
+      --badge-tag-bg: #f1f5f9;
+      --input-bg: #ffffff;
+      --color-green: #15803d; /* 深綠色 */
+    }
+
+    [data-theme="dark"] {
+      --primary: #3b82f6;
+      --primary-hover: #60a5fa;
+      --bg: #0f172a;         /* 深色模式背景 */
+      --card-bg: #1e293b;    /* 深色模式卡片背景 */
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --badge-tag-bg: #334155;
+      --input-bg: #0f172a;
+      --color-green: #22c55e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 8px 12px;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid var(--primary);
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    /* 篩選控制列卡片 */
+    .card-filter {
+      background: var(--card-bg);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      margin-bottom: 8px;
+    }
+
+    /* 控制項區域：彈性佈局整齊對齊 */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 12px;
+      align-items: center;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    input, select, button {
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background-color: var(--input-bg);
+      color: var(--text);
+      font-size: 0.8rem;
+      outline: none;
+      height: 28px;
+      box-sizing: border-box;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .in-shell #themeToggleBtn { display:none; } /* 在 index 外殼裡：深淺模式由外殼統一控制 */
+    .theme-toggle-btn {
+      background-color: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    /* 重置按鈕樣式 */
+    .reset-btn {
+      background-color: var(--card-bg);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      font-weight: 600;
+      height: 28px;
+      padding: 0 10px;
+    }
+    .reset-btn:hover {
+      background-color: var(--border);
+      color: var(--text);
+    }
+
+    /* 頁籤按鈕群組樣式 */
+    .tabs-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .tab-btn {
+      background-color: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      height: 28px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--primary);
+    }
+
+    .tab-btn.active {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* 靠右搜尋欄位組 */
+    .search-group {
+      margin-left: auto;
+    }
+
+    /* 緊湊卡片網格布局 */
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 8px;
+    }
+
+    .stock-card {
+      background: var(--card-bg);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+    }
+
+    .stock-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stock-title-area {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    svg.sparkline {
+      display: block;
+      background: transparent;
+    }
+
+    .stock-code-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stock-name-text {
+      color: var(--text);
+      font-size: 0.85rem;
+      margin-left: 2px;
+    }
+
+    .stock-price-area {
+      text-align: right;
+    }
+
+    .stock-price {
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    .price-up { color: #ef4444; }
+    .price-down { color: var(--color-green); }
+    .price-flat { color: var(--text); }
+
+    .price-change-sub {
+      font-size: 0.7rem;
+      font-family: monospace;
+      display: flex;
+      gap: 3px;
+      justify-content: flex-end;
+    }
+
+    /* 標籤區 */
+    .badges-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      align-items: center;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .badge-no-margin { background-color: #fee2e2; color: #991b1b; }
+    .badge-industry { background-color: var(--badge-tag-bg); color: var(--text-muted); border: 1px solid var(--border); }
+    .badge-disposal { background-color: #ffedd5; color: #c2410c; }
+    .badge-expiring { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+
+    /* 資訊列 */
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+    }
+
+    .day-badge {
+      background-color: var(--badge-tag-bg);
+      border: 1px solid var(--border);
+      padding: 0px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 0.7rem;
+    }
+
+    .period-text {
+      font-family: monospace;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .condition-text {
+      font-size: 0.78rem;
+      color: var(--text);
+    }
+
+    /* 展開內容區 */
+    .toggle-detail-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 0.75rem;
+      cursor: pointer;
+      text-align: left;
+      padding: 0;
+      width: fit-content;
+      font-weight: 600;
+    }
+
+    .toggle-detail-btn:hover {
+      text-decoration: underline;
+      background: none;
+    }
+
+    .detail-content {
+      display: none;
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      padding: 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text);
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    .loading, .error-msg, .no-data {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+    }
+
+    .error-msg { color: #dc2626; }
+  </style>
+</head>
+<body data-theme="light">
+<script>
+  // 在 index 外殼裡：深淺模式由外殼統一控制（本頁自己的切換鈕會隱藏）
+  if (window.parent !== window) {
+    document.documentElement.classList.add("in-shell");
+    var st = null;
+    try { st = localStorage.getItem("shellTheme"); } catch (e) {}
+    if (st !== "light" && st !== "dark") st = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.body.setAttribute("data-theme", st);
+    addEventListener("message", function (e) {
+      var m = e.data;
+      if (e.source !== parent || !m || m.type !== "shell-theme" || (m.theme !== "light" && m.theme !== "dark")) return;
+      document.body.setAttribute("data-theme", m.theme);
+    });
+  }
+</script>
+
+  <div class="container">
+    <header>
+      <h1>處置 / 注意股速查</h1>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div id="countDisplay" style="font-weight: 600; color: var(--primary); font-size: 0.9rem;">共 0 筆</div>
+        <button id="themeToggleBtn" class="theme-toggle-btn" style="height: 28px; padding: 0 10px; font-size: 0.75rem;">🌙 深色模式</button>
+      </div>
+    </header>
+
+    <div class="card-filter">
+      <div class="controls">
+        <!-- 起始 & 結束日期 -->
+        <div class="input-group">
+          <label for="startDate">起始</label>
+          <input type="date" id="startDate">
+        </div>
+        <div class="input-group">
+          <label for="endDate">結束</label>
+          <input type="date" id="endDate">
+        </div>
+        <button type="button" id="resetBtn" class="reset-btn">重置</button>
+
+        <!-- 類型頁籤群組 -->
+        <div class="input-group">
+          <label>類型</label>
+          <div class="tabs-group" id="typeTabs">
+            <button type="button" class="tab-btn active" data-value="disposal">處置中 (<span id="count-disposal">0</span>)</button>
+            <button type="button" class="tab-btn" data-value="expiring">即將出關 (<span id="count-expiring">0</span>)</button>
+            <button type="button" class="tab-btn" data-value="attention">注意股 (<span id="count-attention">0</span>)</button>
+          </div>
+        </div>
+
+        <!-- 出關天數設定（切換至「即將出關」時才顯示，預設隱藏） -->
+        <div class="input-group" id="expiringDaysGroup" style="display: none;">
+          <label for="expiringDaysInput">出關天數≤</label>
+          <input type="number" id="expiringDaysInput" value="3" min="1" max="30" style="width: 50px; text-align: center;">
+        </div>
+
+        <!-- 搜尋欄（固定靠右） -->
+        <div class="input-group search-group">
+          <label for="searchInput">搜尋</label>
+          <input type="text" id="searchInput" placeholder="代號 / 名稱..." style="width: 130px;">
+        </div>
+      </div>
+    </div>
+
+    <div id="cardGrid" class="grid-container">
+      <div class="loading">載入中...</div>
+    </div>
+  </div>
+
+  <script>
+    let rawData = [];
+    let nameMapping = {};
+    let currentType = 'disposal';
+    let cachedDataMap = {};
+
+    const MAPPING_URL = 'https://storage.googleapis.com/symbol-config/stock_code_to_chinese.json';
+
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme = document.body.getAttribute('data-theme');
+      if (currentTheme === 'dark') {
+        document.body.setAttribute('data-theme', 'light');
+        themeToggleBtn.textContent = '🌙 深色模式';
+      } else {
+        document.body.setAttribute('data-theme', 'dark');
+        themeToggleBtn.textContent = '☀️ 淺色模式';
+      }
+    });
+
+    function initDefaultDates() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+
+      document.getElementById('startDate').value = `${year}-${month}-01`;
+      document.getElementById('endDate').value = `${year}-${month}-${day}`;
+    }
+
+    async function loadStockNames() {
+      try {
+        const response = await fetch(MAPPING_URL);
+        if (response.ok) {
+          nameMapping = await response.json();
+        }
+      } catch (e) {
+        console.warn('無法讀取對照檔:', e);
+      }
+    }
+
+    function drawSvgCandleStick(svgEl, candle) {
+      if (!svgEl || !candle) return;
+      let { open, high, low, close } = candle;
+      let minPrice = Math.min(low, open, close);
+      let maxPrice = Math.max(high, open, close);
+
+      if (minPrice === maxPrice) {
+        minPrice *= 0.99;
+        maxPrice *= 1.01;
+      }
+
+      const height = 26;
+      const padding = 2;
+      const drawableHeight = height - padding * 2;
+      const x = 10;
+      const barWidth = 5;
+
+      const highY = padding + ((maxPrice - high) / (maxPrice - minPrice)) * drawableHeight;
+      const lowY = padding + ((maxPrice - low) / (maxPrice - minPrice)) * drawableHeight;
+      const openY = padding + ((maxPrice - open) / (maxPrice - minPrice)) * drawableHeight;
+      const closeY = padding + ((maxPrice - close) / (maxPrice - minPrice)) * drawableHeight;
+
+      const isUp = close >= open;
+      const color = isUp ? '#ef4444' : 'var(--color-green)';
+
+      svgEl.innerHTML = `
+        <line x1="${x}" y1="${highY}" x2="${x}" y2="${lowY}" stroke="${color}" stroke-width="1" />
+        <rect x="${x - barWidth / 2}" y="${Math.min(openY, closeY)}" width="${barWidth}" height="${Math.max(Math.abs(openY - closeY), 1.5)}" fill="${color}" rx="0.5" />
+      `;
+    }
+
+    async function fetchBatchQuotes(symbols) {
+      if (!symbols || symbols.length === 0) return;
+      const url = `https://realtime-quote-signalr-v2.futures-op.com/quote?symbol=${symbols.join(',')}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+
+        const quotes = Array.isArray(json) ? json : (json.data || json.items || [json]);
+
+        quotes.forEach(data => {
+          const rawSymbol = data.symbol || data.code || '';
+          const cleanSymbol = rawSymbol.split('.')[0];
+          if (!cleanSymbol) return;
+
+          const closePrice = Number(data.close !== undefined ? data.close : data.c);
+          const openPrice = Number(data.open !== undefined ? data.open : data.o || closePrice);
+          const highPrice = Number(data.high !== undefined ? data.high : data.h || closePrice);
+          const lowPrice = Number(data.low !== undefined ? data.low : data.l || closePrice);
+          const prevRef = Number(data.prevRef !== undefined ? data.prevRef : (data.ref !== undefined ? data.ref : openPrice));
+
+          const diff = closePrice - prevRef;
+          const pct = prevRef > 0 ? (diff / prevRef) * 100 : 0;
+
+          const priceEl = document.getElementById(`price-${cleanSymbol}`);
+          const changeEl = document.getElementById(`change-${cleanSymbol}`);
+          const svgEl = document.getElementById(`svg-${cleanSymbol}`);
+
+          if (priceEl) {
+            priceEl.textContent = closePrice.toFixed(2);
+            priceEl.className = `stock-price ${diff > 0 ? 'price-up' : diff < 0 ? 'price-down' : 'price-flat'}`;
+          }
+          if (changeEl) {
+            const sign = diff > 0 ? '+' : '';
+            changeEl.innerHTML = `<span class="${diff > 0 ? 'price-up' : diff < 0 ? 'price-down' : 'price-flat'}">${sign}${diff.toFixed(2)}</span> <span class="${diff > 0 ? 'price-up' : diff < 0 ? 'price-down' : 'price-flat'}">${sign}${pct.toFixed(2)}%</span>`;
+          }
+          if (svgEl) {
+            drawSvgCandleStick(svgEl, { open: openPrice, high: highPrice, low: lowPrice, close: closePrice });
+          }
+        });
+      } catch (e) {
+        console.warn('批次抓取報價失敗:', e);
+      }
+    }
+
+    async function fetchTypeData(typeKey) {
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const apiType = typeKey === 'expiring' ? 'disposal' : typeKey;
+
+      const params = new URLSearchParams({
+        type: apiType,
+        datetime_gte: startDate,
+        datetime_lte: endDate,
+        sort_order: 'desc'
+      });
+
+      const dataUrl = `https://api.market-insight.futures-ai.com/api/fundamental/attention_disposal?${params.toString()}`;
+
+      try {
+        const response = await fetch(dataUrl);
+        if (!response.ok) {
+          if (response.status === 422) return [];
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const json = await response.json();
+        let items = Array.isArray(json) ? json : (json.data || json.items || []);
+
+        if (typeKey === 'expiring') {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const maxDays = parseInt(document.getElementById('expiringDaysInput').value) || 3;
+
+          items = items.filter(item => {
+            const endD = item.end_date || item.disposal_end_date || '';
+            if (!endD) return false;
+            const endDateObj = new Date(endD);
+            endDateObj.setHours(0, 0, 0, 0);
+            
+            const diffTime = endDateObj - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            return diffDays >= 0 && diffDays <= maxDays;
+          });
+
+          items.sort((a, b) => {
+            const dateA = a.end_date || a.disposal_end_date || '';
+            const dateB = b.end_date || b.disposal_end_date || '';
+            return dateA.localeCompare(dateB);
+          });
+        }
+        return items;
+      } catch (e) {
+        return [];
+      }
+    }
+
+    async function fetchData() {
+      const gridContainer = document.getElementById('cardGrid');
+      gridContainer.innerHTML = '<div class="loading">資料讀取中...</div>';
+
+      if (Object.keys(nameMapping).length === 0) {
+        await loadStockNames();
+      }
+
+      const [disposalItems, attentionItems] = await Promise.all([
+        fetchTypeData('disposal'),
+        fetchTypeData('attention')
+      ]);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const maxDays = parseInt(document.getElementById('expiringDaysInput').value) || 3;
+
+      const expiringItems = disposalItems.filter(item => {
+        const endD = item.end_date || item.disposal_end_date || '';
+        if (!endD) return false;
+        const endDateObj = new Date(endD);
+        endDateObj.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((endDateObj - today) / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= maxDays;
+      });
+
+      cachedDataMap = {
+        disposal: disposalItems,
+        expiring: expiringItems,
+        attention: attentionItems
+      };
+
+      document.getElementById('count-disposal').textContent = disposalItems.length;
+      document.getElementById('count-expiring').textContent = expiringItems.length;
+      document.getElementById('count-attention').textContent = attentionItems.length;
+
+      rawData = cachedDataMap[currentType] || [];
+      renderCards(rawData, currentType);
+    }
+
+    function renderCards(data, type) {
+      const gridContainer = document.getElementById('cardGrid');
+      const countDisplay = document.getElementById('countDisplay');
+
+      if (!data || data.length === 0) {
+        let typeLabel = '處置中';
+        if (type === 'attention') typeLabel = '注意股';
+        else if (type === 'expiring') typeLabel = '即將出關';
+
+        gridContainer.innerHTML = `<div class="no-data">暫無${typeLabel}</div>`;
+        countDisplay.textContent = '共 0 筆';
+        return;
+      }
+
+      countDisplay.textContent = `共 ${data.length} 筆`;
+
+      let symbolsToFetch = [];
+
+      gridContainer.innerHTML = data.map((item, index) => {
+        const rawSymbol = item.symbol || item.code || item.stock_id || '--';
+        const cleanSymbol = rawSymbol.split('.')[0];
+        const stockName = nameMapping[cleanSymbol] || nameMapping[rawSymbol] || item.name || item.stock_name || '未知';
+
+        if (cleanSymbol !== '--') {
+          symbolsToFetch.push(cleanSymbol);
+        }
+
+        const startDate = (item.start_date || item.disposal_start_date || '').replace(/-/g, '-');
+        const endDate = (item.end_date || item.disposal_end_date || '').replace(/-/g, '-');
+        const periodStr = (startDate && endDate) ? `${startDate.slice(5)} ~ ${endDate.slice(5)}` : (item.period || '--');
+
+        const category = item.type || item.category || '處置';
+        const content = item.content || item.disposal_measures || item.reason || item.description || '無詳細內容';
+        const condition = item.condition || '';
+
+        const isDisposal = category.includes('處置') || category.includes('disposal');
+        const disposalLabel = isDisposal ? '處置' : '注意';
+
+        const priceId = `price-${cleanSymbol}`;
+        const changeId = `change-${cleanSymbol}`;
+        const svgId = `svg-${cleanSymbol}`;
+        const detailId = `detail-${index}`;
+        const btnId = `btn-${index}`;
+
+        return `
+          <div class="stock-card">
+            <div class="stock-header">
+              <div class="stock-title-area">
+                <svg id="${svgId}" class="sparkline" width="20" height="26" viewBox="0 0 20 26" title="K線"></svg>
+                <div>
+                  <span class="stock-code-name">${cleanSymbol}</span>
+                  <span class="stock-name-text">${stockName}</span>
+                </div>
+              </div>
+              <div class="stock-price-area">
+                <div id="${priceId}" class="stock-price">--</div>
+                <div id="${changeId}" class="price-change-sub"><span>--</span></div>
+              </div>
+            </div>
+
+            <div class="badges-row">
+              <span class="badge badge-no-margin">禁現沖</span>
+              <span class="badge badge-industry">${category}</span>
+              <span class="badge badge-disposal">${disposalLabel}</span>
+              ${type === 'expiring' ? `<span class="badge badge-expiring">即將出關</span>` : ''}
+            </div>
+
+            <div class="info-row">
+              <span class="day-badge">1/5 日</span>
+              <span class="period-text">${periodStr}</span>
+            </div>
+
+            ${condition ? `<div class="condition-text">${condition}</div>` : ''}
+
+            <button id="${btnId}" class="toggle-detail-btn" onclick="toggleDetail('${detailId}', '${btnId}')">查看處置內容</button>
+            <div id="${detailId}" class="detail-content">${content}</div>
+          </div>
+        `;
+      }).join('');
+
+      if (symbolsToFetch.length > 0) {
+        fetchBatchQuotes(symbolsToFetch);
+      }
+    }
+
+    function toggleDetail(detailId, btnId) {
+      const detailEl = document.getElementById(detailId);
+      const btnEl = document.getElementById(btnId);
+      if (detailEl.style.display === 'block') {
+        detailEl.style.display = 'none';
+        btnEl.textContent = '查看處置內容';
+      } else {
+        detailEl.style.display = 'block';
+        btnEl.textContent = '收合處置內容';
+      }
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        const targetBtn = e.currentTarget;
+        targetBtn.classList.add('active');
+        
+        currentType = targetBtn.getAttribute('data-value');
+
+        // 控制「出關天數」欄位的顯示/隱藏
+        const expiringGroup = document.getElementById('expiringDaysGroup');
+        if (currentType === 'expiring') {
+          expiringGroup.style.display = 'flex';
+        } else {
+          expiringGroup.style.display = 'none';
+        }
+
+        rawData = cachedDataMap[currentType] || [];
+        
+        const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+        if (keyword) {
+          const filtered = rawData.filter(item => {
+            const rawSymbol = item.symbol || item.code || '';
+            const cleanSymbol = rawSymbol.split('.')[0];
+            const stockName = nameMapping[cleanSymbol] || nameMapping[rawSymbol] || item.name || '';
+            return cleanSymbol.toLowerCase().includes(keyword) || stockName.toLowerCase().includes(keyword);
+          });
+          renderCards(filtered, currentType);
+        } else {
+          renderCards(rawData, currentType);
+        }
+      });
+    });
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const keyword = e.target.value.toLowerCase().trim();
+      const baseData = cachedDataMap[currentType] || [];
+      if (!keyword) {
+        renderCards(baseData, currentType);
+        return;
+      }
+      const filtered = baseData.filter(item => {
+        const rawSymbol = item.symbol || item.code || '';
+        const cleanSymbol = rawSymbol.split('.')[0];
+        const stockName = nameMapping[cleanSymbol] || nameMapping[rawSymbol] || item.name || '';
+        return cleanSymbol.toLowerCase().includes(keyword) || stockName.toLowerCase().includes(keyword);
+      });
+      renderCards(filtered, currentType);
+    });
+
+    document.getElementById('startDate').addEventListener('change', fetchData);
+    document.getElementById('endDate').addEventListener('change', fetchData);
+    document.getElementById('expiringDaysInput').addEventListener('change', fetchData);
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      initDefaultDates();
+      document.getElementById('expiringDaysInput').value = '3';
+      document.getElementById('searchInput').value = '';
+      fetchData();
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initDefaultDates();
+      fetchData();
+    });
+  </script>
+</body>
+</html>
