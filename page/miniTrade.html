@@ -286,28 +286,6 @@
       #symbol-detail-card { order: 3; flex: none; height: 400px; min-height: 280px; max-height: 92%; display: flex !important; }
     }
   </style>
-<script>
-// 在 index 外殼裡：深淺模式由外殼統一控制。淺色 = 把這頁原本的深色配色整頁反相（單獨開啟本頁時不受影響）
-(function () {
-  if (window.parent === window) return;
-  var root = document.documentElement;
-  root.classList.add("in-shell");
-  function set(t) { root.setAttribute("data-theme", t === "light" ? "light" : "dark"); }
-  var st = null;
-  try { st = localStorage.getItem("shellTheme"); } catch (e) {}
-  if (st !== "light" && st !== "dark") st = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  set(st);
-  addEventListener("message", function (e) {
-    var m = e.data;
-    if (e.source !== parent || !m || m.type !== "shell-theme" || (m.theme !== "light" && m.theme !== "dark")) return;
-    set(m.theme);
-  });
-})();
-</script>
-<style>
-html[data-theme="light"] { background:#131722; filter:invert(1) hue-rotate(180deg); }
-html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) hue-rotate(180deg); }
-</style>
 </head>
 <body class="bg-tvBg text-tvText font-sans h-[100dvh] w-screen overflow-hidden flex flex-col select-none">
 
