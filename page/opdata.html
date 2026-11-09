@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TXO 倒莊監控</title>
+<script>
+// 跟著外層選單的深淺模式（先讀上次的設定，畫面才不會閃）
+(function(){ var t=null; try{ t=localStorage.getItem("shellTheme"); }catch(e){}
+  document.documentElement.setAttribute("data-theme", t==="light"?"light":"dark"); })();
+addEventListener("message", function(e){ var d=e.data;
+  if (d && d.type==="shell-theme") document.documentElement.setAttribute("data-theme", d.theme==="light"?"light":"dark"); });
+</script>
+<style>
+:root{--bg:#e9ecef;--panel:#f3f4f6;--line:#d5d9de;--text:#2c333b;--muted:#7a8490;
+  --c:#cf3b3b;--p:#1c8f55;--accent:#3a78c4;--cb:rgba(207,59,59,.17);--pb:rgba(28,143,85,.17);--nr:rgba(214,158,30,.22)}
+:root{--inbg:#fafbfc;--wed:#c0392b;--tagc:var(--accent)}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#161615;--panel:#222221;--line:#3a3a38;--text:#ececea;--muted:#a3a39d;
+  --c:#ff6b6b;--p:#3fd08a;--accent:#6aa8ff;--cb:rgba(255,90,90,.3);--pb:rgba(63,208,138,.26);--nr:rgba(242,181,58,.28);
+  --inbg:#161615;--wed:#ff9b9b}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif;font-size:13px}
+.wrap{max-width:620px;margin:0 auto;padding:10px}
+.top{display:flex;align-items:center;gap:6px}
+h1{font-size:15px;margin:0;flex:1;letter-spacing:.5px}
+button{padding:4px 10px;border:0;border-radius:5px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;font-size:12px}
+button.g{background:var(--panel);color:var(--text);border:1px solid var(--line);font-weight:500}
+#msg{font-size:11px;color:var(--muted);margin:3px 0 6px;min-height:13px}
+.err{color:var(--c)}
+#set{display:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;margin:6px 0;font-size:12px;line-height:2}
+#set.on{display:block}
+#set input,#set select{padding:2px 5px;background:var(--inbg);color:var(--text);border:1px solid var(--line);border-radius:4px;font-size:12px}
+#set input[type=checkbox]{accent-color:var(--accent)}
+.prog{height:2px;background:var(--line);overflow:hidden;margin-top:6px}.prog div{height:100%;width:0;background:var(--accent)}
+table{border-collapse:collapse;width:100%;white-space:nowrap;font-variant-numeric:tabular-nums}
+th,td{padding:3px 5px;text-align:center;border-bottom:1px solid var(--line)}
+th{font-size:11px;color:var(--muted);font-weight:500;background:var(--panel)}
+.c{color:var(--c);font-weight:700}.p{color:var(--p);font-weight:700}
+td{position:relative}.tag{position:absolute;top:1px;left:3px;font-size:9px;color:var(--accent);font-weight:700;line-height:1}
+.cb{background:var(--cb)}.pb{background:var(--pb)}.nr{background:var(--nr)}
+.wed{color:var(--wed);font-weight:700}
+.badge{display:inline-block;padding:1px 7px;border-radius:9px;font-size:11px;font-weight:700}
+.b-cb{background:#cf3b3b;color:#fff}.b-pb{background:#1c8f55;color:#fff}.b-nr{background:#e0a92e;color:#2a1d00}.b-ok{background:var(--line);color:var(--muted)}
+.now{background:var(--panel);border-radius:6px;overflow:hidden}
+.now td{font-size:14px;padding:5px 6px}
+.sec{margin-top:8px}
+.more{text-align:center;margin-top:4px}
+summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:10px}
+.legend{font-size:10.5px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:9px;height:9px;vertical-align:-1px;margin:0 3px 0 6px;border-radius:2px}
+body.off .monOnly{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>TXO 倒莊監控</h1>
+    <button id="go">更新</button>
+    <button class="g" id="gear">⚙</button>
+  </div>
+  <div id="set" class="on">
+    期間 <select id="days"><option value="20">20 天</option><option value="45" selected>45 天</option></select>
+    　<label><input type="checkbox" id="mon" checked><b>倒莊監控</b></label>
+    <span class="monOnly">　警戒距離 <input id="near" value="150" style="width:52px"> 點</span><br>
+    顯示：<label><input type="checkbox" class="col" value="周選" checked>周選</label>
+    <label><input type="checkbox" class="col" value="週五選" checked>週五選</label>
+    <label><input type="checkbox" class="col" value="次周選">次周選</label>
+    <label><input type="checkbox" class="col" value="月選" checked>月選</label>
+  </div>
+  <div class="prog"><div id="pg"></div></div>
+  <div id="msg"></div>
+
+  <table class="now"><tbody id="now"></tbody></table>
+
+  <div class="sec">
+    <table><thead id="hd"></thead><tbody id="tb"></tbody></table>
+    <div class="more"><button class="g" id="moreBtn" style="display:none">顯示全部</button></div>
+    <div class="legend monOnly"><i class="cb"></i>Call 倒莊<i class="pb"></i>Put 倒莊<i class="nr"></i>警戒</div>
+  </div>
+
+  <details class="monOnly"><summary>結算紀錄</summary>
+    <table><thead><tr><th>結算日</th><th>契約</th><th>Call</th><th>Put</th><th>指數</th><th>結果</th></tr></thead>
+    <tbody id="settle"></tbody></table>
+    <div class="legend">防線取結算前一交易日；指數為收盤，實際結算價為收盤前 30 分鐘平均。</div>
+  </details>
+</div>
+
+<script>
+const API = "https://opchip.wildvlogtw.workers.dev";   // Worker 網址
+
+const $ = id => document.getElementById(id);
+const WD = "日一二三四五六";
+const ALL = ["周選", "週五選", "次周選", "月選"];
+const fmt = (v, d = 0) => v == null ? "" : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const ls = { get(k, d) { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } },
+             set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+/* 設定記憶 */
+$("near").value = ls.get("txo_near", "150");
+const savedCols = ls.get("txo_cols", null);
+if (savedCols) document.querySelectorAll(".col").forEach(c => c.checked = savedCols.split(",").includes(c.value));
+$("gear").onclick = () => $("set").classList.toggle("on");
+const cols = () => [...document.querySelectorAll(".col")].filter(c => c.checked).map(c => c.value);
+document.querySelectorAll(".col").forEach(c => c.onchange = () => { ls.set("txo_cols", cols().join(",")); redraw(); });
+$("near").onchange = () => { ls.set("txo_near", $("near").value); redraw(); };
+const monOn = () => $("mon").checked;
+$("mon").checked = ls.get("txo_mon", "1") === "1";
+document.body.classList.toggle("off", !monOn());
+$("mon").onchange = () => { ls.set("txo_mon", monOn() ? "1" : "0"); document.body.classList.toggle("off", !monOn()); redraw(); };
+
+/* 契約 */
+function nthWeekday(y, m, wd, n) {
+  const off = (wd - new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 7) % 7;
+  let d = new Date(Date.UTC(y, m - 1, 1 + off + 7 * (n - 1)));
+  if (d.getUTCMonth() !== m - 1) d = new Date(Date.UTC(y, m - 1, 1 + off + 7 * (n - 2)));
+  return d.toISOString().slice(0, 10);
+}
+function expiry(con) {
+  const m = con.match(/^(\d{4})(\d{2})(?:([WF])(\d))?$/);
+  if (!m) return null;
+  return m[3] ? nthWeekday(+m[1], +m[2], m[3] === "W" ? 3 : 5, +m[4]) : nthWeekday(+m[1], +m[2], 3, 3);
+}
+const short = con => { const m = con.match(/^\d{4}(\d{2})([WF]\d)?$/); return m ? m[1] + (m[2] || "O") : con; };
+function pick(date, cons) {
+  const live = cons.map(c => [expiry(c), c]).filter(([e]) => e && e > date).sort();
+  const wed = live.filter(([, c]) => !c.includes("F"));
+  return { "周選": wed[0]?.[1], "週五選": live.find(([, c]) => c.includes("F"))?.[1],
+           "次周選": wed[1]?.[1], "月選": live.find(([, c]) => /^\d{6}$/.test(c))?.[1] };
+}
+function judge(x, idx) {
+  const near = +$("near").value || 0;
+  if (!monOn() || idx == null || x.C == null || x.P == null) return "";
+  if (idx > x.C) return "cb";
+  if (idx < x.P) return "pb";
+  if (x.C - idx <= near || idx - x.P <= near) return "nr";
+  return "ok";
+}
+const BADGE = { cb: "Call 倒莊", pb: "Put 倒莊", nr: "警戒", ok: "守住" };
+
+/* 抓資料 */
+async function getJSON(u) {
+  const r = await fetch(u); const j = await r.json().catch(() => ({ error: "回應不是 JSON" }));
+  if (!r.ok || j.error) throw new Error(j.error || r.status); return j;
+}
+async function pool(items, n, fn, tick) {
+  const out = []; let i = 0;
+  await Promise.all(Array.from({ length: n }, async () => {
+    while (i < items.length) { const k = i++; try { out[k] = await fn(items[k]); } catch (e) { out[k] = { error: e.message, date: items[k] }; } tick(); }
+  }));
+  return out;
+}
+let DATA = null, showAll = false;
+async function load() {
+  const api = API.replace(/\/$/, "");
+  const now = new Date(Date.now() + 8 * 3600e3), dates = [];
+  for (let k = +$("days").value; k >= 0; k--) {
+    const d = new Date(now - k * 864e5); if (d.getUTCDay() % 6) dates.push(d.toISOString().slice(0, 10));
+  }
+  const months = [...new Set(dates.map(d => d.slice(0, 7).replace("-", "")))];
+  let done = 0; const tick = () => $("pg").style.width = (++done / (dates.length + months.length) * 100) + "%";
+  $("pg").style.width = "0"; $("msg").textContent = "下載中…";
+  const [days, idx] = await Promise.all([
+    pool(dates, 4, d => getJSON(`${api}/api/day?date=${d}`), tick),
+    pool(months, 2, m => getJSON(`${api}/api/index?month=${m}`), tick)]);
+  const index = {}; idx.forEach(r => r?.index && Object.assign(index, r.index));
+  const errs = days.filter(r => r?.error);
+  DATA = { daily: days.filter(r => r?.trading), index };
+  redraw();
+  $("msg").innerHTML = `更新於 ${new Date().toLocaleTimeString()}` +
+    (errs.length ? `　<span class="err">${errs.length} 天失敗，再按更新重試</span>` : "");
+  setTimeout(() => $("pg").style.width = "0", 600);
+}
+
+/* 畫面 */
+function redraw() {
+  if (!DATA) return;
+  const { daily, index } = DATA, show = cols(), prev = {};
+  const rows = daily.map(d => {
+    const p = pick(d.date, Object.keys(d.contracts)), ix = index[d.date], cs = {};
+    for (const k of ALL) {
+      const con = p[k]; if (!con) continue;
+      const x = d.contracts[con];
+      cs[k] = { con, ...x, isNew: con !== prev[k], st: judge(x, ix) }; prev[k] = con;
+    }
+    return { date: d.date, ix, cs };
+  });
+  const last = rows[rows.length - 1];
+
+  // 最新狀態：每個契約一行
+  $("now").innerHTML = !last ? "" : show.map(k => {
+    const c = last.cs[k]; if (!c) return "";
+    return `<tr><td style="text-align:left">${k} <span style="color:var(--muted);font-size:11px">${short(c.con)}</span></td>
+      <td class="c">${fmt(c.C)}</td><td class="p">${fmt(c.P)}</td>
+      <td style="font-size:11px;color:var(--muted)">壓 ${fmt(c.C - last.ix)}｜撐 ${fmt(last.ix - c.P)}</td>
+      <td class="monOnly"><span class="badge b-${c.st || "ok"}">${BADGE[c.st] || "—"}</span></td></tr>`;
+  }).join("") + (last ? `<tr><td colspan="5" style="font-size:11px;color:var(--muted);text-align:left">${last.date}　加權指數 ${fmt(last.ix, 2)}</td></tr>` : "");
+
+  // 每日表格
+  $("hd").innerHTML = `<tr><th>日期</th><th>指數</th>${show.map(k => `<th colspan="2">${k}</th>`).join("")}</tr>`;
+  const list = rows.slice().reverse(), view = showAll ? list : list.slice(0, 10);
+  $("tb").innerHTML = view.map(r => {
+    const wd = new Date(r.date + "T00:00:00Z").getUTCDay();
+    return `<tr><td class="${wd === 3 ? "wed" : ""}">${r.date.slice(5).replace("-", "/")} ${WD[wd]}</td><td>${fmt(r.ix)}</td>` +
+      show.map(k => {
+        const c = r.cs[k]; if (!c) return "<td></td><td></td>";
+        const tag = c.isNew ? `<span class="tag">${short(c.con)}</span>` : "";
+        return `<td class="c ${c.st === "cb" || (c.st === "nr" && c.C - r.ix <= +$("near").value) ? c.st : ""}">${tag}${fmt(c.C)}</td>
+                <td class="p ${c.st === "pb" || (c.st === "nr" && r.ix - c.P <= +$("near").value) ? c.st : ""}">${fmt(c.P)}</td>`;
+      }).join("") + "</tr>";
+  }).join("");
+  $("moreBtn").style.display = list.length > 10 ? "" : "none";
+  $("moreBtn").textContent = showAll ? "只看最近 10 天" : `顯示全部（${list.length} 天）`;
+
+  // 結算紀錄
+  const by = Object.fromEntries(daily.map(d => [d.date, d])), ds = daily.map(d => d.date), out = [];
+  for (const con of new Set(daily.flatMap(d => Object.keys(d.contracts)))) {
+    const e = expiry(con); if (!e || !by[e]) continue;
+    const b = ds.filter(d => d < e && by[d].contracts[con]).pop(); if (!b) continue;
+    const w = by[b].contracts[con]; out.push({ e, con, ...w, ix: index[e], st: judge(w, index[e]) });
+  }
+  out.sort((a, b) => b.e.localeCompare(a.e) || a.con.localeCompare(b.con));
+  $("settle").innerHTML = out.map(s => `<tr><td>${s.e.slice(5).replace("-", "/")}</td><td>${short(s.con)}</td>
+    <td class="c">${fmt(s.C)}</td><td class="p">${fmt(s.P)}</td><td>${fmt(s.ix)}</td>
+    <td><span class="badge b-${s.st === "nr" ? "ok" : s.st || "ok"}">${s.st === "cb" ? "Call 倒莊" : s.st === "pb" ? "Put 倒莊" : "守住"}</span></td></tr>`).join("")
+    || '<tr><td colspan="6" style="color:var(--muted)">期間內沒有到期契約</td></tr>';
+}
+$("moreBtn").onclick = () => { showAll = !showAll; redraw(); };
+$("go").onclick = load;
+$("msg").textContent = "按「更新」取得資料";
+</script>
+</body>
+</html>
