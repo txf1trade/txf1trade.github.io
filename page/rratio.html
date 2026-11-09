@@ -317,6 +317,8 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                             </div>
                         </div>
                         <div id="body-positions" class="p-3 space-y-2.5">
+                            <!-- 同商品同方向合併均價 -->
+                            <div id="futuresAvgSummary" class="hidden bg-[#0f131a] rounded-xl border border-blue-900/60 p-2.5 text-xs space-y-1.5"></div>
                             <div id="positionsContainer" class="space-y-2.5 custom-scrollbar max-h-[400px] overflow-y-auto pr-0.5">
                                 <!-- 動態注入部位 -->
                             </div>
@@ -1284,6 +1286,70 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
             calculate();
         }
 
+        // 同商品、同方向的期貨部位合併計算加權均價，顯示在期貨部位上方
+        function renderFuturesAvgSummary() {
+            const box = document.getElementById('futuresAvgSummary');
+            if (!box) return;
+            const groups = {};
+            const order = [];
+            state.positions.forEach(pos => {
+                const qty = Number(pos.qty) || 0;
+                if (qty <= 0) return;
+                const key = `${pos.symbol}_${pos.side}`;
+                if (!groups[key]) {
+                    groups[key] = { symbol: pos.symbol, side: pos.side, qty: 0, costSum: 0, pnl: 0, count: 0, currentPrice: pos.currentPrice };
+                    order.push(key);
+                }
+                const g = groups[key];
+                const cost = Number(pos.costPrice) || 0;
+                const cur = Number(pos.currentPrice) || 0;
+                const diff = pos.side === 'LONG' ? (cur - cost) : (cost - cur);
+                g.qty += qty;
+                g.costSum += cost * qty;
+                g.pnl += diff * qty * getPointValue(pos.symbol);
+                g.count += 1;
+                g.currentPrice = cur;
+            });
+
+            if (order.length === 0) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+            box.classList.remove('hidden');
+
+            const rows = order.map(key => {
+                const g = groups[key];
+                const avg = g.costSum / g.qty;
+                const ptVal = getPointValue(g.symbol);
+                const avgPts = g.pnl / (g.qty * ptVal);
+                const badge = g.side === 'LONG'
+                    ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                    : 'bg-emerald-950 text-emerald-300 border border-emerald-800';
+                const avgText = avg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return `
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-slate-200">${getSymbolName(g.symbol)}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badge}">${g.side === 'LONG' ? '多單' : '空單'} ${g.qty}口</span>
+                            <span class="text-[10px] text-slate-400">均價</span>
+                            <span class="font-mono font-bold text-amber-300">@${avgText}</span>
+                            ${g.count > 1 ? `<span class="text-[10px] text-slate-500">(${g.count}筆合併)</span>` : ''}
+                        </div>
+                        <div class="text-right font-mono">
+                            <span class="font-bold ${getPnLColorClass(g.pnl)}">${g.pnl >= 0 ? '+' : ''}${Math.round(g.pnl).toLocaleString()}</span>
+                            <span class="text-[10px] text-slate-400 block">(${avgPts >= 0 ? '+' : ''}${avgPts.toFixed(1)}點)</span>
+                        </div>
+                    </div>`;
+            }).join('<div class="border-t border-slate-800"></div>');
+
+            box.innerHTML = `
+                <div class="flex items-center gap-1.5 text-[10px] text-blue-300 font-semibold">
+                    <i class="fa-solid fa-scale-balanced"></i>同商品合併均價
+                </div>
+                ${rows}`;
+        }
+
         function addPositionRow() {
             if (!state.canAddPosition) {
                 alert("⚠️ 風險管制：可用餘額低於原始保證金（可用餘額不足），不得再下新部位！");
@@ -1628,6 +1694,8 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                     pnlPtsEl.innerText = `(${diffPts >= 0 ? '+' : ''}${diffPts.toFixed(1)}點)`;
                 }
             });
+
+            renderFuturesAvgSummary();
 
             const totalPnLHeaderEl = document.getElementById('totalPositionsPnLHeader');
             if (totalPnLHeaderEl) {
