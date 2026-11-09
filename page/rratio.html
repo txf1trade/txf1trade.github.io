@@ -105,6 +105,11 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                         <button onclick="bindFileHandle()" title="點擊綁定本機 JSON 檔，之後所有改動將會自動背景存檔與載入" class="text-slate-300 hover:text-blue-400 px-1 text-[11px] font-medium flex items-center gap-1">
                             <i class="fa-solid fa-floppy-disk text-amber-400"></i> 儲存/選擇設定檔 (.json)
                         </button>
+                        <span class="text-slate-700">|</span>
+                        <button onclick="openJsonFile()" title="開啟既有的 JSON 設定檔並讀入（支援的瀏覽器會同時綁定該檔，之後自動存回）" class="text-slate-300 hover:text-blue-400 px-1 text-[11px] font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-folder-open text-sky-400"></i> 開啟 JSON
+                        </button>
+                        <input type="file" id="jsonFileInput" accept=".json,application/json" class="hidden" onchange="handleJsonFileInput(this)">
                         <span id="fileAutoSyncStatus" class="text-[10px] text-slate-500 font-mono">⚪ 未連結本機檔</span>
                     </div>
 
@@ -297,6 +302,10 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                             </div>
 
                             <div class="flex items-center space-x-2.5">
+                                <label class="inline-flex items-center cursor-pointer gap-1 text-[10px] text-slate-300 bg-[#0f131a] border border-slate-700 rounded-lg px-2 py-1" title="勾選後，新增部位、加碼口數、換大規格合約都不再受「可用餘額 ≧ 0」限制">
+                                    <input type="checkbox" id="ignoreEquityLimitToggle" onchange="toggleIgnoreEquityLimit(this.checked)" class="accent-amber-500">
+                                    <span>不受權益數限制</span>
+                                </label>
                                 <div class="text-right">
                                     <span class="text-[10px] text-slate-400 block leading-none">合計浮動損益</span>
                                     <span id="totalPositionsPnLHeader" class="font-mono font-bold text-xs sm:text-sm">0 TWD</span>
@@ -617,7 +626,8 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
             optionLegs: [],
             visibleCards: getDefaultVisible(),
             scenarioTargets: { safe200: null, safe150: null, warning100: null, maintCall: null, danger25: null },
-            canAddPosition: true
+            canAddPosition: true,
+            ignoreEquityLimit: false
         };
 
         const positionsContainer = document.getElementById('positionsContainer');
@@ -670,6 +680,11 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                 });
                 state.optionLegs = legs;
             }
+            if (config.ignoreEquityLimit !== undefined) {
+                state.ignoreEquityLimit = !!config.ignoreEquityLimit;
+            }
+            const ignoreToggle = document.getElementById('ignoreEquityLimitToggle');
+            if (ignoreToggle) ignoreToggle.checked = state.ignoreEquityLimit;
             if (!FORCE_DEFAULT_VISIBILITY && config.visibleCards && typeof config.visibleCards === 'object') {
                 state.visibleCards = Object.assign(getDefaultVisible(), config.visibleCards);
             }
@@ -706,7 +721,8 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                 closedHistory: state.closedHistory,
                 cashFlowHistory: state.cashFlowHistory,
                 optionLegs: state.optionLegs,
-                visibleCards: state.visibleCards
+                visibleCards: state.visibleCards,
+                ignoreEquityLimit: state.ignoreEquityLimit
             };
             const jsonStr = JSON.stringify(config, null, 2);
             localStorage.setItem(STORAGE_KEY, jsonStr);
@@ -768,6 +784,90 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                     console.error('選擇檔案失敗:', err);
                 }
             }
+        }
+
+        // 開啟（讀入）既有 JSON 設定檔
+        function applyLoadedJsonText(text, fileName) {
+            if (!text || !text.trim()) {
+                alert('⚠️ 這個 JSON 檔是空的，沒有可讀入的設定。');
+                return false;
+            }
+            let config;
+            try {
+                config = JSON.parse(text);
+            } catch (e) {
+                alert('⚠️ JSON 格式錯誤，無法讀入：' + e.message);
+                return false;
+            }
+            if (!config || typeof config !== 'object' || Array.isArray(config)) {
+                alert('⚠️ 這不是本工具的設定檔格式。');
+                return false;
+            }
+            state.collapsedCards = {};
+            applyConfigObject(config);
+            renderPositions();
+            renderClosedHistory();
+            renderCashFlow();
+            calculate();
+            return true;
+        }
+
+        function setFileStatus(text, cls) {
+            const st = document.getElementById('fileAutoSyncStatus');
+            if (st) { st.innerText = text; st.className = cls; }
+        }
+
+        async function openJsonFile() {
+            if (window.showOpenFilePicker) {
+                try {
+                    const [handle] = await window.showOpenFilePicker({
+                        types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
+                        multiple: false
+                    });
+                    const file = await handle.getFile();
+                    const ok = applyLoadedJsonText(await file.text(), handle.name);
+                    if (!ok) return;
+                    // 嘗試取得寫入權限，成功就綁定成自動存檔
+                    let canWrite = false;
+                    try {
+                        if (handle.requestPermission) {
+                            canWrite = (await handle.requestPermission({ mode: 'readwrite' })) === 'granted';
+                        }
+                    } catch (e) {}
+                    if (canWrite) {
+                        fileHandle = handle;
+                        setFileStatus(`🟢 JSON檔連線中 (${handle.name})`, 'text-[10px] text-emerald-400 font-mono font-bold');
+                    } else {
+                        setFileStatus(`📂 已讀入 ${handle.name}（未綁定自動存檔）`, 'text-[10px] text-sky-400 font-mono');
+                    }
+                    saveConfigToStorage();
+                } catch (err) {
+                    if (err.name !== 'AbortError') console.error('開啟 JSON 失敗:', err);
+                }
+            } else {
+                // 不支援 File System Access API 的瀏覽器（Safari/Firefox/手機）改用一般檔案選擇
+                document.getElementById('jsonFileInput').click();
+            }
+        }
+
+        function handleJsonFileInput(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                if (applyLoadedJsonText(reader.result, file.name)) {
+                    setFileStatus(`📂 已讀入 ${file.name}`, 'text-[10px] text-sky-400 font-mono');
+                }
+                input.value = '';
+            };
+            reader.onerror = () => { alert('⚠️ 讀取檔案失敗'); input.value = ''; };
+            reader.readAsText(file);
+        }
+
+        // 部位不受權益數限制
+        function toggleIgnoreEquityLimit(on) {
+            state.ignoreEquityLimit = !!on;
+            calculate();
         }
 
         // 螢幕佈局模式控制
@@ -1542,7 +1642,7 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
             const availableCash = totalEquity - totalReqInitialMargin;
             
             state.availableCash = availableCash;
-            state.canAddPosition = availableCash >= 0;
+            state.canAddPosition = state.ignoreEquityLimit || availableCash >= 0;
 
             const addPosBtn = document.getElementById('addPosBtn');
             if (addPosBtn) {
