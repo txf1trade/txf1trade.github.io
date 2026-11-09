@@ -316,10 +316,10 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                                 </button>
                             </div>
                         </div>
-                        <div id="body-positions" class="p-3 space-y-2.5">
+                        <div id="body-positions" class="p-2.5 space-y-1.5">
                             <!-- 同商品同方向合併均價 -->
-                            <div id="futuresAvgSummary" class="hidden bg-[#0f131a] rounded-xl border border-blue-900/60 p-2.5 text-xs space-y-1.5"></div>
-                            <div id="positionsContainer" class="space-y-2.5 custom-scrollbar max-h-[400px] overflow-y-auto pr-0.5">
+                            <div id="futuresAvgSummary" class="hidden bg-[#0f131a] rounded-lg border border-blue-900/60 px-2.5 py-1.5 text-[11px] space-y-1"></div>
+                            <div id="positionsContainer" class="space-y-1.5 custom-scrollbar max-h-[400px] overflow-y-auto pr-0.5">
                                 <!-- 動態注入部位 -->
                             </div>
                         </div>
@@ -1214,7 +1214,7 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                 const sideText = pos.qty === 0 ? '無部位 0口' : `${pos.side === 'LONG' ? '多單' : '空單'} ${pos.qty}口`;
 
                 const headerHtml = `
-                    <div onclick="toggleCard(${pos.id}, event)" class="p-3 bg-[#181e2a]/80 cursor-pointer select-none flex items-center justify-between border-b border-slate-800">
+                    <div onclick="toggleCard(${pos.id}, event)" class="px-3 py-2 bg-[#181e2a]/80 cursor-pointer select-none flex items-center justify-between border-b border-slate-800">
                         <div class="flex items-center space-x-2">
                             <i id="pos-icon-${pos.id}" class="fa-solid fa-chevron-${isCollapsed ? 'right' : 'down'} text-slate-500 text-xs"></i>
                             <span id="pos-label-symbol-${pos.id}" class="font-bold text-slate-200 text-sm">${getSymbolName(pos.symbol)}</span>
@@ -1241,43 +1241,45 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                     </div>
                 `;
 
+                const inp = 'w-full bg-[#181e2a] border border-slate-700 rounded px-1.5 py-1 font-mono text-xs font-bold';
+                const stepBtn = 'px-1 leading-4 bg-slate-800 hover:bg-slate-700 rounded text-[10px] font-bold text-slate-300';
                 const bodyHtml = `
-                    <div id="pos-body-${pos.id}" class="${isCollapsed ? 'hidden' : 'p-3.5'} space-y-3">
-                        <div class="flex items-center space-x-2.5">
-                            <select onchange="updatePosSelect(${pos.id}, 'symbol', this.value)" class="bg-[#181e2a] text-white border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none flex-1">
+                    <div id="pos-body-${pos.id}" class="${isCollapsed ? 'hidden ' : ''}px-2.5 py-2 space-y-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <select onchange="updatePosSelect(${pos.id}, 'symbol', this.value)" class="bg-[#181e2a] text-white border border-slate-700 rounded px-1.5 py-0.5 text-[11px] font-bold focus:outline-none flex-1 min-w-0">
                                 <option value="LARGE" ${pos.symbol === 'LARGE' ? 'selected' : ''}>大台 ($200/點)</option>
                                 <option value="MINI" ${pos.symbol === 'MINI' ? 'selected' : ''}>小台 ($50/點)</option>
                                 <option value="MICRO" ${pos.symbol === 'MICRO' ? 'selected' : ''}>微台 ($10/點)</option>
                             </select>
-                            <select id="pos-side-select-${pos.id}" onchange="updatePosSelect(${pos.id}, 'side', this.value)" class="bg-[#181e2a] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none flex-1 ${pos.side === 'LONG' ? 'text-rose-400' : 'text-emerald-400'}">
+                            <select id="pos-side-select-${pos.id}" onchange="updatePosSelect(${pos.id}, 'side', this.value)" class="bg-[#181e2a] border border-slate-700 rounded px-1.5 py-0.5 text-[11px] font-bold focus:outline-none flex-1 min-w-0 ${pos.side === 'LONG' ? 'text-rose-400' : 'text-emerald-400'}">
                                 <option value="LONG" ${pos.side === 'LONG' ? 'selected' : ''}>買進 (多單)</option>
                                 <option value="SHORT" ${pos.side === 'SHORT' ? 'selected' : ''}>賣出 (空單)</option>
                             </select>
+                            <label class="flex items-center gap-1 text-[10px] whitespace-nowrap ${state.autoSyncMarketPrice ? 'text-slate-400 cursor-pointer' : 'text-slate-600'} select-none" title="${state.autoSyncMarketPrice ? '勾選：此部位現價跟隨即時報價；取消後可手動輸入' : '全域自動同步已關閉，此開關暫不生效'}">
+                                <input type="checkbox" ${pos.syncPrice !== false ? 'checked' : ''} ${state.autoSyncMarketPrice ? '' : 'disabled'} onchange="togglePosSync(${pos.id}, this.checked)" class="accent-blue-500">
+                                <span>跟隨報價</span>
+                            </label>
                         </div>
-                        <div class="grid grid-cols-3 gap-2">
+                        <div class="grid grid-cols-3 gap-1.5">
                             <div>
-                                <div class="flex justify-between items-center mb-1 text-[10px] text-slate-400">
+                                <div class="flex justify-between items-center mb-0.5 text-[10px] text-slate-500">
                                     <span>口數</span>
-                                    <div class="space-x-1"><button onclick="stepAdjust(${pos.id}, 'qty', -1)" class="px-2 py-0.5 bg-slate-800 rounded font-bold text-slate-300">-1</button><button onclick="stepAdjust(${pos.id}, 'qty', 1)" class="px-2 py-0.5 bg-slate-800 rounded font-bold text-slate-300">+1</button></div>
+                                    <div class="space-x-0.5"><button onclick="stepAdjust(${pos.id}, 'qty', -1)" class="${stepBtn}">-1</button><button onclick="stepAdjust(${pos.id}, 'qty', 1)" class="${stepBtn}">+1</button></div>
                                 </div>
-                                <input type="number" id="pos-qty-${pos.id}" value="${pos.qty === 0 ? 0 : (pos.side === 'SHORT' ? -pos.qty : pos.qty)}" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosQtyWithSign(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-white text-sm font-bold">
+                                <input type="number" id="pos-qty-${pos.id}" value="${pos.qty === 0 ? 0 : (pos.side === 'SHORT' ? -pos.qty : pos.qty)}" step="1" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosQtyWithSign(${pos.id}, this.value)" class="${inp} text-white">
                             </div>
                             <div>
-                                <span class="text-[10px] text-slate-400 block mb-1">成交均價</span>
-                                <input type="number" id="pos-cost-${pos.id}" value="${pos.costPrice}" step="0.01" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosInput(${pos.id}, 'costPrice', this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-white text-sm font-bold">
+                                <div class="mb-0.5 text-[10px] text-slate-500 leading-4">成交均價</div>
+                                <input type="number" id="pos-cost-${pos.id}" value="${pos.costPrice}" step="0.01" onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosInput(${pos.id}, 'costPrice', this.value)" class="${inp} text-white">
                             </div>
                             <div>
-                                <div class="flex justify-between items-center mb-1 text-[10px] text-slate-400">
+                                <div class="flex justify-between items-center mb-0.5 text-[10px] text-slate-500">
                                     <span>現價</span>
-                                    <div class="space-x-1"><button onclick="stepAdjust(${pos.id}, 'currentPrice', -50)" class="px-1.5 py-0.5 bg-slate-800 rounded font-bold text-slate-300" ${isLocked ? 'disabled opacity-50' : ''}>-50</button><button onclick="stepAdjust(${pos.id}, 'currentPrice', 50)" class="px-1.5 py-0.5 bg-slate-800 rounded font-bold text-slate-300" ${isLocked ? 'disabled opacity-50' : ''}>+50</button></div>
+                                    <div class="space-x-0.5"><button onclick="stepAdjust(${pos.id}, 'currentPrice', -50)" class="${stepBtn}" ${isLocked ? 'disabled style="opacity:.5"' : ''}>-50</button><button onclick="stepAdjust(${pos.id}, 'currentPrice', 50)" class="${stepBtn}" ${isLocked ? 'disabled style="opacity:.5"' : ''}>+50</button></div>
                                 </div>
-                                <input type="number" id="pos-current-${pos.id}" value="${pos.currentPrice}" step="1" ${isLocked ? 'readonly' : ''} onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosPriceManual(${pos.id}, this.value)" class="w-full bg-[#181e2a] border border-slate-700 rounded-lg px-2 py-2 font-mono text-sm font-bold ${isLocked ? 'text-slate-400 bg-slate-900/50' : 'text-amber-300'}">
+                                <input type="number" id="pos-current-${pos.id}" value="${pos.currentPrice}" step="1" ${isLocked ? 'readonly' : ''} onfocus="this.select()" onkeydown="handleEnterKey(event)" oninput="updatePosPriceManual(${pos.id}, this.value)" class="${inp} ${isLocked ? 'text-slate-400 bg-slate-900/50' : 'text-amber-300'}">
                             </div>
                         </div>
-                        <label class="flex items-center justify-end space-x-1.5 text-[10px] ${state.autoSyncMarketPrice ? 'text-slate-300 cursor-pointer' : 'text-slate-600'} select-none" title="${state.autoSyncMarketPrice ? '關閉後此部位現價可手動輸入，不再被即時報價覆蓋' : '全域自動同步已關閉，此開關暫不生效'}">
-                            <input type="checkbox" ${pos.syncPrice !== false ? 'checked' : ''} ${state.autoSyncMarketPrice ? '' : 'disabled'} onchange="togglePosSync(${pos.id}, this.checked)" class="accent-blue-500">
-                            <span>此部位現價跟隨即時報價${state.autoSyncMarketPrice ? '' : '（全域同步已關）'}</span>
-                        </label>
                     </div>
                 `;
                 row.innerHTML = headerHtml + bodyHtml;
@@ -1328,26 +1330,22 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                     : 'bg-emerald-950 text-emerald-300 border border-emerald-800';
                 const avgText = avg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 return `
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-bold text-slate-200">${getSymbolName(g.symbol)}</span>
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badge}">${g.side === 'LONG' ? '多單' : '空單'} ${g.qty}口</span>
-                            <span class="text-[10px] text-slate-400">均價</span>
-                            <span class="font-mono font-bold text-amber-300">@${avgText}</span>
-                            ${g.count > 1 ? `<span class="text-[10px] text-slate-500">(${g.count}筆合併)</span>` : ''}
+                    <div class="flex items-center justify-between gap-2 leading-tight">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <i class="fa-solid fa-scale-balanced text-blue-400 text-[10px]" title="同商品合併均價${g.count > 1 ? `（${g.count}筆合併）` : ''}"></i>
+                            <span class="font-bold text-slate-300">${getSymbolName(g.symbol)}</span>
+                            <span class="px-1.5 rounded text-[10px] font-bold ${badge}">${g.side === 'LONG' ? '多' : '空'}${g.qty}口</span>
+                            <span class="text-[10px] text-slate-500">均</span>
+                            <span class="font-mono font-bold text-amber-300">${avgText}</span>
                         </div>
-                        <div class="text-right font-mono">
+                        <div class="font-mono whitespace-nowrap">
                             <span class="font-bold ${getPnLColorClass(g.pnl)}">${g.pnl >= 0 ? '+' : ''}${Math.round(g.pnl).toLocaleString()}</span>
-                            <span class="text-[10px] text-slate-400 block">(${avgPts >= 0 ? '+' : ''}${avgPts.toFixed(1)}點)</span>
+                            <span class="text-[10px] text-slate-500">(${avgPts >= 0 ? '+' : ''}${avgPts.toFixed(1)}點)</span>
                         </div>
                     </div>`;
-            }).join('<div class="border-t border-slate-800"></div>');
+            }).join('');
 
-            box.innerHTML = `
-                <div class="flex items-center gap-1.5 text-[10px] text-blue-300 font-semibold">
-                    <i class="fa-solid fa-scale-balanced"></i>同商品合併均價
-                </div>
-                ${rows}`;
+            box.innerHTML = rows;
         }
 
         function addPositionRow() {
