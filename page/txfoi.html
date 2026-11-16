@@ -129,6 +129,7 @@
       <label class="chk"><input type="checkbox" id="showFlow" checked> 顯示現貨／期貨／觀察欄位</label>
       <label class="chk"><input type="checkbox" id="showSig" checked> 顯示價／倉解讀欄位</label>
       <label class="chk"><input type="checkbox" id="showVol"> 顯示成交量欄位</label>
+      <label class="chk"><input type="checkbox" id="showOI"> 顯示未平倉量欄位</label>
       <label><span>結算日價格</span><select id="price"><option value="near">到期合約</option><option value="next">次月合約</option></select></label>
       <label><span>標記門檻</span><input type="number" id="th" value="1" min="0.5" step="0.5"></label>
       <label title="量或未平倉變化的絕對值 ≤ 變化均值 × 此倍數，視為持平"><span>持平門檻</span><input type="number" id="flat" value="0.2" min="0" max="1" step="0.05"></label>
@@ -340,8 +341,8 @@ function render(series, params) {
   var sv = stats(series, "volume", avgN), so = stats(series, "openInterest", avgN);
   var start = Math.max(0, series.length - days);
   var sigs = sigAll(series, sv, so, th);
-  var showK = $("showK").checked, showVol = $("showVol").checked, showC = $("showC").checked, showSig = $("showSig").checked, showFlow = $("showFlow").checked;
-  var h = "<table><thead><tr><th>時間</th>" + (showK ? "<th>開盤價</th><th>最高價</th><th>最低價</th>" : "") + (showC ? "<th>收盤價</th>" : "") + (showVol ? "<th>成交量</th>" : "") +
+  var showK = $("showK").checked, showVol = $("showVol").checked, showOI = $("showOI").checked, showC = $("showC").checked, showSig = $("showSig").checked, showFlow = $("showFlow").checked;
+  var h = "<table><thead><tr><th>時間</th>" + (showK ? "<th>開盤價</th><th>最高價</th><th>最低價</th>" : "") + (showC ? "<th>收盤價</th>" : "") + (showVol ? "<th>成交量</th>" : "") + (showOI ? "<th>未平倉量</th>" : "") +
     "<th>成交量變化</th><th>未平倉變化</th><th>漲跌</th>" + (showFlow ? '<th title="外資及陸資 現貨買賣超（億元）">現貨</th><th title="外資 台指期 沖銷部位：多 = 期多、空 = 期空">期貨</th><th>觀察</th>' : "") + (showSig ? "<th>價／倉解讀</th>" : "") + "</tr></thead><tbody>";
   for (var i = start; i < series.length; i++) {
     var r = series[i];
@@ -351,6 +352,7 @@ function render(series, params) {
       (showK ? '<td class="o">' + fmt(r.open) + '</td><td class="o">' + fmt(r.high) + '</td><td class="o">' + fmt(r.low) + '</td>' : "") +
       (showC ? '<td class="cl">' + fmt(r.close) + "</td>" : "") +
       (showVol ? '<td class="v">' + fmt(r.volume) + "</td>" : "") +
+      (showOI ? '<td class="i"' + (r.settle ? ' title="結算日：未平倉合計 ' + fmt(r.totalOI) + ' − 到期合約 ' + fmt(r.nearOI) + '"' : "") + ">" + fmt(r.openInterest) + "</td>" : "") +
       changeCell(sv, i, th) +
       changeCell(so, i, th) +
       '<td class="' + cls(r.change) + '">' + (r.change === null ? "-" : sign(r.change)) + "</td>";
@@ -596,13 +598,13 @@ function downloadCsv() {
   if (!last) return;
   var series = last.series, avgN = last.params.avg, start = Math.max(0, series.length - last.params.days);
   var sv = stats(series, "volume", avgN), so = stats(series, "openInterest", avgN);
-  var showK = $("showK").checked, showVol = $("showVol").checked, showC = $("showC").checked, showSig = $("showSig").checked, showFlow = $("showFlow").checked;
+  var showK = $("showK").checked, showVol = $("showVol").checked, showOI = $("showOI").checked, showC = $("showC").checked, showSig = $("showSig").checked, showFlow = $("showFlow").checked;
   var th = parseFloat($("th").value) || 1, sigs = sigAll(series, sv, so, th);
   var v = function (x) { return x === null ? "" : x; };
-  var lines = ["日期," + (showK ? "開盤價,最高價,最低價," : "") + (showC ? "收盤價," : "") + (showVol ? "成交量," : "") + "成交量變化,未平倉變化,漲跌," + (showFlow ? "現貨(外資買賣超億),期貨(外資沖銷口，正=期多 負=期空),觀察," : "") + (showSig ? "價倉解讀," : "") + "結算日"];
+  var lines = ["日期," + (showK ? "開盤價,最高價,最低價," : "") + (showC ? "收盤價," : "") + (showVol ? "成交量," : "") + (showOI ? "未平倉量," : "") + "成交量變化,未平倉變化,漲跌," + (showFlow ? "現貨(外資買賣超億),期貨(外資沖銷口，正=期多 負=期空),觀察," : "") + (showSig ? "價倉解讀," : "") + "結算日"];
   for (var i = start; i < series.length; i++) {
     var r = series[i];
-    lines.push([r.date].concat(showK ? [r.open, r.high, r.low] : [], showC ? [r.close] : [], showVol ? [r.volume] : [], [v(sv.d[i]), v(so.d[i]), r.change],
+    lines.push([r.date].concat(showK ? [r.open, r.high, r.low] : [], showC ? [r.close] : [], showVol ? [r.volume] : [], showOI ? [r.openInterest] : [], [v(sv.d[i]), v(so.d[i]), r.change],
       showFlow ? [v(FLOW[r.date] ? FLOW[r.date].spot : null), v(FLOW[r.date] ? FLOW[r.date].fut : null), comboOf(FLOW[r.date]) ? comboOf(FLOW[r.date]).t : ""] : [],
       showSig ? [sigText(sigs[i])] : [], [r.settle ? "Y" : ""]).join(","));
   }
@@ -615,6 +617,7 @@ function downloadCsv() {
 $("end").value = todayStr();
 try {
   var sk = localStorage.getItem("txf_showOHL"); if (sk !== null) $("showK").checked = sk === "1";
+  var so0 = localStorage.getItem("txf_showOI"); if (so0 !== null) $("showOI").checked = so0 === "1";
   var sv0 = localStorage.getItem("txf_showVol"); if (sv0 !== null) $("showVol").checked = sv0 === "1";
   var sc0 = localStorage.getItem("txf_showClose"); if (sc0 !== null) $("showC").checked = sc0 === "1";
   var sf0 = localStorage.getItem("txf_showFlow"); if (sf0 !== null) $("showFlow").checked = sf0 === "1";
@@ -664,6 +667,10 @@ $("cardH").onclick = function () { setCollapsed(!$("card").classList.contains("c
 try { if (localStorage.getItem("txf_collapsed") === "1") $("card").classList.add("collapsed"); } catch (e) {}
 $("showK").onchange = function () {
   try { localStorage.setItem("txf_showOHL", $("showK").checked ? "1" : "0"); } catch (e) {}
+  if (last) render(last.series, last.params);
+};
+$("showOI").onchange = function () {
+  try { localStorage.setItem("txf_showOI", $("showOI").checked ? "1" : "0"); } catch (e) {}
   if (last) render(last.series, last.params);
 };
 $("showVol").onchange = function () {
