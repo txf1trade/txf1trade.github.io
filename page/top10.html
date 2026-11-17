@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>十特籌碼（台指期／選擇權）</title>
+<script>try { if (window.parent !== window) { var d0 = document.documentElement; d0.classList.add("in-shell"); var s0 = localStorage.getItem("shellTheme"); if (s0 !== "light" && s0 !== "dark") s0 = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; d0.setAttribute("data-theme", s0); } } catch (e) {}</script>
+<script>try { if (window.parent === window) var t0 = localStorage.getItem("txf_theme"); if (t0 === "light" || t0 === "dark") document.documentElement.setAttribute("data-theme", t0); } catch (e) {}</script>
+<style>
+  :root {
+    --bg:#f3f4f6; --fg:#2d333b; --card:#ffffff; --line:#e4e7ec; --grid:#eef0f3; --muted:#8b94a1;
+    --th-bg:#f0f2f5; --th-fg:#5b6472; --accent:#5b7fa6;
+    --up:#d9605f; --down:#3a9e78; --up-soft:rgba(217,96,95,.12); --down-soft:rgba(58,158,120,.12);
+    --c-close:#fbf4e8; --idx:#2d333b; --call:#e0a526; --put:#3a9fd8; --settle:#e2eef7; --settle-fg:#4a86b0; --chip:#eceff3; --chip-fg:#6b7480;
+    color-scheme:light dark;
+  }
+  :root[data-theme="light"] { color-scheme:light; }
+  :root[data-theme="dark"] { color-scheme:dark; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#16191e; --fg:#d9dde3; --card:#1d2128; --line:#2b3039; --grid:#242931; --muted:#8a93a0;
+    --th-bg:#232831; --th-fg:#a3acb9; --accent:#6f93bb;
+    --up:#e57b7a; --down:#58bd93; --up-soft:rgba(229,123,122,.14); --down-soft:rgba(88,189,147,.14);
+    --c-close:#26231e; --idx:#d9dde3; --call:#e8b84a; --put:#5ab4e8; --settle:#1f3344; --settle-fg:#7fb6dc; --chip:#2a2f37; --chip-fg:#9aa3af; } }
+  :root[data-theme="dark"] {
+    --bg:#16191e; --fg:#d9dde3; --card:#1d2128; --line:#2b3039; --grid:#242931; --muted:#8a93a0;
+    --th-bg:#232831; --th-fg:#a3acb9; --accent:#6f93bb;
+    --up:#e57b7a; --down:#58bd93; --up-soft:rgba(229,123,122,.14); --down-soft:rgba(88,189,147,.14);
+    --c-close:#26231e; --idx:#d9dde3; --call:#e8b84a; --put:#5ab4e8; --settle:#1f3344; --settle-fg:#7fb6dc; --chip:#2a2f37; --chip-fg:#9aa3af; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,"Microsoft JhengHei",sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:12px 12px 28px; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 10px; }
+  h1 { font-size:16px; margin:0; font-weight:600; letter-spacing:.5px; }
+  .bar { position:relative; display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 12px; }
+  .bar .grow { flex:1; }
+  button.icon { font-size:15px; line-height:1; padding:5px 10px; }
+  #panel { position:absolute; top:calc(100% + 6px); right:6px; z-index:20; width:270px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:10px; box-shadow:0 8px 24px rgba(0,0,0,.22); }
+  #panel label.chk { font-size:13px; color:var(--fg); cursor:pointer; gap:8px; }
+  #panel input[type=checkbox] { padding:0; width:15px; height:15px; accent-color:var(--accent); }
+  .bar label { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  input, button { font:inherit; font-size:13px; padding:5px 9px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  input[type=number] { width:64px; }
+  button { cursor:pointer; background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.ghost { background:var(--card); color:var(--fg); border-color:var(--line); }
+  button:disabled { opacity:.5; cursor:wait; }
+  .in-shell #theme { display:none; }
+  #msg { margin:8px 2px; min-height:16px; font-size:12px; color:var(--muted); }
+  #msg.err { color:var(--up); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; margin:0 0 10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 12px; }
+  .card .k { font-size:12px; color:var(--muted); }
+  .card .v { font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .card .c { font-size:12px; font-variant-numeric:tabular-nums; }
+  .wrap { overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; line-height:1.3; white-space:nowrap; }
+  th { background:var(--th-bg); color:var(--th-fg); padding:7px 8px; font-weight:600; font-size:12px; border-bottom:1px solid var(--line); }
+  th.grp { border-left:1px solid var(--line); }
+  td { padding:5px 8px; text-align:right; border-top:1px solid var(--grid); font-variant-numeric:tabular-nums; }
+  td.gl { border-left:1px solid var(--grid); }
+  tbody tr:hover td { background:var(--grid); }
+  td.d { text-align:center; font-weight:600; color:var(--muted); position:sticky; left:0; background:var(--card); }
+  th.d { position:sticky; left:0; }
+  td.cl { background:var(--c-close); font-weight:600; }
+  tbody tr:hover td.cl { background:var(--c-close); }
+  td.dim { color:var(--muted); }
+  .chg { display:block; font-size:11px; opacity:.85; }
+  tr.latest td { border-top:1.5px solid var(--accent); }
+  tr.latest td.d { color:var(--fg); }
+  tbody tr.settle td, tbody tr.settle td.cl, tbody tr.settle:hover td { background:var(--settle) !important; }
+  tbody tr.settle td:first-child { box-shadow:inset 3px 0 0 var(--settle-fg); }
+  .st { display:inline-block; margin-left:5px; padding:0 6px; border-radius:8px; font-size:10px; font-weight:700; color:#fff; background:var(--settle-fg); vertical-align:1px; }
+  .rv { display:inline-block; margin-left:5px; padding:0 6px; border-radius:8px; font-size:10px; font-weight:700; color:var(--chip-fg); background:var(--chip); vertical-align:1px; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .chart { margin-top:10px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 12px; }
+  .chart svg { width:100%; height:auto; display:block; touch-action:pan-y; -webkit-user-select:none; user-select:none; }
+  .chart text { fill:var(--muted); font-size:11px; }
+  .lgrow { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 4px; }
+  .lgrow .ttl { font-size:14px; font-weight:700; margin-right:auto; }
+  .lgrow .big { font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .lgrow .bigk { font-size:12px; color:var(--muted); margin-left:6px; }
+  .lgb { font-size:12px; font-weight:500; padding:2px 8px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; white-space:nowrap; }
+  .lgb i { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px; margin-right:5px; }
+  .lgb[data-k="idx"] i { height:3px; width:12px; vertical-align:3px; }
+  .lgb.off { opacity:.4; text-decoration:line-through; }
+  .tag { display:inline-block; padding:1px 9px; border-radius:10px; font-size:12px; font-weight:600; }
+  .rt-long { background:var(--up-soft); color:var(--up); box-shadow:inset 0 0 0 1px var(--up); }
+  .rt-short { background:var(--down-soft); color:var(--down); box-shadow:inset 0 0 0 1px var(--down); }
+  .rt-na { background:var(--chip); color:var(--chip-fg); }
+  td.c { text-align:center; }
+  #sum { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:0 0 10px; font-size:13px; line-height:1.7; }
+  #sum .sumhd { font-size:14px; margin-bottom:4px; }
+  #sum .chips { display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; margin:2px 0 4px; }
+  #sum .m, .m { color:var(--muted); font-size:12px; }
+  .guide { margin-top:10px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px 12px; font-size:13px; line-height:1.6; }
+  .guide h2 { font-size:13px; margin:0 0 6px; }
+  .guide .m { color:var(--muted); font-size:12px; }
+  .guide .it { padding:6px 0; border-top:1px dashed var(--line); }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><h1>十特籌碼（台指期／選擇權）</h1><button class="ghost" id="theme" title="切換深淺模式">◐</button></div>
+  <div class="bar">
+    <label>結束日期 <input type="date" id="end"></label>
+    <label>天數 <input type="number" id="days" value="20" min="1" max="80"></label>
+    <button id="go">查詢</button>
+    <button class="ghost" id="csv">下載 CSV</button>
+    <span class="grow"></span>
+    <button class="ghost icon" id="menu" title="設定" aria-label="設定">☰</button>
+    <div id="panel" hidden>
+      <label class="chk"><input type="checkbox" id="showAll"> 顯示全月（表格欄位＋圖表）</label>
+      <label class="chk"><input type="checkbox" id="showBS"> 表格顯示近月買方／賣方明細</label>
+      <label class="chk"><input type="checkbox" id="showK"> 表格顯示加權指數／漲跌</label>
+      <label class="chk"><input type="checkbox" class="vis" data-k="idx"> 圖表顯示加權指數收盤線</label>
+    </div>
+  </div>
+  <div id="msg"></div>
+  <div id="sum" hidden></div>
+  <div class="cards" id="cards" hidden></div>
+  <div class="wrap" id="out" hidden></div>
+  <div id="charts"></div>
+  <div class="guide">
+    <h2>十特籌碼 說明</h2>
+    <div class="m">十特 = 期交所「大額交易人未沖銷部位」中，前十大交易人裡的特定法人（證券商、外資、投信等）。淨部位 = 買方 − 賣方未沖銷口數；Δ = 與前一交易日相比的增減。</div>
+    <div class="it">台指期：合併 TX＋MTX/4＋TMF/20。正值 = 淨多單（紅），負值 = 淨空單（綠）。</div>
+    <div class="it">選擇權：0 軸以上 = 淨買方、以下 = 淨賣方。買權淨賣出多 → 壓上檔；賣權淨賣出多 → 撐下檔。</div>
+    <div class="it">10特行為（以全月增減判斷）：期貨增多／減空 +1、減多／增空 −1；加賣買權 −1、回補買權 +1；加賣賣權 +1、回補或買進賣權 −1。合計 ≥2 偏多、1 略偏多、−1 略偏空、≤−2 偏空；有動作但相抵為「多空分歧」。</div>
+    <div class="it"><span class="st" style="margin:0">結算</span> 近月合約結算日。<span class="rv">換月</span> 隔天近月換成下一個合約，近月 Δ 不計，請參考全月。</div>
+    <div class="m" style="margin-top:6px">以上僅供參考，非投資建議。期交所約 15:00 後公布當日資料，之前查詢當日不會出現。</div>
+  </div>
+</main>
+<script>
+// ★ 十特 Worker 網址（結尾不要加 /）。也可用 ?api=https://... 臨時覆蓋
+var API_BASE = "https://top10.wildvlogtw.workers.dev";
+// 加權指數收盤由十特 Worker 向證交所抓取。若證交所抓不到，可填備援來源（回傳 {days:[{date,close,change}]}），例如 mtxretail Worker
+var PRICE_API = "";
+try { var q0 = new URLSearchParams(location.search); if (q0.get("api")) API_BASE = q0.get("api").replace(/\/+$/, ""); if (q0.has("price")) PRICE_API = q0.get("price").replace(/\/+$/, ""); } catch (e) {}
+
+var $ = function (id) { return document.getElementById(id); };
+var last = null;
+var VIS = { idx: true, call: true, put: true };
+try { var v0 = JSON.parse(localStorage.getItem("top10_vis") || "{}"); for (var k0 in VIS) if (typeof v0[k0] === "boolean") VIS[k0] = v0[k0]; } catch (e) {}
+function pad(n) { return (n < 10 ? "0" : "") + n; }
+function todayStr() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function fmt(v) { return v === null || v === undefined ? "-" : v.toLocaleString("en-US"); }
+function sign(v) { return v === null || v === undefined ? "-" : v > 0 ? "+" + fmt(v) : fmt(v); }
+function cls(v) { return v > 0 ? "up" : v < 0 ? "down" : ""; }
+function chgTxt(v) { return v === null || v === undefined ? "-" : (v > 0 ? "▲" : v < 0 ? "▼" : "") + fmt(Math.abs(v)); }
+function getB(k) { try { return localStorage.getItem("top10_" + k) === "1"; } catch (e) { return false; } }
+function setB(k, v) { try { localStorage.setItem("top10_" + k, v ? "1" : "0"); } catch (e) {} }
+
+// 結算日：隔天近月換約 → 今天結算；最後一天用「第三個週三且近月 = 當月」
+function isSettle(all, i) {
+  var r = all[i];
+  if (!r.near) return false;
+  if (i < all.length - 1) return !!all[i + 1].near && all[i + 1].near !== r.near;
+  var d = new Date(Date.parse(r.date.replace(/\//g, "-") + "T00:00:00Z"));
+  return d.getUTCDay() === 3 && d.getUTCDate() >= 15 && d.getUTCDate() <= 21 && r.near === r.date.slice(0, 4) + r.date.slice(5, 7);
+}
+
+// 欄位定義：[標題, key, 是否有Δ]
+var GROUPS = [
+  { t: "台指期 近月", cols: [["10特淨", "futNear", 1]], bs: [["買", "futNearBuy"], ["賣", "futNearSell"]] },
+  { t: "買權 近月", cols: [["10特淨", "callNear", 1]], bs: [["買", "callNearBuy"], ["賣", "callNearSell"]] },
+  { t: "賣權 近月", cols: [["10特淨", "putNear", 1]], bs: [["買", "putNearBuy"], ["賣", "putNearSell"]] },
+  { t: "台指期 全月", all: 1, cols: [["10特淨", "futAll", 1]] },
+  { t: "買權 全月", all: 1, cols: [["10特淨", "callAll", 1]] },
+  { t: "賣權 全月", all: 1, cols: [["10特淨", "putAll", 1]] },
+];
+
+function cell(r, k, hasChg, first) {
+  var v = r[k];
+  var h = '<td class="' + (first ? "gl " : "") + (v === null || v === undefined ? "dim" : cls(v)) + '">' + sign(v);
+  if (hasChg) {
+    var c = r[k + "Chg"];
+    h += c === null || c === undefined
+      ? '<span class="chg dim">' + (r.rollover && /Near$/.test(k) ? "換月" : "-") + "</span>"
+      : '<span class="chg ' + cls(c) + '">' + chgTxt(c) + "</span>";
+  }
+  return h + "</td>";
+}
+
+// ---------- 10特行為判讀 ----------
+// 以「全月」為主（不受換月影響）；門檻內視為持平
+var TH = { fut: 500, opt: 1000 };
+function act(r) {
+  var f = r.futAllChg, c = r.callAllChg, p = r.putAllChg, items = [];
+  if (f != null) {
+    var prev = r.futAll - f, t;
+    if (Math.abs(f) < TH.fut) t = ["期貨持平", 0];
+    else if (f > 0) t = prev < 0 && r.futAll > 0 ? ["期貨空翻多", 2] : r.futAll > 0 ? ["加碼多單", 1] : ["回補空單", 1];
+    else t = prev > 0 && r.futAll < 0 ? ["期貨多翻空", -2] : r.futAll >= 0 ? ["減碼多單", -1] : ["加碼空單", -1];
+    items.push({ k: "期貨", t: t[0], s: t[1], d: f });
+  }
+  if (c != null) items.push(Math.abs(c) < TH.opt ? { k: "買權", t: "買權持平", s: 0, d: c }
+    : c < 0 ? { k: "買權", t: "加賣買權", s: -1, d: c, why: "壓上檔" }
+    : r.callAll < 0 ? { k: "買權", t: "回補買權", s: 1, d: c, why: "解除上檔壓力" } : { k: "買權", t: "加買買權", s: 1, d: c, why: "看漲" });
+  if (p != null) items.push(Math.abs(p) < TH.opt ? { k: "賣權", t: "賣權持平", s: 0, d: p }
+    : p < 0 ? { k: "賣權", t: "加賣賣權", s: 1, d: p, why: "撐下檔" }
+    : r.putAll < 0 ? { k: "賣權", t: "回補賣權", s: -1, d: p, why: "撤掉下檔支撐" } : { k: "賣權", t: "加買賣權", s: -1, d: p, why: "避險／看跌" });
+  var score = items.reduce(function (a, x) { return a + x.s; }, 0), moved = items.some(function (x) { return x.s; });
+  var v = score >= 2 ? ["偏多", "rt-long"] : score === 1 ? ["略偏多", "rt-long"] : score <= -2 ? ["偏空", "rt-short"] : score === -1 ? ["略偏空", "rt-short"]
+    : moved ? ["多空分歧", "rt-na"] : ["按兵不動", "rt-na"];
+  return { items: items, score: score, v: v[0], c: v[1] };
+}
+// 部位結構（看存量，不看增減）
+function structure(r) {
+  var f = r.futAll, c = r.callAll, p = r.putAll, out = [];
+  if (f != null) out.push("期貨" + (f > 0 ? "淨多 " : f < 0 ? "淨空 " : "") + fmt(Math.abs(f)) + " 口");
+  if (c != null && p != null) {
+    var sc = c < 0 ? -c : 0, sp = p < 0 ? -p : 0;
+    if (sc > 2 * Math.max(sp, 1) && sc >= 3000) out.push("選擇權以賣買權為主（淨賣 " + fmt(sc) + " 口）→ 看「不漲」，上檔有壓");
+    else if (sp > 2 * Math.max(sc, 1) && sp >= 3000) out.push("選擇權以賣賣權為主（淨賣 " + fmt(sp) + " 口）→ 看「不跌」，下檔有撐");
+    else if (sc >= 3000 && sp >= 3000) out.push("買權、賣權都淨賣（" + fmt(sc) + "／" + fmt(sp) + " 口）→ 收權利金，預期區間整理");
+    else out.push("選擇權部位不大（買權 " + sign(c) + "、賣權 " + sign(p) + "）");
+  }
+  return out.join("；");
+}
+// 與大盤方向對照
+function context(r, a) {
+  var m = r.change, f = a.items[0];
+  if (m == null || !f || f.k !== "期貨" || !f.s) return "";
+  var up = m > 0;
+  if (f.s > 0) return up ? "大盤漲、10特加多 → 順勢追多" : "大盤跌、10特加多 → 逢低承接";
+  return up ? "大盤漲、10特減多 → 逢高調節" : "大盤跌、10特減多 → 跟著降風險（但" + (r.futAll > 0 ? "仍未翻空）" : "已偏空）");
+}
+// 連續天數
+function streak(days, k) {
+  var n = 0, s0 = 0;
+  for (var i = days.length - 1; i >= 0; i--) {
+    var d = days[i][k]; if (d == null) break;
+    var s = d > 0 ? 1 : d < 0 ? -1 : 0; if (!s) break;
+    if (!s0) s0 = s; if (s !== s0) break; n++;
+  }
+  return { n: n, s: s0 };
+}
+function summary(days) {
+  var L = days[days.length - 1], a = act(L);
+  var chip = function (x) {
+    var cl = x.s > 0 ? "rt-long" : x.s < 0 ? "rt-short" : "rt-na";
+    return '<span class="tag ' + cl + '">' + x.t + " " + sign(x.d) + "</span>" + (x.why ? '<span class="m"> ' + x.why + "</span>" : "");
+  };
+  var sf = streak(days, "futAllChg"), sc = streak(days, "callAllChg"), sp = streak(days, "putAllChg"), st = [];
+  if (sf.n >= 2) st.push("期貨連 " + sf.n + " 日" + (sf.s > 0 ? "增多" : "減多／增空"));
+  if (sc.n >= 2) st.push("買權連 " + sc.n + " 日" + (sc.s < 0 ? "加賣" : "回補／加買"));
+  if (sp.n >= 2) st.push("賣權連 " + sp.n + " 日" + (sp.s < 0 ? "加賣" : "回補／加買"));
+  var ctx = context(L, a);
+  var near = L.settle ? "今日結算：近月買權 " + sign(L.callNear) + "、賣權 " + sign(L.putNear) + "、期貨 " + sign(L.futNear) + " 口"
+    : "近月：期貨 " + sign(L.futNear) + "、買權 " + sign(L.callNear) + "、賣權 " + sign(L.putNear);
+  return '<div class="sumhd"><b>10特行為判讀 ' + L.date.slice(5) + '</b> <span class="tag ' + a.c + '">' + a.v + "</span>" +
+    (L.change != null ? '<span class="m">　加權 ' + fmt(L.close) + ' <span class="' + cls(L.change) + '">' + chgTxt(Math.round(L.change)) + "</span></span>" : "") + "</div>" +
+    '<div class="chips">' + a.items.map(chip).join("") + "</div>" +
+    (ctx ? '<div class="ln">📍 ' + ctx + "</div>" : "") +
+    '<div class="ln">📦 ' + structure(L) + "</div>" +
+    (st.length ? '<div class="ln">🔁 ' + st.join("、") + "</div>" : "") +
+    '<div class="ln m">' + near + "（判讀以全月為準，期貨增減 &lt;" + TH.fut + "、選擇權 &lt;" + TH.opt + " 口視為持平）</div>";
+}
+
+function render(days) {
+  last = days;
+  var showAll = $("showAll").checked, showBS = $("showBS").checked, showK = $("showK").checked && days.some(function (r) { return r.close != null; });
+  var groups = GROUPS.filter(function (g) { return showAll || !g.all; });
+
+  $("sum").innerHTML = summary(days); $("sum").hidden = false;
+
+  // 卡片：最新一天
+  var L = days[days.length - 1];
+  var card = function (k, v, c) { return '<div class="card"><div class="k">' + k + '</div><div class="v ' + cls(v) + '">' + sign(v) + '</div><div class="c ' + cls(c) + '">Δ ' + chgTxt(c) + "</div></div>"; };
+  $("cards").innerHTML = card("台指期 近月10特", L.futNear, L.futNearChg) + card("買權 近月10特", L.callNear, L.callNearChg) + card("賣權 近月10特", L.putNear, L.putNearChg) +
+    (showAll ? card("台指期 全月10特", L.futAll, L.futAllChg) + card("買權 全月10特", L.callAll, L.callAllChg) + card("賣權 全月10特", L.putAll, L.putAllChg) : "");
+  $("cards").hidden = false;
+
+  // 表格（舊 → 新，最新在最底下）
+  var h1 = '<tr><th class="d" rowspan="2">日期</th>' + (showK ? '<th rowspan="2">加權</th><th rowspan="2">漲跌</th>' : "");
+  var h2 = "<tr>";
+  groups.forEach(function (g) {
+    var n = g.cols.length + (showBS && g.bs ? g.bs.length : 0);
+    h1 += '<th class="grp" colspan="' + n + '">' + g.t + "</th>";
+    if (showBS && g.bs) g.bs.forEach(function (c, j) { h2 += '<th class="' + (j === 0 ? "grp" : "") + '">' + c[0] + "</th>"; });
+    g.cols.forEach(function (c, j) { h2 += '<th class="' + (j === 0 && !(showBS && g.bs) ? "grp" : "") + '">' + c[0] + "</th>"; });
+  });
+  h1 += '<th class="grp" rowspan="2">10特行為</th>';
+  var h = "<table><thead>" + h1 + "</tr>" + h2 + "</tr></thead><tbody>";
+  days.forEach(function (r, i) {
+    var a = act(r);
+    h += '<tr class="' + (i === days.length - 1 ? "latest" : "") + (r.settle ? " settle" : "") + '"><td class="d">' + r.date.slice(5) +
+      (r.settle ? '<span class="st" title="' + r.near + ' 合約結算">結算</span>' : "") + "</td>" +
+      (showK ? '<td class="cl">' + fmt(r.close) + '</td><td class="' + cls(r.change) + '">' + chgTxt(r.change == null ? null : Math.round(r.change)) + "</td>" : "");
+    groups.forEach(function (g) {
+      var first = true;
+      if (showBS && g.bs) g.bs.forEach(function (c) { h += '<td class="' + (first ? "gl" : "") + '">' + fmt(r[c[1]]) + "</td>"; first = false; });
+      g.cols.forEach(function (c) { h += cell(r, c[1], c[2], first); first = false; });
+    });
+    h += '<td class="gl c" title="' + a.items.map(function (x) { return x.t + " " + sign(x.d); }).join("、") + '">' +
+      (a.items.length ? '<span class="tag ' + a.c + '">' + a.v + "</span>" : '<span class="dim">-</span>') + "</td></tr>";
+  });
+  $("out").innerHTML = h + "</tbody></table>";
+  $("out").hidden = false;
+  drawCharts();
+  $("msg").className = "";
+  $("msg").textContent = days[0].date + " ～ " + L.date + "，共 " + days.length + " 個交易日（近月 " + L.near + "）" + (days.some(function (r) { return r.close != null; }) ? "" : "　※ 未取得加權指數，圖表不畫收盤線");
+}
+
+// ---------- 圖表 ----------
+var CHARTS = [
+  { id: "cFutNear", t: "十特近月台指期 OI（口）", fut: "futNear" },
+  { id: "cOptNear", t: "十特近月選擇權 OI（口）", call: "callNear", put: "putNear" },
+  { id: "cFutAll", t: "十特全月台指期 OI（口）", fut: "futAll", all: 1 },
+  { id: "cOptAll", t: "十特全月選擇權 OI（口）", call: "callAll", put: "putAll", all: 1 },
+];
+var CW = 0;
+function drawCharts() {
+  if (!last) return;
+  var showAll = $("showAll").checked, L = last[last.length - 1], hasIdx = last.some(function (r) { return r.close != null; });
+  var html = "";
+  CHARTS.forEach(function (c) {
+    if (c.all && !showAll) return;
+    var head = c.fut
+      ? '<span class="big ' + cls(L[c.fut]) + '">' + sign(L[c.fut]) + "</span>"
+      : '<span style="white-space:nowrap"><span class="bigk">買權</span> <span class="big ' + cls(L[c.call]) + '">' + sign(L[c.call]) + '</span><span class="bigk">賣權</span> <span class="big ' + cls(L[c.put]) + '">' + sign(L[c.put]) + "</span></span>";
+    var lg = (hasIdx ? '<button type="button" class="lgb" data-k="idx"><i style="background:var(--idx)"></i>加權指數</button>' : "") +
+      (c.fut ? "" : '<button type="button" class="lgb" data-k="call"><i style="background:var(--call)"></i>買權</button><button type="button" class="lgb" data-k="put"><i style="background:var(--put)"></i>賣權</button>');
+    html += '<div class="chart"><div class="lgrow"><span class="ttl">' + c.t + "</span>" + head + '</div><div class="lgrow">' + lg + '</div><div id="' + c.id + '"></div></div>';
+  });
+  $("charts").innerHTML = html;
+  CHARTS.forEach(function (c) { if ($(c.id)) drawOne($(c.id), last, c, hasIdx); });
+  document.querySelectorAll("#charts .lgb").forEach(function (b) {
+    b.classList.toggle("off", !VIS[b.dataset.k]);
+    b.onclick = function (e) { e.preventDefault(); setVis(b.dataset.k, !VIS[b.dataset.k]); };
+  });
+  CW = $("charts").clientWidth;
+}
+
+function drawOne(el, days, c, hasIdx) {
+  var W = Math.max(320, Math.round(el.clientWidth || 360));
+  var showIdx = hasIdx && VIS.idx;
+  var pl = showIdx ? 52 : 10, pr = 52, n = days.length, iw = W - pl - pr, step = iw / n;
+  var top = 10, cH = Math.round(Math.min(300, Math.max(190, W * 0.4))), H = top + cH + 22;
+  var x = function (i) { return pl + step * i + step / 2; };
+
+  // 右軸：OI（0 軸置於正負比例處）
+  var keys = c.fut ? [c.fut] : [VIS.call ? c.call : null, VIS.put ? c.put : null].filter(Boolean);
+  var vals = [0]; days.forEach(function (r) { keys.forEach(function (k) { if (r[k] != null) vals.push(r[k]); }); });
+  var omax = Math.max.apply(null, vals), omin = Math.min.apply(null, vals);
+  if (omax === omin) omax = omin + 1;
+  var op = (omax - omin) * 0.08; if (omax > 0) omax += op; if (omin < 0) omin -= op;
+  var oy = function (v) { return top + cH - (v - omin) / (omax - omin) * cH; };
+
+  // 左軸：台指期收盤
+  var cl = days.map(function (r) { return r.close; }).filter(function (v) { return v != null; });
+  var kmax = Math.max.apply(null, cl), kmin = Math.min.apply(null, cl);
+  if (!isFinite(kmax)) { kmax = 1; kmin = 0; } if (kmax === kmin) kmax = kmin + 1;
+  var kp = (kmax - kmin) * 0.08; kmax += kp; kmin -= kp;
+  var ky = function (v) { return top + cH - (v - kmin) / (kmax - kmin) * cH; };
+
+  var s = '<svg viewBox="0 0 ' + W + " " + H + '">', t, v;
+  for (t = 0; t <= 4; t++) {
+    v = omin + (omax - omin) * t / 4;
+    s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + oy(v) + '" y2="' + oy(v) + '" stroke="var(--grid)"/>' +
+      '<text x="' + (W - pr + 6) + '" y="' + (oy(v) + 4) + '">' + (v > 0 ? "+" : "") + Math.round(v).toLocaleString("en-US") + "</text>";
+    if (showIdx) { var kv = kmin + (kmax - kmin) * t / 4; s += '<text x="' + (pl - 6) + '" y="' + (ky(kv) + 4) + '" text-anchor="end">' + Math.round(kv).toLocaleString("en-US") + "</text>"; }
+  }
+  // 結算日底色
+  days.forEach(function (r, i) { if (r.settle) s += '<rect x="' + (pl + step * i) + '" y="' + top + '" width="' + step + '" height="' + cH + '" fill="var(--settle)"/>'; });
+  var z = oy(0);
+  s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + z + '" y2="' + z + '" stroke="var(--muted)" opacity=".6"/>';
+
+  // 柱狀
+  var bw = Math.max(2, step * 0.7);
+  var bar = function (cx, w, val, col) { if (val == null) return ""; var yy = oy(val); return '<rect x="' + (cx - w / 2) + '" y="' + Math.min(yy, z) + '" width="' + w + '" height="' + Math.max(1, Math.abs(yy - z)) + '" fill="' + col + '"/>'; };
+  days.forEach(function (r, i) {
+    var cx = x(i);
+    if (c.fut) s += bar(cx, bw, r[c.fut], r[c.fut] >= 0 ? "var(--up)" : "var(--down)");
+    else {
+      var both = VIS.call && VIS.put, w = both ? bw / 2 : bw;
+      if (VIS.call) s += bar(both ? cx - w / 2 : cx, w, r[c.call], "var(--call)");
+      if (VIS.put) s += bar(both ? cx + w / 2 : cx, w, r[c.put], "var(--put)");
+    }
+  });
+  // 收盤線
+  if (showIdx) {
+    var pts = []; days.forEach(function (r, i) { if (r.close != null) pts.push(x(i).toFixed(1) + "," + ky(r.close).toFixed(1)); });
+    if (pts.length > 1) s += '<polyline points="' + pts.join(" ") + '" fill="none" stroke="var(--idx)" stroke-width="1.8" stroke-linejoin="round"/>';
+  }
+  // 日期軸
+  var every = Math.max(1, Math.ceil(40 / step)), labs = [];
+  days.forEach(function (r, i) { if (i % every === 0) labs.push(i); });
+  if (labs[labs.length - 1] !== n - 1) { if (labs.length && (n - 1 - labs[labs.length - 1]) * step < 40) labs.pop(); labs.push(n - 1); }
+  labs.forEach(function (i) { s += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + days[i].date.slice(5) + "</text>"; });
+
+  // 十字游標
+  var TW = 178, TH = c.fut ? 72 : 88, lines = c.fut ? 4 : 5;
+  s += '<g class="cross" style="display:none;pointer-events:none"><line class="cv" y1="' + top + '" y2="' + (top + cH) + '" stroke="var(--fg)" stroke-dasharray="3 3" opacity=".7"/>' +
+    '<g class="tip"><rect width="' + TW + '" height="' + TH + '" rx="5" fill="var(--card)" stroke="var(--line)" opacity=".96"/>' +
+    Array.apply(null, Array(lines)).map(function (_, k) { return '<text class="t' + (k + 1) + '" x="8" y="' + ((k + 1) * 16) + '" style="fill:var(--fg)"></text>'; }).join("") + "</g></g>";
+  el.innerHTML = s + "</svg>";
+
+  var svg = el.firstChild, g = svg.querySelector(".cross"), cv = g.querySelector(".cv"), tip = g.querySelector(".tip");
+  var T = function (k) { return g.querySelector(".t" + k); };
+  var dz = function (r, k) { var d = r[k + "Chg"]; return sign(r[k]) + (d == null ? "" : "（" + chgTxt(d) + "）"); };
+  function show(ev) {
+    var b = svg.getBoundingClientRect(), px = (ev.clientX - b.left) * (W / b.width);
+    var i = Math.max(0, Math.min(n - 1, Math.round((px - pl - step / 2) / step))), r = days[i], cx = x(i);
+    cv.setAttribute("x1", cx); cv.setAttribute("x2", cx);
+    T(1).textContent = r.date + (r.settle ? " 結算" : ""); T(1).style.fontWeight = "600";
+    T(2).textContent = "加權 " + fmt(r.close) + "　" + chgTxt(r.change == null ? null : Math.round(r.change));
+    if (c.fut) { T(3).textContent = "10特淨 " + dz(r, c.fut); T(4).textContent = c.fut === "futNear" ? "買 " + fmt(r.futNearBuy) + "　賣 " + fmt(r.futNearSell) : "買 " + fmt(r.futAllBuy) + "　賣 " + fmt(r.futAllSell); }
+    else { T(3).textContent = "買權 " + dz(r, c.call); T(4).textContent = "賣權 " + dz(r, c.put); T(5).textContent = "近月 " + (r.near || "-"); }
+    var tx = cx + 12; if (tx + TW > W - 2) tx = cx - TW - 12; if (tx < 2) tx = 2;
+    tip.setAttribute("transform", "translate(" + tx + "," + (top + 2) + ")");
+    g.style.display = "";
+  }
+  svg.addEventListener("pointerdown", show);
+  svg.addEventListener("pointermove", show);
+  svg.addEventListener("pointerleave", function (ev) { if (ev.pointerType === "mouse") g.style.display = "none"; });
+  svg.addEventListener("pointercancel", function () { g.style.display = "none"; });
+}
+
+// ---------- 讀資料 ----------
+function getJSON(url) {
+  return fetch(url).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+}
+function query(nocache) {
+  var end = $("end").value; if (!end) return;
+  var n = Math.min(80, Math.max(1, parseInt($("days").value, 10) || 20));
+  var endQ = encodeURIComponent(end.replace(/-/g, "/"));
+  $("go").disabled = true; $("msg").className = ""; $("msg").textContent = "載入中…（首次查詢需向期交所下載，約數秒）";
+  var pos = getJSON(API_BASE + "/api?end=" + endQ + "&days=" + (n + 1) + (nocache ? "&nocache=1" : ""));
+  var px = PRICE_API ? getJSON(PRICE_API + "/api/retail?end=" + endQ + "&days=" + Math.min(80, n + 1)).catch(function () { return { days: [] }; }) : Promise.resolve({ days: [] });
+  Promise.all([pos, px]).then(function (res) {
+    var all = res[0].days || [], price = {};
+    if (!all.length) throw new Error("查無資料");
+    var key = function (d) { var m = String(d).match(/(\d{4})\D?(\d{1,2})\D?(\d{1,2})/); return m ? m[1] + "/" + pad(+m[2]) + "/" + pad(+m[3]) : d; };
+    (res[1].days || []).forEach(function (p) { price[key(p.date)] = p; });
+    all.forEach(function (r, i) {
+      var p = price[key(r.date)] || {};
+      r.close = r.taiex != null ? r.taiex : p.close == null ? null : p.close;
+      r.change = r.taiex != null ? r.taiexChg : p.change == null ? null : p.change;
+      r.settle = isSettle(all, i);
+    });
+    render(all.slice(-n));
+  }).catch(function (e) {
+    $("out").hidden = true; $("cards").hidden = true; $("sum").hidden = true; $("charts").innerHTML = ""; last = null;
+    $("msg").className = "err"; $("msg").textContent = "失敗：" + e.message;
+  }).then(function () { $("go").disabled = false; });
+}
+
+function downloadCsv() {
+  if (!last) return;
+  var v = function (x) { return x === null || x === undefined ? "" : x; };
+  var K = ["near", "close", "change", "futNearBuy", "futNearSell", "futNear", "futNearChg", "futAll", "futAllChg",
+    "callNearBuy", "callNearSell", "callNear", "callNearChg", "putNearBuy", "putNearSell", "putNear", "putNearChg", "callAll", "callAllChg", "putAll", "putAllChg"];
+  var lines = ["日期,近月,台指期收盤,漲跌,期近月10特買,期近月10特賣,期近月10特淨,期近月Δ,期全月10特淨,期全月Δ,買權近月10特買,買權近月10特賣,買權近月10特淨,買權近月Δ,賣權近月10特買,賣權近月10特賣,賣權近月10特淨,賣權近月Δ,買權全月10特淨,買權全月Δ,賣權全月10特淨,賣權全月Δ,結算"];
+  last.forEach(function (r) { lines.push([r.date].concat(K.map(function (k) { return v(r[k]); })).concat(r.settle ? "結算" : "").join(",")); });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" }));
+  a.download = "TX_top10_" + last[0].date.replace(/\//g, "") + "_" + last[last.length - 1].date.replace(/\//g, "") + ".csv";
+  a.click();
+}
+
+// ---------- 介面 ----------
+$("theme").onclick = function () {
+  var cur = document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  var nv = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", nv);
+  try { localStorage.setItem("txf_theme", nv); } catch (e) {}
+};
+if (window.parent !== window) addEventListener("message", function (e) {
+  var m = e.data;
+  if (e.source !== parent || !m || m.type !== "shell-theme" || (m.theme !== "light" && m.theme !== "dark")) return;
+  document.documentElement.setAttribute("data-theme", m.theme);
+});
+addEventListener("resize", function () { var w = $("charts").clientWidth; if (last && w && w !== CW) drawCharts(); });
+function setVis(k, on) {
+  VIS[k] = on;
+  try { localStorage.setItem("top10_vis", JSON.stringify(VIS)); } catch (e) {}
+  document.querySelectorAll("#panel .vis").forEach(function (c) { c.checked = !!VIS[c.dataset.k]; });
+  drawCharts();
+}
+document.querySelectorAll("#panel .vis").forEach(function (c) { c.checked = !!VIS[c.dataset.k]; c.onchange = function () { setVis(c.dataset.k, c.checked); }; });
+["showAll", "showBS", "showK"].forEach(function (k) {
+  $(k).checked = getB(k);
+  $(k).onchange = function () { setB(k, $(k).checked); if (last) render(last); };
+});
+$("menu").onclick = function (e) { e.stopPropagation(); $("panel").hidden = !$("panel").hidden; };
+document.addEventListener("click", function (e) { if (!$("panel").hidden && !$("panel").contains(e.target) && e.target !== $("menu")) $("panel").hidden = true; });
+$("go").onclick = function () { query(false); };
+$("csv").onclick = downloadCsv;
+$("end").onkeydown = function (e) { if (e.key === "Enter") query(false); };
+$("end").value = todayStr();
+query(false);
+</script>
+</body>
+</html>
