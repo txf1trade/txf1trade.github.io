@@ -126,13 +126,13 @@
     <div class="it">台指期：合併 TX＋MTX/4＋TMF/20。正值 = 淨多單（紅），負值 = 淨空單（綠）。</div>
     <div class="it">選擇權：0 軸以上 = 淨買方、以下 = 淨賣方。買權淨賣出多 → 壓上檔；賣權淨賣出多 → 撐下檔。</div>
     <div class="it">10特行為（以全月增減判斷）：期貨增多／減空 +1、減多／增空 −1；加賣買權 −1、回補買權 +1；加賣賣權 +1、回補或買進賣權 −1。合計 ≥2 偏多、1 略偏多、−1 略偏空、≤−2 偏空；有動作但相抵為「多空分歧」。</div>
-    <div class="it"><span class="st" style="margin:0">結算</span> 近月合約結算日。<span class="rv">換月</span> 隔天近月換成下一個合約，近月 Δ 不計，請參考全月。</div>
+    <div class="it"><span class="st" style="margin:0">結算</span> 近月合約結算日。期交所當天盤後的大額交易人資料，近月已換成下一個月合約，所以近月 Δ 顯示「換月」不計，請參考全月。</div>
     <div class="m" style="margin-top:6px">以上僅供參考，非投資建議。期交所約 15:00 後公布當日資料，之前查詢當日不會出現。</div>
   </div>
 </main>
 <script>
 // ★ 十特 Worker 網址（結尾不要加 /）。也可用 ?api=https://... 臨時覆蓋
-var API_BASE = "https://top10.wildvlogtw.workers.dev";
+var API_BASE = "https://taifex-top10.wildvlogtw.workers.dev";
 // 加權指數收盤由十特 Worker 向證交所抓取。若證交所抓不到，可填備援來源（回傳 {days:[{date,close,change}]}），例如 mtxretail Worker
 var PRICE_API = "";
 try { var q0 = new URLSearchParams(location.search); if (q0.get("api")) API_BASE = q0.get("api").replace(/\/+$/, ""); if (q0.has("price")) PRICE_API = q0.get("price").replace(/\/+$/, ""); } catch (e) {}
@@ -150,13 +150,15 @@ function chgTxt(v) { return v === null || v === undefined ? "-" : (v > 0 ? "▲"
 function getB(k) { try { return localStorage.getItem("top10_" + k) === "1"; } catch (e) { return false; } }
 function setB(k, v) { try { localStorage.setItem("top10_" + k, v ? "1" : "0"); } catch (e) {} }
 
-// 結算日：隔天近月換約 → 今天結算；最後一天用「第三個週三且近月 = 當月」
+// 結算日：期交所結算日盤後的大額交易人資料，近月已換成下一個合約
+// → 「近月和前一天不同」的那一天就是結算日（遇假日順延也會自動對上）
+// 第一筆沒有前一天可比：用「第三個週三，且近月已不是當月」判斷
 function isSettle(all, i) {
   var r = all[i];
   if (!r.near) return false;
-  if (i < all.length - 1) return !!all[i + 1].near && all[i + 1].near !== r.near;
+  if (i > 0) return !!all[i - 1].near && all[i - 1].near !== r.near;
   var d = new Date(Date.parse(r.date.replace(/\//g, "-") + "T00:00:00Z"));
-  return d.getUTCDay() === 3 && d.getUTCDate() >= 15 && d.getUTCDate() <= 21 && r.near === r.date.slice(0, 4) + r.date.slice(5, 7);
+  return d.getUTCDay() === 3 && d.getUTCDate() >= 15 && d.getUTCDate() <= 21 && r.near > r.date.slice(0, 4) + r.date.slice(5, 7);
 }
 
 // 欄位定義：[標題, key, 是否有Δ]
@@ -246,7 +248,7 @@ function summary(days) {
   if (sc.n >= 2) st.push("買權連 " + sc.n + " 日" + (sc.s < 0 ? "加賣" : "回補／加買"));
   if (sp.n >= 2) st.push("賣權連 " + sp.n + " 日" + (sp.s < 0 ? "加賣" : "回補／加買"));
   var ctx = context(L, a);
-  var near = L.settle ? "今日結算：近月買權 " + sign(L.callNear) + "、賣權 " + sign(L.putNear) + "、期貨 " + sign(L.futNear) + " 口"
+  var near = L.settle ? "今日結算，近月已換成 " + L.near + "：近月買權 " + sign(L.callNear) + "、賣權 " + sign(L.putNear) + "、期貨 " + sign(L.futNear) + " 口"
     : "近月：期貨 " + sign(L.futNear) + "、買權 " + sign(L.callNear) + "、賣權 " + sign(L.putNear);
   return '<div class="sumhd"><b>10特行為判讀 ' + L.date.slice(5) + '</b> <span class="tag ' + a.c + '">' + a.v + "</span>" +
     (L.change != null ? '<span class="m">　加權 ' + fmt(L.close) + ' <span class="' + cls(L.change) + '">' + chgTxt(Math.round(L.change)) + "</span></span>" : "") + "</div>" +
