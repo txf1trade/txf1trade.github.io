@@ -421,29 +421,56 @@ function drawOne(el, days, c, hasIdx) {
 function getJSON(url) {
   return fetch(url).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
 }
-function query(nocache) {
+// 把 API 回傳整理成畫面要用的資料
+function prepare(posDays, priceDays) {
+  var all = (posDays || []).map(function (r) { return Object.assign({}, r); }), price = {};
+  var key = function (d) { var m = String(d).match(/(\d{4})\D?(\d{1,2})\D?(\d{1,2})/); return m ? m[1] + "/" + pad(+m[2]) + "/" + pad(+m[3]) : d; };
+  (priceDays || []).forEach(function (p) { price[key(p.date)] = p; });
+  all.forEach(function (r, i) {
+    var p = price[key(r.date)] || {};
+    r.close = r.taiex != null ? r.taiex : p.close == null ? null : p.close;
+    r.change = r.taiex != null ? r.taiexChg : p.change == null ? null : p.change;
+    r.settle = isSettle(all, i);
+  });
+  return all;
+}
+// 上次的結果記在瀏覽器：打開頁面先秒出，背景再更新
+var CACHE_KEY = "top10_cache_v1";
+function readCache(k) { try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); return c && c.k === k ? c : null; } catch (e) { return null; } }
+function writeCache(k, d) { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ k: k, t: Date.now(), d: d })); } catch (e) {} }
+
+var qid = 0;
+function query() {
   var end = $("end").value; if (!end) return;
   var n = Math.min(80, Math.max(1, parseInt($("days").value, 10) || 20));
   var endQ = encodeURIComponent(end.replace(/-/g, "/"));
-  $("go").disabled = true; $("msg").className = ""; $("msg").textContent = "載入中…（首次查詢需向期交所下載，約數秒）";
-  var pos = getJSON(API_BASE + "/api?end=" + endQ + "&days=" + (n + 1) + (nocache ? "&nocache=1" : ""));
+  var ck = end + "|" + n, my = ++qid, shown = false;
+  var c = readCache(ck);
+  if (c && c.d && c.d.length) {
+    render(prepare(c.d, []).slice(-n)); shown = true;
+    $("msg").textContent = "已顯示上次資料，更新中…";
+  } else { $("msg").className = ""; $("msg").textContent = "載入中…"; }
+  $("go").disabled = true;
+  var pos = getJSON(API_BASE + "/api?end=" + endQ + "&days=" + (n + 1));
   var px = PRICE_API ? getJSON(PRICE_API + "/api/retail?end=" + endQ + "&days=" + Math.min(80, n + 1)).catch(function () { return { days: [] }; }) : Promise.resolve({ days: [] });
   Promise.all([pos, px]).then(function (res) {
-    var all = res[0].days || [], price = {};
-    if (!all.length) throw new Error("查無資料");
-    var key = function (d) { var m = String(d).match(/(\d{4})\D?(\d{1,2})\D?(\d{1,2})/); return m ? m[1] + "/" + pad(+m[2]) + "/" + pad(+m[3]) : d; };
-    (res[1].days || []).forEach(function (p) { price[key(p.date)] = p; });
-    all.forEach(function (r, i) {
-      var p = price[key(r.date)] || {};
-      r.close = r.taiex != null ? r.taiex : p.close == null ? null : p.close;
-      r.change = r.taiex != null ? r.taiexChg : p.change == null ? null : p.change;
-      r.settle = isSettle(all, i);
-    });
-    render(all.slice(-n));
+    if (my !== qid) return;                                  // 已有更新的查詢
+    var raw = res[0].days || [];
+    if (!raw.length) throw new Error("查無資料");
+    var all = prepare(raw, res[1].days);
+    // 存「已合併收盤價」的原始資料，下次秒出
+    writeCache(ck, all.map(function (r) { var o = Object.assign({}, r); if (o.taiex == null && o.close != null) { o.taiex = o.close; o.taiexChg = o.change; } return o; }));
+    var same = shown && c && JSON.stringify(c.d.map(function (r) { return [r.date, r.futAll, r.callAll, r.putAll, r.taiex]; })) ===
+      JSON.stringify(raw.map(function (r) { return [r.date, r.futAll, r.callAll, r.putAll, r.taiex]; }));
+    if (!same) render(all.slice(-n));
+    else $("msg").textContent = $("msg").textContent.replace("已顯示上次資料，更新中…", "");
+    if (same || !shown) { var L = all[all.length - 1]; $("msg").textContent = all[Math.max(0, all.length - n)].date + " ～ " + L.date + "，共 " + Math.min(n, all.length) + " 個交易日（近月 " + L.near + "）"; }
   }).catch(function (e) {
+    if (my !== qid) return;
+    if (shown) { $("msg").className = "err"; $("msg").textContent = "更新失敗（顯示的是上次資料）：" + e.message; return; }
     $("out").hidden = true; $("cards").hidden = true; $("sum").hidden = true; $("charts").innerHTML = ""; last = null;
     $("msg").className = "err"; $("msg").textContent = "失敗：" + e.message;
-  }).then(function () { $("go").disabled = false; });
+  }).then(function () { if (my === qid) $("go").disabled = false; });
 }
 
 function downloadCsv() {
@@ -451,7 +478,7 @@ function downloadCsv() {
   var v = function (x) { return x === null || x === undefined ? "" : x; };
   var K = ["near", "close", "change", "futNearBuy", "futNearSell", "futNear", "futNearChg", "futAll", "futAllChg",
     "callNearBuy", "callNearSell", "callNear", "callNearChg", "putNearBuy", "putNearSell", "putNear", "putNearChg", "callAll", "callAllChg", "putAll", "putAllChg"];
-  var lines = ["日期,近月,台指期收盤,漲跌,期近月10特買,期近月10特賣,期近月10特淨,期近月Δ,期全月10特淨,期全月Δ,買權近月10特買,買權近月10特賣,買權近月10特淨,買權近月Δ,賣權近月10特買,賣權近月10特賣,賣權近月10特淨,賣權近月Δ,買權全月10特淨,買權全月Δ,賣權全月10特淨,賣權全月Δ,結算"];
+  var lines = ["日期,近月,加權指數,漲跌,期近月10特買,期近月10特賣,期近月10特淨,期近月Δ,期全月10特淨,期全月Δ,買權近月10特買,買權近月10特賣,買權近月10特淨,買權近月Δ,賣權近月10特買,賣權近月10特賣,賣權近月10特淨,賣權近月Δ,買權全月10特淨,買權全月Δ,賣權全月10特淨,賣權全月Δ,結算"];
   last.forEach(function (r) { lines.push([r.date].concat(K.map(function (k) { return v(r[k]); })).concat(r.settle ? "結算" : "").join(",")); });
   var a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" }));
@@ -485,11 +512,11 @@ document.querySelectorAll("#panel .vis").forEach(function (c) { c.checked = !!VI
 });
 $("menu").onclick = function (e) { e.stopPropagation(); $("panel").hidden = !$("panel").hidden; };
 document.addEventListener("click", function (e) { if (!$("panel").hidden && !$("panel").contains(e.target) && e.target !== $("menu")) $("panel").hidden = true; });
-$("go").onclick = function () { query(false); };
+$("go").onclick = function () { query(); };
 $("csv").onclick = downloadCsv;
-$("end").onkeydown = function (e) { if (e.key === "Enter") query(false); };
+$("end").onkeydown = function (e) { if (e.key === "Enter") query(); };
 $("end").value = todayStr();
-query(false);
+query();
 </script>
 </body>
 </html>
