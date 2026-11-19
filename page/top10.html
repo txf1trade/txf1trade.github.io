@@ -421,7 +421,9 @@ function drawOne(el, days, c, hasIdx) {
 
 // ---------- 讀資料 ----------
 function getJSON(url) {
-  return fetch(url).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+  return fetch(url).catch(function (e) {
+    throw new Error("連不到 Worker（" + e.message + "）。可能是 Worker 執行逾時或當掉，請用瀏覽器開 " + API_BASE + "/status 看看");
+  }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.error) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
 }
 // 把 API 回傳整理成畫面要用的資料
 function prepare(posDays, priceDays) {
