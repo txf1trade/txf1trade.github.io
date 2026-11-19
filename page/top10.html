@@ -520,7 +520,22 @@ $("go").onclick = function () { query(); };
 $("csv").onclick = downloadCsv;
 $("end").onkeydown = function (e) { if (e.key === "Enter") query(); };
 $("end").value = todayStr();
-query();
+// 開啟頁面不連線：有上次資料就直接顯示，按「查詢」才更新
+(function () {
+  var c = null;
+  try { c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch (e) {}
+  if (c && c.d && c.d.length && c.k) {
+    var p = c.k.split("|"), n = parseInt(p[1], 10) || 20;
+    $("days").value = n;
+    render(prepare(c.d, []).slice(-n));
+    var t = new Date(c.t), pad2 = function (x) { return (x < 10 ? "0" : "") + x; };
+    $("msg").className = "";
+    $("msg").textContent = "上次更新 " + (t.getMonth() + 1) + "/" + t.getDate() + " " + pad2(t.getHours()) + ":" + pad2(t.getMinutes()) + "（資料到 " + c.d[c.d.length - 1].date + "），按「查詢」取得最新資料";
+  } else {
+    $("msg").className = "";
+    $("msg").textContent = "按「查詢」載入資料";
+  }
+})();
 </script>
 </body>
 </html>
