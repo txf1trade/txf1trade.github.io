@@ -132,7 +132,7 @@
 </main>
 <script>
 // ★ 十特 Worker 網址（結尾不要加 /）。也可用 ?api=https://... 臨時覆蓋
-var API_BASE = "https://taifex-top10.wildvlogtw.workers.dev";
+var API_BASE = "https://top10.wildvlogtw.workers.dev";
 // 加權指數收盤由十特 Worker 向證交所抓取。若證交所抓不到，可填備援來源（回傳 {days:[{date,close,change}]}），例如 mtxretail Worker
 var PRICE_API = "";
 try { var q0 = new URLSearchParams(location.search); if (q0.get("api")) API_BASE = q0.get("api").replace(/\/+$/, ""); if (q0.has("price")) PRICE_API = q0.get("price").replace(/\/+$/, ""); } catch (e) {}
