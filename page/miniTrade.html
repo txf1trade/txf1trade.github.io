@@ -240,7 +240,6 @@
     }
     #charts-grid.layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
     #charts-grid.layout-2 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
-    #charts-grid.layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
     @media (min-width: 768px) {
       #charts-grid.layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
     }
@@ -260,7 +259,6 @@
     }
     /* 單圖模式隱藏副窗與多圖標籤列 */
     #charts-grid.layout-1 .sub-pane { display: none !important; }
-    #charts-grid.layout-2 .sub-pane-extra { display: none !important; }
     #charts-grid.layout-1 .pane-header { display: none !important; }
 
     .layout-btn {
@@ -321,7 +319,6 @@
       <div class="flex items-center bg-tvBg/80 p-0.5 rounded border border-tvBorder space-x-0.5" title="切換多圖視窗版面">
         <button class="layout-btn active" data-layout="1" title="單一全螢幕"><i class="fa-regular fa-square"></i></button>
         <button class="layout-btn" data-layout="2" title="雙圖並排"><i class="fa-solid fa-table-columns"></i></button>
-        <button class="layout-btn" data-layout="4" title="四宮格看盤"><i class="fa-solid fa-table-cells-large"></i></button>
       </div>
 
       <div id="api-status-badge" class="flex items-center space-x-1.5 text-tvUp bg-tvUp/15 px-3 py-1.5 rounded-md border border-tvUp/50 shadow-[0_0_12px_rgba(8,153,129,0.25)] cursor-pointer hover:bg-tvUp/25 transition-all select-none group" title="點擊手動重新整理資料">
@@ -384,7 +381,7 @@
           <input type="color" id="dt-color" value="#2962ff" title="繪圖顏色">
         </div>
 
-        <!-- 多圖網格容器 (預設 1 格，可切換 2 格 / 4 格) -->
+        <!-- 多圖網格容器 (預設 1 格，可切換 2 格) -->
         <div id="charts-grid" class="layout-1">
           <!-- Pane 0：主圖（支援完整指標、必來點與繪圖工具） -->
           <div id="pane-0" class="chart-pane active-pane" data-pane="0">
@@ -410,7 +407,7 @@
             </div>
           </div>
 
-          <!-- Pane 1：副圖 2 -->
+          <!-- Pane 1：畫面2（同樣支援指標與必來點） -->
           <div id="pane-1" class="chart-pane sub-pane" data-pane="1">
             <div class="pane-header h-6 bg-tvPanel/80 border-b border-tvBorder/70 flex items-center justify-between px-2 text-[11px] font-mono shrink-0">
               <div class="flex items-center space-x-1.5 truncate">
@@ -421,40 +418,11 @@
               <span id="pane-price-1" class="font-bold text-white">--</span>
             </div>
             <div class="flex-1 relative min-w-0 bg-tvBg flex flex-col min-h-0 overflow-hidden">
-              <div id="ohlc-bar-1" class="absolute top-1.5 left-2 z-10 pointer-events-none flex flex-wrap gap-x-2 text-[10px] font-mono"></div>
+              <div id="top-legends-1" class="absolute top-1.5 left-2 z-10 pointer-events-none flex flex-col gap-0.5 text-[11px] font-mono" style="max-width:calc(100% - 72px)">
+                <div id="ohlc-bar-1" class="flex flex-wrap gap-x-2"></div>
+                <div id="ind-legend-1" style="display:flex;flex-wrap:wrap;gap:0 8px"></div>
+              </div>
               <div id="chart-container-1" class="flex-1 w-full relative min-h-0 overflow-hidden"></div>
-            </div>
-          </div>
-
-          <!-- Pane 2：副圖 3 -->
-          <div id="pane-2" class="chart-pane sub-pane sub-pane-extra" data-pane="2">
-            <div class="pane-header h-6 bg-tvPanel/80 border-b border-tvBorder/70 flex items-center justify-between px-2 text-[11px] font-mono shrink-0">
-              <div class="flex items-center space-x-1.5 truncate">
-                <span class="text-tvTextMuted font-bold">#3</span>
-                <span id="pane-title-2" class="font-bold text-white truncate">納指期 NQ-1</span>
-                <span id="pane-res-2" class="text-tvTextMuted bg-tvHover px-1 rounded text-[10px]">15</span>
-              </div>
-              <span id="pane-price-2" class="font-bold text-white">--</span>
-            </div>
-            <div class="flex-1 relative min-w-0 bg-tvBg flex flex-col min-h-0 overflow-hidden">
-              <div id="ohlc-bar-2" class="absolute top-1.5 left-2 z-10 pointer-events-none flex flex-wrap gap-x-2 text-[10px] font-mono"></div>
-              <div id="chart-container-2" class="flex-1 w-full relative min-h-0 overflow-hidden"></div>
-            </div>
-          </div>
-
-          <!-- Pane 3：副圖 4 -->
-          <div id="pane-3" class="chart-pane sub-pane sub-pane-extra" data-pane="3">
-            <div class="pane-header h-6 bg-tvPanel/80 border-b border-tvBorder/70 flex items-center justify-between px-2 text-[11px] font-mono shrink-0">
-              <div class="flex items-center space-x-1.5 truncate">
-                <span class="text-tvTextMuted font-bold">#4</span>
-                <span id="pane-title-3" class="font-bold text-white truncate">富台指 TWN-1</span>
-                <span id="pane-res-3" class="text-tvTextMuted bg-tvHover px-1 rounded text-[10px]">15</span>
-              </div>
-              <span id="pane-price-3" class="font-bold text-white">--</span>
-            </div>
-            <div class="flex-1 relative min-w-0 bg-tvBg flex flex-col min-h-0 overflow-hidden">
-              <div id="ohlc-bar-3" class="absolute top-1.5 left-2 z-10 pointer-events-none flex flex-wrap gap-x-2 text-[10px] font-mono"></div>
-              <div id="chart-container-3" class="flex-1 w-full relative min-h-0 overflow-hidden"></div>
             </div>
           </div>
         </div>
@@ -629,10 +597,12 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    let lineVisibility = { zone: true };
+    let lineVisibility = { zone: true, zone2: true };
     let uiPrefs = { showNames: true, showValues: true };
 
-    function curCode() { const it = getAllWatchlistItems().find(s => s.id === selectedSymbolId); return it ? it.code : 'TX-1'; }
+    function paneCode(i) { const p = multiPanes[i] || multiPanes[0]; const it = getAllWatchlistItems().find(s => s.id === p.symbolId); return it ? it.code : 'TX-1'; }
+    // 畫面1（主圖）的商品代號。之前誤用 selectedSymbolId，選到畫面2 時主圖的必來點/小數位會改用畫面2 的商品計算
+    function curCode() { return paneCode(0); }
     const tickOf = (code, price) => APP_CFG.tickSize(code, price);
     function decOf(code, price) { const t = tickOf(code, price); if (t >= 1) return 0; const s = String(t); return s.includes('.') ? s.split('.')[1].length : 0; }
     function priceOf(code) { const it = getAllWatchlistItems().find(s => s.code === code); return (it && it.price) || (currentCandles.length ? currentCandles[currentCandles.length - 1].close : 0); }
@@ -881,18 +851,16 @@
     let chart, candlestickSeries;
 
     /* ===================== 多圖分割視窗狀態管理 ===================== */
-    let chartLayout = 1; // 1, 2, 4
+    let chartLayout = 1; // 1, 2
     let activePaneIdx = 0;
     const multiPanes = [
       { idx: 0, symbolId: '1', res: currentResolution, candles: [], chart: null, series: null, hovering: false },
-      { idx: 1, symbolId: '5', res: currentResolution, candles: [], chart: null, series: null, hovering: false }, // 預設台積電
-      { idx: 2, symbolId: '10', res: currentResolution, candles: [], chart: null, series: null, hovering: false }, // 預設納指期
-      { idx: 3, symbolId: '7', res: currentResolution, candles: [], chart: null, series: null, hovering: false }  // 預設富台指
+      { idx: 1, symbolId: '5', res: currentResolution, candles: [], chart: null, series: null, hovering: false }  // 預設台積電
     ];
     try {
       const savedMulti = JSON.parse(localStorage.getItem('tvMultiPanes_v1') || 'null');
       if (savedMulti) {
-        if ([1, 2, 4].includes(savedMulti.layout)) chartLayout = savedMulti.layout;
+        if ([1, 2, 4].includes(savedMulti.layout)) chartLayout = savedMulti.layout === 4 ? 2 : savedMulti.layout; // 舊的四宮格設定改成雙圖
         if (Array.isArray(savedMulti.panes)) {
           savedMulti.panes.forEach((p, i) => {
             if (multiPanes[i] && p.symbolId) {
@@ -915,12 +883,12 @@
 
     const IND_PREF_KEY = 'tvIndPrefs_v1';
     function saveIndPrefs() {
-      try { localStorage.setItem(IND_PREF_KEY, JSON.stringify({ lineVisibility: { zone: lineVisibility.zone }, uiPrefs })); } catch (e) {}
+      try { localStorage.setItem(IND_PREF_KEY, JSON.stringify({ lineVisibility: { zone: lineVisibility.zone, zone2: lineVisibility.zone2 }, uiPrefs })); } catch (e) {}
     }
     (function loadIndPrefs() {
       try {
         const st = JSON.parse(localStorage.getItem(IND_PREF_KEY) || 'null');
-        if (st) { if (st.lineVisibility && 'zone' in st.lineVisibility) lineVisibility.zone = !!st.lineVisibility.zone; Object.assign(uiPrefs, st.uiPrefs); }
+        if (st) { if (st.lineVisibility && 'zone' in st.lineVisibility) lineVisibility.zone = !!st.lineVisibility.zone; if (st.lineVisibility && 'zone2' in st.lineVisibility) lineVisibility.zone2 = !!st.lineVisibility.zone2; Object.assign(uiPrefs, st.uiPrefs); }
       } catch (e) {}
     })();
     function applyUiPrefs() {
@@ -1035,8 +1003,8 @@
       });
       if (window.ResizeObserver) new ResizeObserver(() => chart.applyOptions({ width: container.clientWidth, height: container.clientHeight })).observe(container);
 
-      // 初始化副視窗 (Pane 1, 2, 3)
-      [1, 2, 3].forEach(idx => initSubPaneChart(idx));
+      // 初始化畫面2
+      [1].forEach(idx => initSubPaneChart(idx));
     }
 
     function initSubPaneChart(idx) {
@@ -1097,6 +1065,7 @@
       subChart.subscribeCrosshairMove(param => {
         const has = !!(param && param.time);
         p.hovering = has;
+        if (!window.__fromMini && window.__miniSync && activePaneIdx === idx) window.__miniSync.set(has ? param.time * 1000 : null);
         if (has) {
           const bar = p.candles.find(c => c.time === param.time);
           renderSubOhlc(idx, bar);
@@ -1132,7 +1101,8 @@
         `<span class="text-tvTextMuted">高</span><span style="color:${col}">${fmt(c.high)}</span>` +
         `<span class="text-tvTextMuted">低</span><span style="color:${col}">${fmt(c.low)}</span>` +
         `<span class="text-tvTextMuted">收</span><span style="color:${col}">${fmt(c.close)}</span>` +
-        `<span style="color:${col}">${s}${fmt(chg)} (${s}${pct.toFixed(2)}%)</span>`;
+        `<span style="color:${col}">${s}${fmt(chg)} (${s}${pct.toFixed(2)}%)</span>` +
+        (window.__subLegendExtra ? window.__subLegendExtra(idx, c) : '');
     }
 
     let _isSyncingCrosshair = false;
@@ -1291,6 +1261,7 @@
         renderWatchlist();
         fetchAndRenderMiniVix();
       }
+      window.dispatchEvent(new Event('activePaneChanged'));
     }
 
     function updateIndicatorDisplay() {
@@ -2382,25 +2353,21 @@
     document.querySelectorAll('[data-sc="log"]').forEach(b => b.onclick = () => setScale(1));
     document.querySelectorAll('[data-sc="auto"]').forEach(b => b.onclick = () => { _pushTok++; pushToLatest(); });
 
-    const prev = {};
-    function feed(series, key, arr) {
+    const mkFeed = prev => (series, key, arr) => {
       const p = prev[key], n = arr.length;
       if (n && p && p.f === arr[0].time) {
         if (p.n === n && p.t === arr[n - 1].time) { series.update(arr[n - 1]); }
-        else if (p.n + 1 === n && p.t === arr[n - 2].time) { series.update(arr[n - 1]); }
+        else if (p.n + 1 === n && p.t === arr[n - 2].time) { series.update(arr[n - 2]); series.update(arr[n - 1]); }
         else series.setData(arr);
       } else series.setData(arr);
       prev[key] = n ? { n, t: arr[n - 1].time, f: arr[0].time } : null;
-    }
+    };
+    let zones = [];
     function refreshOverlays() {
-      try { zoneRefresh(); } catch (err) { console.error('overlay refresh', err); }
+      zones.forEach(Z => { try { zoneRefresh(Z); } catch (err) { console.error('overlay refresh', err); } });
     }
     const TAB_ON = 'text-[#ffcc66] font-bold border-b-2 border-[#ffcc66] pb-1 transition-colors';
     const TAB_OFF = 'text-tvTextMuted hover:text-white transition-colors py-2 px-1';
-    const bindTab = (id, get, set) => {
-      const b = $(id); b.className = get() ? TAB_ON : TAB_OFF;
-      b.onclick = () => { set(!get()); b.className = get() ? TAB_ON : TAB_OFF; refreshOverlays(); };
-    };
 
     const ZONE_DEF = { tz: 'Asia/Taipei', start: 525, evening: false, weekend: false, day: null, closeAt: 'session', label: '日盤' };
     const ZONE_SESS = APP_CFG.zoneSessions;
@@ -2453,7 +2420,9 @@
       }
       return out;
     }
-    const zBars = { code: '', from: 0, at: 0, ver: 0, bars: [], loading: null, tok: 0, failAt: 0 };
+    // 依商品代號分開快取（畫面1、畫面2 可同時顯示不同商品）
+    const zCache = {};
+    const zEntry = code => zCache[code] || (zCache[code] = { from: 0, at: 0, ver: 0, bars: [], loading: null, tok: 0, failAt: 0 });
     async function zFetchChunk(code, a, b) {
       const url = `https://tv-signalr.futures-op.com/history?agent=futuresai&product=web&symbol=${encodeURIComponent(code)}&resolution=15&from=${Math.floor(a)}&to=${Math.floor(b)}&ws=true&metaData=true`;
       const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -2474,35 +2443,35 @@
       return Math.floor((daily ? now : Math.min(firstT, now)) - warm);
     }
     function zEnsureBars(code, needFrom, force) {
-      const now = Date.now();
-      if (zBars.loading && zBars.loading.code === code && zBars.loading.from <= needFrom) return;
-      if (now - zBars.failAt < 10000) return;
-      const have = zBars.code === code && zBars.from <= needFrom;
-      if (have && now - zBars.at < (force ? 15000 : 300000)) return;
-      zLoad(code, have ? Math.min(zBars.from, needFrom) : needFrom);
+      const e = zEntry(code), now = Date.now();
+      if (e.loading && e.loading.from <= needFrom) return;
+      if (now - e.failAt < 10000) return;
+      const have = e.bars.length > 0 && e.from <= needFrom;
+      if (have && now - e.at < (force ? 15000 : 300000)) return;
+      zLoad(code, have ? Math.min(e.from, needFrom) : needFrom);
     }
     async function zLoad(code, from) {
-      const tok = ++zBars.tok; zBars.loading = { code, from };
+      const e = zEntry(code), tok = ++e.tok; e.loading = { from };
       try {
         const bars = await zFetchBars(code, from, Math.floor(Date.now() / 1000));
-        if (tok !== zBars.tok) return;
-        if (bars.length) { Object.assign(zBars, { code, from, at: Date.now(), bars }); zBars.ver++; zoneSig = ''; } else zBars.failAt = Date.now();
-      } catch (e) { if (tok === zBars.tok) zBars.failAt = Date.now(); console.warn('必來點統計資料載入失敗', code, e); }
-      if (tok === zBars.tok) zBars.loading = null;
+        if (tok !== e.tok) return;
+        if (bars.length) { Object.assign(e, { from, at: Date.now(), bars }); e.ver++; } else e.failAt = Date.now();
+      } catch (err) { if (tok === e.tok) e.failAt = Date.now(); console.warn('必來點統計資料載入失敗', code, err); }
+      if (tok === e.tok) e.loading = null;
     }
     function zStat(ranges) {
       const avg = k => { const s = Math.min(k, ranges.length); if (!s) return null; let t = 0; for (let i = 0; i < s; i++) t += ranges[ranges.length - 1 - i]; return t / s; };
       return { R: ranges.length ? zExp(ranges) : null, a: [1, 5, 10, 20].map(avg) };
     }
-    function calcZone() {
-      const cs = currentCandles, n = cs.length, code = curCode();
-      if (!n || zBars.code !== code || !zBars.bars.length) return null;
+    function calcZone(Z) {
+      const cs = Z.candles(), n = cs.length, code = Z.code(), res = Z.resOf(), e = zCache[code];
+      if (!n || !e || !e.bars.length) return null;
       const S = zSess(code), px = cs[n - 1].close;
       const tk = tickOf(code, px) > 0 ? tickOf(code, px) : 1, dec = decOf(code, px);
       const rnd = v => +(Math.round(v / tk) * tk).toFixed(dec);
-      const daily = multiPanes[0].res === '1D' || isNaN(Number(multiPanes[0].res));
+      const daily = res === '1D' || isNaN(Number(res));
       const dayMode = ZCFG.sessMode === 'day' && !!S.day;
-      const ss = zBuild(zBars.bars, S, dayMode);
+      const ss = zBuild(e.bars, S, dayMode);
       if (ss.length < 3) return null;
       const closeOf = s => (S.closeAt === 'day' && s.dayClose != null) ? s.dayClose : s.close;
       const lvMap = new Map(), ranges = [];
@@ -2515,71 +2484,90 @@
       const last = ss[ss.length - 1];
       if (daily) {
         const dNow = zKey(Date.now() / 1000, S).d;
-        let e = lvMap.get(dNow), st = zStat(ranges);
-        if (!e && dNow > last.d) {
+        let en = lvMap.get(dNow), st = zStat(ranges);
+        if (!en && dNow > last.d) {
           const rr = ranges.concat([last.high - last.low]); st = zStat(rr);
-          e = { lv: zLevels(closeOf(last), st.R, rnd), R: st.R };
+          en = { lv: zLevels(closeOf(last), st.R, rnd), R: st.R };
         }
-        if (!e) e = lvMap.get(last.d);
-        return e ? { daily: true, S, R: e.R, lv: e.lv, stat: st } : null;
+        if (!en) en = lvMap.get(last.d);
+        return en ? { daily: true, S, R: en.R, lv: en.lv, stat: st } : null;
       }
-      const resMin = Number(multiPanes[0].res) || 1;
+      const resMin = Number(res) || 1;
       const out = [[], [], [], [], []], map = new Map(); let missing = false;
       const blank = t => { for (let j = 0; j < 5; j++) out[j].push({ time: t }); };
       for (let i = 0; i < n; i++) {
         const c = cs[i], z = zKey(c.time, S);
         if (dayMode && (z.m + resMin <= S.day[0] || z.m > S.day[1])) { blank(c.time); continue; }
-        const e = lvMap.get(z.d);
-        if (!e) { blank(c.time); if (i === n - 1 && z.d > last.d) missing = true; continue; }
-        map.set(c.time, e.lv);
-        for (let j = 0; j < 5; j++) out[j].push({ time: c.time, value: e.lv[j] });
+        const en = lvMap.get(z.d);
+        if (!en) { blank(c.time); if (i === n - 1 && z.d > last.d) missing = true; continue; }
+        map.set(c.time, en.lv);
+        for (let j = 0; j < 5; j++) out[j].push({ time: c.time, value: en.lv[j] });
       }
       return { daily: false, S, R: (lvMap.get(zKey(cs[n - 1].time, S).d) || {}).R, out, map, dayMode, missing, stat: zStat(ranges) };
     }
 
-    const zSer = ZN.map((nm, i) => chart.addLineSeries({ color: ZC[i], lineWidth: ZW[i], priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false, title: nm, priceFormat: INT_FMT }));
-    let zoneOn = !!lineVisibility.zone, zoneRes = null, zoneSig = '', zLines = [], zPxKey = '', zInfoKey = '';
-    function clearZLines() { zLines.forEach(([s, l]) => { try { s.removePriceLine(l); } catch (e) {} }); zLines = []; }
-    function zClear() { zSer.forEach(s => s.setData([])); clearZLines(); zoneRes = null; zoneSig = ''; for (let i = 0; i < 5; i++) prev['z' + i] = null; }
-    function zUpdateInfo(r) {
-      const code = curCode(), S = zSess(code), R = r && r.R != null ? r.R : null;
-      const k = code + '|' + ZCFG.sessMode + '|' + (R == null ? '' : Math.round(R * 100)); if (k === zInfoKey) return; zInfoKey = k;
+    // 每個畫面各有一組必來點
+    function makeZone(pi) {
+      const P = multiPanes[pi]; if (!P || !P.chart) return null;
+      const Z = {
+        pi, on: pi === 0 ? !!lineVisibility.zone : !!lineVisibility.zone2,
+        out: null, sig: '', lines: [], pxKey: '', prev: {},
+        candles: () => pi === 0 ? currentCandles : (multiPanes[pi].candles || []),
+        code: () => paneCode(pi),
+        resOf: () => multiPanes[pi].res
+      };
+      Z.feed = mkFeed(Z.prev);
+      Z.ser = ZN.map((nm, i) => P.chart.addLineSeries({ color: ZC[i], lineWidth: ZW[i], priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: false, title: nm, priceFormat: INT_FMT }));
+      return Z;
+    }
+    zones = [0, 1].map(makeZone).filter(Boolean);
+    let zInfoKey = '';
+    function clearZLines(Z) { Z.lines.forEach(([s, l]) => { try { s.removePriceLine(l); } catch (e) {} }); Z.lines = []; }
+    function zClear(Z) { Z.ser.forEach(s => s.setData([])); clearZLines(Z); Z.out = null; Z.sig = ''; for (let i = 0; i < 5; i++) Z.prev['z' + i] = null; }
+    function zUpdateInfo(Z, r) {
+      if (Z.pi !== activePaneIdx) return;
+      const code = Z.code(), S = zSess(code), R = r && r.R != null ? r.R : null;
+      const k = Z.pi + '|' + code + '|' + ZCFG.sessMode + '|' + (R == null ? '' : Math.round(R * 100)); if (k === zInfoKey) return; zInfoKey = k;
       const eff = (ZCFG.sessMode === 'day' && S.day) ? '日盤 ' + hhmm(S.day[0]) + '~' + hhmm(S.day[1]) : S.label;
       const f = v => v == null ? '-' : fmtPx(v, code);
       const t = $('tab-zone'); if (t) t.title = '多空必來點｜' + eff + (R != null ? '｜預期振幅 ' + f(R) + '｜平均振幅 近1日 ' + f(r.stat.a[0]) + ' / 近5日 ' + f(r.stat.a[1]) + ' / 近10日 ' + f(r.stat.a[2]) + ' / 近20日 ' + f(r.stat.a[3]) : '');
     }
-    function zoneRefresh() {
-      zUpdateInfo(zoneRes);
-      if (!zoneOn || !currentCandles.length) { if (zoneSig || zoneRes) zClear(); return; }
-      const cs = currentCandles, f = cs[0], l = cs[cs.length - 1], c = curCode();
-      const daily = multiPanes[0].res === '1D' || isNaN(Number(multiPanes[0].res));
+    function zoneRefresh(Z) {
+      zUpdateInfo(Z, Z.out);
+      const cs = Z.candles();
+      if (!Z.on || !cs.length || (Z.pi > 0 && chartLayout <= Z.pi)) { if (Z.sig || Z.out) zClear(Z); return; }
+      const f = cs[0], l = cs[cs.length - 1], c = Z.code(), res = Z.resOf();
+      const daily = res === '1D' || isNaN(Number(res));
       zEnsureBars(c, zNeedFrom(daily, f.time), false);
-      if (zBars.code !== c || !zBars.bars.length) { if (zoneSig || zoneRes) zClear(); return; }
-      const sg = [cs.length, f.time, l.time, curKey(), JSON.stringify(ZCFG), zBars.ver, daily ? zKey(Date.now() / 1000, zSess(c)).d : ''].join('|');
-      if (sg === zoneSig) return;
-      const r = calcZone(); zoneSig = sg; zoneRes = r; clearZLines();
+      const e = zCache[c];
+      if (!e || !e.bars.length) { if (Z.sig || Z.out) zClear(Z); return; }
+      const sg = [c, res, cs.length, f.time, l.time, JSON.stringify(ZCFG), e.ver, daily ? zKey(Date.now() / 1000, zSess(c)).d : ''].join('|');
+      if (sg === Z.sig) return;
+      const r = calcZone(Z); Z.sig = sg; Z.out = r; clearZLines(Z);
       if (r && r.missing) zEnsureBars(c, zNeedFrom(daily, f.time), true);
-      const p = priceOf(c), t = tickOf(c, p), pk = c + '|' + t;
-      if (pk !== zPxKey) { zPxKey = pk; const pf = { type: 'price', precision: decOf(c, p), minMove: t }; zSer.forEach(s => s.applyOptions({ priceFormat: pf })); }
-      zUpdateInfo(r);
+      const it = getAllWatchlistItems().find(s => s.code === c), p = (it && it.price) || l.close, t = tickOf(c, p), pk = c + '|' + t;
+      if (pk !== Z.pxKey) { Z.pxKey = pk; const pf = { type: 'price', precision: decOf(c, p), minMove: t }; Z.ser.forEach(s => s.applyOptions({ priceFormat: pf })); }
+      zUpdateInfo(Z, r);
       if (!r || r.daily) {
-        zSer.forEach(s => s.setData([])); for (let i = 0; i < 5; i++) prev['z' + i] = null;
-        if (r) zSer.forEach((s, i) => zLines.push([s, s.createPriceLine({ price: r.lv[i], color: ZC[i], lineWidth: ZW[i], lineStyle: (i === 1 || i === 3) ? 2 : 0, axisLabelVisible: true, title: ZN[i] })]));
+        Z.ser.forEach(s => s.setData([])); for (let i = 0; i < 5; i++) Z.prev['z' + i] = null;
+        if (r) Z.ser.forEach((s, i) => Z.lines.push([s, s.createPriceLine({ price: r.lv[i], color: ZC[i], lineWidth: ZW[i], lineStyle: (i === 1 || i === 3) ? 2 : 0, axisLabelVisible: true, title: ZN[i] })]));
         return;
       }
-      zSer.forEach((s, i) => feed(s, 'z' + i, r.out[i]));
+      Z.ser.forEach((s, i) => Z.feed(s, 'z' + i, r.out[i]));
     }
-    
-    function zoneLegend(c) {
-      if (!zoneRes) return '';
-      const lv = zoneRes.daily ? zoneRes.lv : zoneRes.map.get(c.time); if (!lv) return '';
-      return ZN.map((nm, i) => `<span style="color:${ZCS[i]}"><span class="lg-name">${nm}</span><span class="lg-val"> ${fmtPx(lv[i], curCode())}</span></span>`).join('');
+
+    function zoneLegend(Z, c) {
+      if (!Z || !Z.on || !Z.out || !c) return '';
+      const lv = Z.out.daily ? Z.out.lv : Z.out.map.get(c.time); if (!lv) return '';
+      const code = Z.code();
+      return ZN.map((nm, i) => `<span style="color:${ZCS[i]}"><span class="lg-name">${nm}</span><span class="lg-val"> ${fmtPx(lv[i], code)}</span></span>`).join('');
     }
+    window.__subLegendExtra = (idx, c) => zoneLegend(zones[idx], c);
     IndParams.register('zone', {
       title: '多空必來點',
-      note: () => zSess(curCode()).label,
+      note: () => zSess(paneCode(activePaneIdx)).label,
       fields: [
-        { key: 'sessMode', label: '統計時段', type: 'select', options: [['auto', '依商品'], ['day', '僅日盤']], disabled: () => !zSess(curCode()).day },
+        { key: 'sessMode', label: '統計時段', type: 'select', options: [['auto', '依商品'], ['day', '僅日盤']], disabled: () => !zSess(paneCode(activePaneIdx)).day },
         { key: 'baseMode', label: '多空線基準', type: 'select', options: [['prev', '前收'], ['open', '今開']] },
         { key: 'lookback', label: '長期統計(天)', type: 'number', min: 3, max: 60, step: 1 },
         { key: 'shortN', label: '短期統計(天)', type: 'number', min: 1, max: 20, step: 1 }
@@ -2587,14 +2575,27 @@
       get: () => ({ sessMode: ZCFG.sessMode, baseMode: ZCFG.baseMode, lookback: ZCFG.lookback, shortN: ZCFG.shortN }),
       defaults: () => pick(APP_CFG.zone, ['sessMode', 'baseMode', 'lookback', 'shortN']),
       set: v => {
-        if (!zSess(curCode()).day) v.sessMode = ZCFG.sessMode;
+        if (!zSess(paneCode(activePaneIdx)).day) v.sessMode = ZCFG.sessMode;
         Object.assign(ZCFG, v);
         try { localStorage.setItem(ZLS, JSON.stringify(ZCFG)); } catch (e) {}
-        zoneRefresh();
+        zInfoKey = ''; refreshOverlays();
       }
     });
     function pick(o, ks) { const r = {}; ks.forEach(k => { if (k in o) r[k] = o[k]; }); return r; }
-    bindTab('tab-zone', () => zoneOn, v => { zoneOn = v; lineVisibility.zone = v; saveIndPrefs(); });
+    // 必來點按鈕：作用在目前選取的畫面
+    (function () {
+      const btn = $('tab-zone'); if (!btn) return;
+      const active = () => zones[activePaneIdx] || zones[0];
+      const sync = () => { const Z = active(); btn.className = Z && Z.on ? TAB_ON : TAB_OFF; zInfoKey = ''; if (Z) zUpdateInfo(Z, Z.out); };
+      btn.onclick = () => {
+        const Z = active(); if (!Z) return;
+        Z.on = !Z.on;
+        if (Z.pi === 0) lineVisibility.zone = Z.on; else lineVisibility.zone2 = Z.on;
+        saveIndPrefs(); sync(); refreshOverlays();
+      };
+      window.addEventListener('activePaneChanged', sync);
+      sync();
+    })();
     window.__indRefreshers.push(refreshOverlays);
     setInterval(refreshOverlays, 500);
 
@@ -2611,32 +2612,40 @@
         `<span class="text-tvTextMuted">收</span><span style="color:${col}">${fmt(c.close)}</span>` +
         `<span style="color:${col}">${s}${fmt(chg)} (${s}${pct.toFixed(2)}%)</span>` +
         (c.volume != null ? `<span class="text-tvTextMuted">量</span><span style="color:${col}">${Number(c.volume).toLocaleString()}</span>` : '') +
-        (zoneOn ? zoneLegend(c) : '');
+        zoneLegend(zones[0], c);
     }
-    let fromMini = false;
     chart.subscribeCrosshairMove(p => {
       const has = !!(p && p.time);
-      if (!fromMini && window.__miniSync && activePaneIdx === 0) window.__miniSync.set(has ? p.time * 1000 : null);
+      if (!window.__fromMini && window.__miniSync && activePaneIdx === 0) window.__miniSync.set(has ? p.time * 1000 : null);
       if (!has) { hovering = false; syncCrosshairAcrossPanes(0, null); return; }
       hovering = true;
       showOhlc(currentCandles.find(c => c.time === p.time));
       syncCrosshairAcrossPanes(0, p.time);
     });
+    // 右下走勢圖滑過時，連動「目前選取的畫面」（之前固定連動畫面1）
     window.__onMiniHover = ms => {
-      fromMini = true;
+      window.__fromMini = true;
       try {
+        const P = multiPanes[activePaneIdx];
+        const cs = activePaneIdx === 0 ? currentCandles : (P.candles || []);
+        const ch = activePaneIdx === 0 ? chart : P.chart, ser = activePaneIdx === 0 ? S() : P.series;
         let c = null;
-        if (ms != null && currentCandles.length) {
-          const t = ms / 1000; let lo = 0, hi = currentCandles.length - 1;
-          while (lo < hi) { const m = (lo + hi + 1) >> 1; if (currentCandles[m].time <= t) lo = m; else hi = m - 1; }
-          if (currentCandles[lo].time <= t) c = currentCandles[lo];
+        if (ms != null && cs.length) {
+          const t = ms / 1000; let lo = 0, hi = cs.length - 1;
+          while (lo < hi) { const m = (lo + hi + 1) >> 1; if (cs[m].time <= t) lo = m; else hi = m - 1; }
+          if (cs[lo].time <= t) c = cs[lo];
         }
-        if (c) chart.setCrosshairPosition(c.close, c.time, S()); else chart.clearCrosshairPosition();
+        if (c) ch.setCrosshairPosition(c.close, c.time, ser); else ch.clearCrosshairPosition();
       } catch (e) {}
-      fromMini = false;
+      window.__fromMini = false;
     };
-    setInterval(() => { if (!hovering && currentCandles.length) showOhlc(currentCandles[currentCandles.length - 1]); }, 500);
-
+    setInterval(() => {
+      if (!hovering && currentCandles.length) showOhlc(currentCandles[currentCandles.length - 1]);
+      for (let i = 1; i < chartLayout && i < multiPanes.length; i++) {
+        const P = multiPanes[i];
+        if (!P.hovering && P.candles.length) renderSubOhlc(i, P.candles[P.candles.length - 1]);
+      }
+    }, 500);
     /* ================= 繪圖工具 ================= */
     const cv = document.createElement('canvas');
     cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5';
@@ -2853,7 +2862,7 @@
 })();
   </script>
 
-  <!-- ============ 外掛指標載入器：讀取 indicators/ 目錄 ============ -->
+  <!-- ============ 外掛指標載入器：讀取 indicators/ 目錄（畫面1、畫面2 各自一組） ============ -->
   <script>
 window.TVInd = (function () {
   'use strict';
@@ -2864,12 +2873,16 @@ window.TVInd = (function () {
   const TAB_OFF = 'text-tvTextMuted hover:text-white transition-colors py-2 px-1';
   const $ = id => document.getElementById(id);
   const NA = NaN, isn = v => v == null || v !== v;
-  const defs = [], runs = {}, errors = [];
-  let ready = false, dataVer = 0, hoverT = null, box = null, ovl = null, legendEl = null, errBtn = null, lastH = 0;
-  let st = { on: {}, params: {}, heights: {} };
+  const defs = [], btns = {}, pv = {}, insts = [], errors = [];
+  let ready = false, dataVer = 0, errBtn = null, calcCode = null, subOrder = [];
+  let st = { on: {}, on2: {}, params: {}, heights: {} };
   try { st = Object.assign(st, JSON.parse(localStorage.getItem(LS) || '{}')); } catch (e) {}
-  st.on = st.on || {}; st.params = st.params || {};
+  st.on = st.on || {}; st.on2 = st.on2 || {}; st.params = st.params || {};
   const saveSt = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch (e) {} };
+  const onMap = I => I.pi === 0 ? st.on : st.on2;
+  const curInst = () => insts[activePaneIdx] || insts[0];
+  const paneCodeOf = pi => paneCode(pi);
+  const visible = I => I.pi === 0 || chartLayout > I.pi;
 
   const ta = {
     ema(src, len) { const a = 2 / (len + 1), o = new Array(src.length); let p = NA; for (let i = 0; i < src.length; i++) { const v = src[i]; if (isn(v)) { o[i] = NA; continue; } p = isn(p) ? v : a * v + (1 - a) * p; o[i] = p; } return o; },
@@ -2919,9 +2932,10 @@ window.TVInd = (function () {
     const m = new Map(); rs.forEach(p => { if (p.status === 'fulfilled') p.value.forEach(b => { if (b.time && b.high != null && b.low != null && b.close != null) m.set(b.time, b); }); });
     return [...m.values()].sort((x, y) => x.time - y.time);
   }
-  function getBars(res, days) {
-    const it = getAllWatchlistItems().find(s => s.id === multiPanes[0].symbolId);
-    const code = it ? it.code : 'TX-1', key = code + '|' + res, now = Date.now();
+  // code 省略時：計算中＝該畫面的商品；否則＝畫面1
+  function getBars(res, days, code) {
+    code = code || calcCode || paneCodeOf(0);
+    const key = code + '|' + res, now = Date.now();
     const keys = Object.keys(bc); if (keys.length > 24) delete bc[keys[0]];
     const e = bc[key] || (bc[key] = { bars: [], days: 0, at: 0, loading: false, failAt: 0 });
     if (!e.loading && now - e.failAt > 10000) {
@@ -2941,67 +2955,80 @@ window.TVInd = (function () {
     return e.bars.length ? e.bars : null;
   }
 
+  function makeRun(I, d) {
+    const m = onMap(I);
+    return { def: d, on: d.id in m ? !!m[d.id] : !!d.defaultOn, p: pv[d.id], series: [], prev: [], prevKey: '', sig: '', out: null, err: '', box: null, hd: null, tb: null, tbHtml: '', band: null, hdl: null };
+  }
   function register(def) {
-    if (!def || !def.id || runs[def.id]) return;
+    if (!def || !def.id || pv[def.id]) return;
     def.pane = def.pane || 'main'; def.params = def.params || []; def.series = def.series || [];
     const saved = st.params[def.id] || {}, p = {};
     def.params.forEach(q => { const s = saved[q.key]; p[q.key] = (s !== undefined && typeof s === typeof q.def) ? s : q.def; });
+    pv[def.id] = p;
     defs.push(def);
-    const r = runs[def.id] = { def, on: def.id in st.on ? !!st.on[def.id] : !!def.defaultOn, p, series: [], prev: [], prevKey: '', sig: '', out: null, err: '', btn: null, box: null, hd: null, tb: null, tbHtml: '', band: null };
-    if (ready) mount(r);
+    insts.forEach(I => { I.runs[def.id] = makeRun(I, def); });
+    if (ready) mount(def);
   }
 
   function sortTabs() {
     const wrap = $('ind-tabs-wrap'); if (!wrap) return;
-    const btns = [...wrap.children].filter(b => b.tagName === 'BUTTON' && b !== errBtn);
+    const bs = [...wrap.children].filter(b => b.tagName === 'BUTTON' && b !== errBtn);
     const en = t => /^[A-Za-z0-9]/.test(t);
-    btns.sort((a, b) => {
+    bs.sort((a, b) => {
       const x = (a.textContent || '').trim(), y = (b.textContent || '').trim(), ex = en(x), ey = en(y);
       if (ex !== ey) return ex ? -1 : 1;
       return x.localeCompare(y, ex ? 'en' : 'zh-Hant', { sensitivity: 'base' });
     });
-    btns.forEach(b => wrap.insertBefore(b, errBtn && errBtn.parentNode === wrap ? errBtn : null));
+    bs.forEach(b => wrap.insertBefore(b, errBtn && errBtn.parentNode === wrap ? errBtn : null));
+  }
+
+  // 下方指標列顯示「目前選取畫面」的開關狀態
+  function syncBtns() {
+    const I = curInst(); if (!I) return;
+    defs.forEach(d => { const b = btns[d.id], r = I.runs[d.id]; if (b && r) b.className = r.on ? TAB_ON : TAB_OFF; });
   }
 
   const cv = (q, v) => q.type === 'bool' ? (v ? '1' : '0') : v;
-  function mount(r) {
-    const d = r.def, wrap = $('ind-tabs-wrap');
-    if (wrap) {
+  function mount(d) {
+    const wrap = $('ind-tabs-wrap');
+    if (wrap && !btns[d.id]) {
       const b = document.createElement('button');
       b.id = 'tab-' + d.id; b.textContent = d.name || d.id; b.title = (d.desc ? d.desc + '｜' : '') + '長按設定參數';
-      b.className = r.on ? TAB_ON : TAB_OFF;
-      b.onclick = () => setOn(r, !r.on);
+      b.className = TAB_OFF;
+      b.onclick = () => { const I = curInst(); if (I) setOn(I, I.runs[d.id], !I.runs[d.id].on); };
       if (errBtn && errBtn.parentNode === wrap) wrap.insertBefore(b, errBtn); else wrap.appendChild(b);
-      r.btn = b;
+      btns[d.id] = b;
     }
     if (d.params.length && typeof IndParams !== 'undefined') {
       IndParams.register(d.id, {
         title: d.name || d.id, note: () => d.note || '',
         fields: d.params.map(q => ({ key: q.key, label: q.label, type: (q.type === 'select' || q.type === 'bool') ? 'select' : 'number', options: q.type === 'bool' ? [['1', '開'], ['0', '關']] : q.options, min: q.min, max: q.max, step: q.step })),
-        get: () => { const o = {}; d.params.forEach(q => { o[q.key] = cv(q, r.p[q.key]); }); return o; },
+        get: () => { const o = {}; d.params.forEach(q => { o[q.key] = cv(q, pv[d.id][q.key]); }); return o; },
         defaults: () => { const o = {}; d.params.forEach(q => { o[q.key] = cv(q, q.def); }); return o; },
         set: v => {
+          const p = pv[d.id];
           d.params.forEach(q => {
             if (v[q.key] === undefined) return;
-            r.p[q.key] = q.type === 'bool' ? (v[q.key] === '1' || v[q.key] === true) : (typeof q.def === 'number' ? Number(v[q.key]) : String(v[q.key]));
+            p[q.key] = q.type === 'bool' ? (v[q.key] === '1' || v[q.key] === true) : (typeof q.def === 'number' ? Number(v[q.key]) : String(v[q.key]));
           });
-          st.params[d.id] = Object.assign({}, r.p); saveSt(); r.sig = ''; r.prev = []; tick(true);
+          st.params[d.id] = Object.assign({}, p); saveSt();
+          insts.forEach(I => { const r = I.runs[d.id]; r.sig = ''; r.prev = []; tick(I, true); });
         }
       });
     }
-    if (r.on) build(r);
+    insts.forEach(I => { if (I.runs[d.id].on) build(I, I.runs[d.id]); layout(I); });
+    syncBtns();
     sortTabs();
-    layout();
   }
-  function setOn(r, v) {
-    r.on = v; st.on[r.def.id] = v; saveSt();
-    if (r.btn) r.btn.className = v ? TAB_ON : TAB_OFF;
-    if (v) build(r); else destroy(r);
-    layout(); tick(true);
+  function setOn(I, r, v) {
+    r.on = v; onMap(I)[r.def.id] = v; saveSt();
+    if (v) build(I, r); else destroy(I, r);
+    syncBtns();
+    layout(I); tick(I, true);
   }
 
-  function build(r) {
-    if (r.series.length || !chart) return;
+  function build(I, r) {
+    if (r.series.length || !I.chart) return;
     const d = r.def, sub = d.pane === 'sub', sid = sub ? 'ind_' + d.id : 'right';
     const pf = { type: 'price', precision: 0, minMove: 1 };
     r.series = d.series.map(sp => {
@@ -3009,30 +3036,29 @@ window.TVInd = (function () {
       if (sub && d.range) o.autoscaleInfoProvider = () => ({ priceRange: { minValue: d.range[0], maxValue: d.range[1] } });
       else if (!sub && !sp.scale) o.autoscaleInfoProvider = () => null;
       return sp.kind === 'hist'
-        ? chart.addHistogramSeries(Object.assign(o, { base: 0, color: sp.color || '#787b86' }))
-        : chart.addLineSeries(Object.assign(o, { color: sp.color || '#787b86', lineWidth: sp.width || 1, lineStyle: sp.style || 0 }));
+        ? I.chart.addHistogramSeries(Object.assign(o, { base: 0, color: sp.color || '#787b86' }))
+        : I.chart.addLineSeries(Object.assign(o, { color: sp.color || '#787b86', lineWidth: sp.width || 1, lineStyle: sp.style || 0 }));
     });
     if (sub && r.series.length) (d.hlines || []).forEach(h => { try { r.series[r.series.length - 1].createPriceLine({ price: h.price, color: h.color || '#787b86', lineWidth: h.width || 1, lineStyle: h.style || 0, axisLabelVisible: false, title: '' }); } catch (e) {} });
     r.box = document.createElement('div'); r.box.style.cssText = 'position:absolute;pointer-events:none';
     r.hd = document.createElement('div'); r.hd.style.cssText = 'position:absolute;left:8px;top:1px;display:flex;gap:0 8px;white-space:nowrap;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;color:#b2b5be';
     r.tb = document.createElement('div'); r.tb.style.cssText = 'position:absolute';
-    if (sub) r.box.appendChild(r.hd); r.box.appendChild(r.tb); ovl.appendChild(r.box);
-    if (sub) attachResizer(r);
+    if (sub) r.box.appendChild(r.hd); r.box.appendChild(r.tb); I.ovl.appendChild(r.box);
+    if (sub) attachResizer(I, r);
     r.sig = ''; r.prev = []; r.prevKey = '';
   }
-  function destroy(r) {
-    r.series.forEach(s => { try { chart.removeSeries(s); } catch (e) {} });
-    r.series = []; r.prev = []; r.out = null; r.err = ''; r.tbHtml = '';
+  function destroy(I, r) {
+    r.series.forEach(s => { try { I.chart.removeSeries(s); } catch (e) {} });
+    r.series = []; r.prev = []; r.out = null; r.err = ''; r.tbHtml = ''; r.sig = '';
     if (r.box && r.box.parentNode) r.box.parentNode.removeChild(r.box); r.box = r.hd = r.tb = r.hdl = null; r.band = null;
   }
   function clearData(r) { r.series.forEach(s => { try { s.setData([]); } catch (e) {} }); r.prev = []; r.out = null; r.sig = ''; if (r.tb) { r.tb.innerHTML = ''; r.tbHtml = ''; } if (r.hd) r.hd.innerHTML = ''; }
 
-  function axisH() { try { return chart.timeScale().height() || 28; } catch (e) { return 28; } }
-  function paneH() { return Math.max(80, (box ? box.clientHeight : 400) - axisH()); }
-  function psW() { try { return chart.priceScale('right').width() || 56; } catch (e) { return 56; } }
-  let lastK = 1, lastHH = 400, subOrder = [];
+  function axisH(I) { try { return I.chart.timeScale().height() || 28; } catch (e) { return 28; } }
+  function paneH(I) { return Math.max(80, (I.box ? I.box.clientHeight : 400) - axisH(I)); }
+  function psW(I) { try { return I.chart.priceScale('right').width() || 56; } catch (e) { return 56; } }
   const hOf = d => (st.heights && st.heights[d.id]) || d.height || 110;
-  function attachResizer(r) {
+  function attachResizer(I, r) {
     const hl = document.createElement('div');
     hl.title = '上下拖曳調整副圖高度（雙擊還原預設）';
     hl.style.cssText = 'position:absolute;left:0;right:0;top:-7px;height:14px;cursor:ns-resize;pointer-events:auto;touch-action:none;z-index:8;display:flex;align-items:center;justify-content:center';
@@ -3040,45 +3066,46 @@ window.TVInd = (function () {
     let y0 = 0, h0 = 0, drag = false, base = {};
     hl.addEventListener('pointerdown', e => {
       e.preventDefault(); e.stopPropagation(); drag = true; y0 = e.clientY; h0 = r.band ? r.band.h : hOf(r.def);
-      base = {}; defs.forEach(d => { const q = runs[d.id]; if (d.pane === 'sub' && q.on && q.band) base[d.id] = q.band.h; });
+      base = {}; defs.forEach(d => { const q = I.runs[d.id]; if (d.pane === 'sub' && q.on && q.band) base[d.id] = q.band.h; });
       try { hl.setPointerCapture(e.pointerId); } catch (x) {}
     });
     hl.addEventListener('pointermove', e => {
       if (!drag) return;
-      const ids = Object.keys(base), others = ids.filter(id => id !== r.def.id), cap = lastHH * 0.75;
-      const nh = Math.max(50, Math.min(lastHH * 0.6, cap - 50 * others.length, h0 - (e.clientY - y0)));
+      const ids = Object.keys(base), others = ids.filter(id => id !== r.def.id), cap = I.lastHH * 0.75;
+      const nh = Math.max(50, Math.min(I.lastHH * 0.6, cap - 50 * others.length, h0 - (e.clientY - y0)));
       const sum = others.reduce((a, id) => a + base[id], 0), f = sum ? Math.min(1, (cap - nh) / sum) : 1;
       st.heights = st.heights || {};
       ids.forEach(id => { st.heights[id] = id === r.def.id ? Math.round(nh) : Math.max(50, Math.round(base[id] * f)); });
-      layout(); tick(true);
+      layout(I); tick(I, true);
     });
-    const end = () => { if (!drag) return; drag = false; saveSt(); };
+    const end = () => { if (!drag) return; drag = false; saveSt(); layoutAll(); };
     hl.addEventListener('pointerup', end); hl.addEventListener('pointercancel', end);
-    hl.addEventListener('dblclick', e => { e.stopPropagation(); if (st.heights) delete st.heights[r.def.id]; saveSt(); layout(); tick(true); });
+    hl.addEventListener('dblclick', e => { e.stopPropagation(); if (st.heights) delete st.heights[r.def.id]; saveSt(); layoutAll(); tickAll(true); });
     r.hdl = hl; r.box.appendChild(hl);
   }
-  function layout() {
-    if (!ready || !chart) return;
-    const H = paneH(), pw = psW();
+  function layout(I) {
+    if (!ready || !I || !I.chart) return;
+    const H = paneH(I), pw = psW(I);
     const rk = d => { const k = subOrder.indexOf(d.id); return k >= 0 ? k : 1e6 + defs.indexOf(d); };
-    const subs = defs.filter(d => d.pane === 'sub' && runs[d.id].on && runs[d.id].series.length).sort((a, b) => rk(a) - rk(b));
+    const subs = defs.filter(d => d.pane === 'sub' && I.runs[d.id].on && I.runs[d.id].series.length).sort((a, b) => rk(a) - rk(b));
     const tot = subs.reduce((s, d) => s + hOf(d), 0), cap = H * 0.75, k = tot > cap ? cap / tot : 1;
-    lastK = k; lastHH = H;
+    I.lastK = k; I.lastHH = H;
     let y = H;
-    for (let i = subs.length - 1; i >= 0; i--) { const r = runs[subs[i].id], h = Math.round(hOf(subs[i]) * k); r.band = { top: y - h, h }; y -= h; }
+    for (let i = subs.length - 1; i >= 0; i--) { const r = I.runs[subs[i].id], h = Math.round(hOf(subs[i]) * k); r.band = { top: y - h, h }; y -= h; }
     const mb = subs.length ? Math.min(0.85, (H - y) / H + 0.03) : 0.15;
-    try { chart.priceScale('right').applyOptions({ scaleMargins: { top: 0.12, bottom: mb } }); } catch (e) {}
+    try { I.chart.priceScale('right').applyOptions({ scaleMargins: { top: 0.12, bottom: mb } }); } catch (e) {}
     subs.forEach(d => {
-      const r = runs[d.id];
-      try { chart.priceScale('ind_' + d.id).applyOptions({ scaleMargins: { top: (r.band.top + 16) / H, bottom: (H - r.band.top - r.band.h + 3) / H }, autoScale: true, visible: false }); } catch (e) {}
+      const r = I.runs[d.id];
+      try { I.chart.priceScale('ind_' + d.id).applyOptions({ scaleMargins: { top: (r.band.top + 16) / H, bottom: (H - r.band.top - r.band.h + 3) / H }, autoScale: true, visible: false }); } catch (e) {}
     });
     defs.forEach(d => {
-      const r = runs[d.id]; if (!r.on || !r.box) return;
+      const r = I.runs[d.id]; if (!r.on || !r.box) return;
       const top = d.pane === 'sub' && r.band ? r.band.top : 0, h = d.pane === 'sub' && r.band ? r.band.h : H;
       r.box.style.cssText = `position:absolute;pointer-events:none;left:0;right:${pw}px;top:${top}px;height:${h}px;` + (d.pane === 'sub' ? 'border-top:1px solid #2a2e39;' : '');
     });
-    lastH = box.clientHeight;
+    I.lastH = I.box.clientHeight;
   }
+  const layoutAll = () => insts.forEach(layout);
 
   function tableHtml(t) {
     return '<table style="border-collapse:collapse;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace">' +
@@ -3102,22 +3129,22 @@ window.TVInd = (function () {
     else items = r.def.series.filter(sp => sp.legend).map(sp => { const s = o[sp.key]; if (!s) return null; const v = s.v[idx]; if (isn(v)) return null; return { n: sp.title, v: fmtV(v, sp.fmt), c: (s.c && s.c[idx]) || sp.color }; }).filter(Boolean);
     return items.map(it => `<span style="color:${it.c}"><span class="lg-name">${it.n}</span><span class="lg-val"> ${it.v}</span></span>`).join('');
   }
-  function idxAt(t) {
-    const cs = currentCandles, n = cs.length; if (!n) return -1; if (t == null) return n - 1;
+  function idxAt(I, t) {
+    const cs = I.candles(), n = cs.length; if (!n) return -1; if (t == null) return n - 1;
     let lo = 0, hi = n - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (cs[m].time <= t) lo = m; else hi = m - 1; }
     return lo;
   }
-  function renderLegends() {
-    const idx = idxAt(hoverT); if (idx < 0) { if (legendEl) legendEl.innerHTML = ''; return; }
+  function renderLegends(I) {
+    const idx = idxAt(I, I.hoverT); if (idx < 0) { if (I.legendEl) { I.legendEl.innerHTML = ''; I.legendEl._h = ''; } return; }
     let main = '';
     defs.forEach(d => {
-      const r = runs[d.id]; if (!r.on) return;
+      const r = I.runs[d.id]; if (!r.on) return;
       const warn = r.err ? `<span style="color:#ff9800" title="${r.err.replace(/"/g, '&quot;')}">⚠</span>` : '';
       const lg = legendFor(r, idx) + warn;
       if (d.pane === 'sub') { if (r.hd) { const h = `<span class="lg-name" style="color:#d1d4dc;font-weight:600">${d.name}</span>` + lg; if (r.hd._h !== h) { r.hd._h = h; r.hd.innerHTML = h; } } }
       else main += lg;
     });
-    if (legendEl && legendEl._h !== main) { legendEl._h = main; legendEl.innerHTML = main; }
+    if (I.legendEl && I.legendEl._h !== main) { I.legendEl._h = main; I.legendEl.innerHTML = main; }
   }
 
   function feed(r, i, arr) {
@@ -3129,8 +3156,8 @@ window.TVInd = (function () {
     } else s.setData(arr);
     r.prev[i] = n ? { n, t: arr[n - 1].time, f: arr[0].time } : null;
   }
-  function push(r, out) {
-    const cs = currentCandles, n = cs.length;
+  function push(I, r, out) {
+    const cs = I.candles(), n = cs.length;
     r.def.series.forEach((sp, i) => {
       const o = out && out[sp.key];
       if (!o || !o.v) { r.series[i].setData([]); r.prev[i] = null; return; }
@@ -3142,52 +3169,66 @@ window.TVInd = (function () {
       feed(r, i, arr);
     });
   }
-  let ctxKey = '', ctx0 = null;
-  function baseCtx() {
-    const cs = currentCandles, n = cs.length, l = cs[n - 1];
-    const it = getAllWatchlistItems().find(s => s.id === multiPanes[0].symbolId);
-    const code = it ? it.code : 'TX-1', res = multiPanes[0].res;
+  function baseCtx(I) {
+    const cs = I.candles(), n = cs.length, l = cs[n - 1];
+    const code = paneCodeOf(I.pi), res = multiPanes[I.pi].res;
     const key = [code, res, n, cs[0].time, l.time, l.close, l.high, l.low, l.volume].join('|');
-    if (key === ctxKey && ctx0) return { key, ctx: ctx0 };
-    ctxKey = key;
-    ctx0 = {
+    if (key === I.ctxKey && I.ctx0) return { key, ctx: I.ctx0 };
+    I.ctxKey = key;
+    I.ctx0 = {
       candles: cs, n, t: cs.map(b => b.time), o: cs.map(b => b.open), h: cs.map(b => b.high), l: cs.map(b => b.low), c: cs.map(b => b.close), v: cs.map(b => b.volume || 0),
       res, resMin: Number(res) || 0, resSec: getResolutionSeconds(res),
-      isDay: res === '1D', isWeek: res === 'W', code, ta,
-      api: { getBars, sessKeyFn, weekKey, rgba, isn }
+      isDay: res === '1D', isWeek: res === 'W', code, ta, pane: I.pi,
+      api: { getBars: (rs, days, c) => getBars(rs, days, c || code), sessKeyFn, weekKey, rgba, isn }
     };
-    return { key, ctx: ctx0 };
+    return { key, ctx: I.ctx0 };
   }
-  function tick(force) {
-    if (!ready || !chart) return;
-    const on = defs.filter(d => runs[d.id].on && runs[d.id].series.length);
-    if (!currentCandles.length) { on.forEach(d => { const r = runs[d.id]; if (r.out || r.prev.length) clearData(r); }); renderLegends(); return; }
-    if (box.clientHeight !== lastH) layout();
-    const { key, ctx } = baseCtx();
+  function tick(I, force) {
+    if (!ready || !I || !I.chart || !visible(I)) return;
+    const runsOn = defs.map(d => I.runs[d.id]).filter(r => r.on && r.series.length);
+    if (!I.candles().length) { runsOn.forEach(r => { if (r.out || r.prev.length) clearData(r); }); renderLegends(I); return; }
+    if (I.box.clientHeight !== I.lastH) layout(I);
+    const { key, ctx } = baseCtx(I);
     let any = false;
-    on.forEach(d => {
-      const r = runs[d.id], sg = key + '|' + dataVer + '|' + JSON.stringify(r.p);
-      if (!force && r.sig === sg) return;
-      const pk = ctx.code + '|' + ctx.res + '|' + dataVer;
-      if (r.prevKey !== pk) { r.prev = []; r.prevKey = pk; }
-      r.sig = sg; any = true;
-      try { r.out = d.calc(Object.assign({}, ctx, { p: r.p })) || null; r.err = ''; }
-      catch (e) { r.out = null; r.err = String(e && e.message || e); console.error('指標計算失敗：' + d.id, e); }
-      try { push(r, r.out); renderTable(r); } catch (e) { console.error('指標繪製失敗：' + d.id, e); }
-    });
-    if (any || force) renderLegends();
+    calcCode = ctx.code;
+    try {
+      runsOn.forEach(r => {
+        const d = r.def, sg = key + '|' + dataVer + '|' + JSON.stringify(r.p);
+        if (!force && r.sig === sg) return;
+        const pk = ctx.code + '|' + ctx.res + '|' + dataVer;
+        if (r.prevKey !== pk) { r.prev = []; r.prevKey = pk; }
+        r.sig = sg; any = true;
+        try { r.out = d.calc(Object.assign({}, ctx, { p: r.p })) || null; r.err = ''; }
+        catch (e) { r.out = null; r.err = String(e && e.message || e); console.error('指標計算失敗：' + d.id + '（畫面' + (I.pi + 1) + '）', e); }
+        try { push(I, r, r.out); renderTable(r); } catch (e) { console.error('指標繪製失敗：' + d.id, e); }
+      });
+    } finally { calcCode = null; }
+    if (any || force) renderLegends(I);
   }
+  const tickAll = f => insts.forEach(I => tick(I, f));
 
+  function makeInst(pi) {
+    const P = multiPanes[pi]; if (!P || !P.chart) return null;
+    const box = $(pi === 0 ? 'chart-container' : 'chart-container-' + pi); if (!box) return null;
+    const I = {
+      pi, chart: P.chart, box, legendEl: $(pi === 0 ? 'ind-legend' : 'ind-legend-' + pi),
+      runs: {}, hoverT: null, lastH: 0, lastK: 1, lastHH: 400, ctxKey: '', ctx0: null,
+      candles: () => pi === 0 ? currentCandles : (multiPanes[pi].candles || [])
+    };
+    I.ovl = document.createElement('div'); I.ovl.style.cssText = 'position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden'; box.appendChild(I.ovl);
+    I.chart.subscribeCrosshairMove(p => { I.hoverT = (p && p.time) ? p.time : null; renderLegends(I); });
+    if (window.ResizeObserver) new ResizeObserver(() => layout(I)).observe(box);
+    defs.forEach(d => { I.runs[d.id] = makeRun(I, d); });
+    return I;
+  }
   function init() {
     if (ready) return;
-    box = $('chart-container'); legendEl = $('ind-legend');
-    ovl = document.createElement('div'); ovl.style.cssText = 'position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden'; box.appendChild(ovl);
-    chart.subscribeCrosshairMove(p => { hoverT = (p && p.time) ? p.time : null; renderLegends(); });
-    if (window.ResizeObserver) new ResizeObserver(() => layout()).observe(box);
+    [0, 1].forEach(pi => { const I = makeInst(pi); if (I) insts.push(I); });
     ready = true;
-    defs.forEach(d => mount(runs[d.id]));
-    window.__indRefreshers.push(() => tick(true));
-    setInterval(() => tick(false), 500);
+    defs.forEach(mount);
+    window.__indRefreshers.push(() => tickAll(true));
+    window.addEventListener('activePaneChanged', syncBtns);
+    setInterval(() => tickAll(false), 500);
   }
   function showErrors() {
     if (!errors.length || !ready) return;
@@ -3212,7 +3253,7 @@ window.TVInd = (function () {
     init();
     const files = await discover();
     await Promise.all(files.map(f => loadScript(/^https?:|^\//.test(f) ? f : DIR + f)));
-    showErrors(); layout(); tick(true);
+    showErrors(); layoutAll(); tickAll(true);
     try { initIndGroups(); } catch (e) { console.error(e); }
   }
 
@@ -3238,11 +3279,12 @@ window.TVInd = (function () {
     const lbl = btn.querySelector('span');
     const syncLbl = () => { const g = list[idx]; if (lbl) lbl.textContent = g ? g.name : '群組'; };
 
+    // 套用群組：作用在目前選取的畫面
     function apply(i) {
       if (!list.length) return;
       idx = ((i % list.length) + list.length) % list.length;
       const g = list[idx], want = g.ids ? new Set(g.ids) : null;
-      if (want && want.size) { subOrder = g.ids.slice(); layout(); }
+      if (want && want.size) { subOrder = g.ids.slice(); layoutAll(); }
       allTabs().forEach(b => { const on = want ? want.has(idOf(b)) : true; if (isOn(b) !== on) b.click(); });
       saveG(); syncLbl();
     }
@@ -3308,7 +3350,7 @@ window.TVInd = (function () {
     btn.addEventListener('contextmenu', e => { e.preventDefault(); clearTimeout(lp); openMenu(); });
     btn.addEventListener('click', e => { e.stopPropagation(); if (held) { held = false; return; } closeMenu(); apply(idx + 1); });
     syncLbl();
-    try { const g0 = list[idx]; if (g0 && Array.isArray(g0.ids) && g0.ids.length) { subOrder = g0.ids.slice(); layout(); } } catch (e) {}
+    try { const g0 = list[idx]; if (g0 && Array.isArray(g0.ids) && g0.ids.length) { subOrder = g0.ids.slice(); layoutAll(); } } catch (e) {}
   }
   const start = () => { if (typeof chart !== 'undefined' && chart) boot(); else setTimeout(start, 60); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
