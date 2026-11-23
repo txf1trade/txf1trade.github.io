@@ -204,7 +204,7 @@ function render(d) {
         <div class="r"><span>收盤</span><span>${num(s.dayClose)}</span></div>
       </div>
     </div>
-    <div><div class="t">最新 ${last.date.slice(5)} 關鍵位置</div><div class="v">${num(last.keyPrice)}</div></div>
+    <div><div class="t">最新 ${last.date.slice(5)}${sess === "night" ? " 夜盤" : ""} 關鍵位置</div><div class="v">${num(last.keyPrice)}</div></div>
     <div><div class="t">外資均成本</div><div class="v">${num(last.avgCost)}</div></div>
     <div><div class="t">留倉口數</div><div class="v ${neg(last.position)}">${num(last.position)}</div></div>
   </div>
@@ -229,11 +229,12 @@ function render(d) {
 function table(list) {
   const full = prefs.cols === "full", pnl = prefs.showPnl;
   const unit = prefs.unit === "twd" ? "元" : "點";
-  const head = ["日期"].concat(full ? ["買進口", "做多成本", "賣出口", "做空成本"] : [], ["沖銷口"], full ? ["沖銷後成本"] : [],
+  const night = DATA && DATA.session === "night";
+  const head = [night ? "夜盤開始日" : "日期"].concat(full ? ["買進口", "做多成本", "賣出口", "做空成本"] : [], ["沖銷口"], full ? ["沖銷後成本"] : [],
     ["關鍵位置", "留倉口數", "外資均成本"]).map((h) => "<th>" + h + "</th>").join("") +
     (pnl ? `<th class="pnlc" title="點擊切換 點／元">沖銷盈虧(${unit})</th>` : "");
   const body = list.map((r) => `<tr class="${r.isSettle ? "settle" : ""}">
-    <td>${r.date.slice(5)}${r.isSettle ? " 結算" : ""}</td>` +
+    <td${r.ahDate ? ` title="${r.date.slice(5)} 15:00 ~ 隔日 05:00（期交所夜盤表日期 ${r.ahDate.slice(5)}）"` : ""}>${r.date.slice(5)}${r.isSettle ? " 結算" : ""}${r.ahDate && !r.isSettle ? " 夜" : ""}</td>` +
     (full ? `<td>${num(r.buyLots)}</td><td>${num(r.buyCost)}</td><td>${num(r.sellLots)}</td><td>${num(r.sellCost)}</td>` : "") +
     `<td class="${neg(r.net)}">${num(r.net)}</td>` + (full ? `<td>${num(r.afterCost)}</td>` : "") +
     `<td class="key">${num(r.keyPrice)}</td><td class="${neg(r.position)}">${num(r.position)}</td><td>${num(r.avgCost)}</td>` +
