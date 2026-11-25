@@ -48,6 +48,11 @@ summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:10px}
 .legend{font-size:10.5px;color:var(--muted);margin-top:4px}
 .legend i{display:inline-block;width:9px;height:9px;vertical-align:-1px;margin:0 3px 0 6px;border-radius:2px}
 body.off .monOnly{display:none}
+.tag.stl{color:#d08a00;left:auto;right:3px}
+:root[data-theme="dark"] .tag.stl{color:#f2b53a}
+.stlv{color:#d08a00;font-weight:700}
+:root[data-theme="dark"] .stlv{color:#f2b53a}
+.now td.dist{font-size:11px;color:var(--muted);line-height:1.25;text-align:right}
 </style>
 </head>
 <body>
@@ -77,10 +82,10 @@ body.off .monOnly{display:none}
     <div class="legend monOnly"><i class="cb"></i>Call 倒莊<i class="pb"></i>Put 倒莊<i class="nr"></i>警戒</div>
   </div>
 
-  <details class="monOnly"><summary>結算紀錄</summary>
-    <table><thead><tr><th>結算日</th><th>契約</th><th>Call</th><th>Put</th><th>指數</th><th>結果</th></tr></thead>
+  <details open><summary>結算紀錄</summary>
+    <table><thead><tr><th>結算日</th><th>契約</th><th>Call</th><th>Put</th><th>結算價</th><th class="monOnly">結果</th></tr></thead>
     <tbody id="settle"></tbody></table>
-    <div class="legend">防線取結算前一交易日；指數為收盤，實際結算價為收盤前 30 分鐘平均。</div>
+    <div class="legend">結算價為期交所公布的最後結算價；Call / Put 防線取結算前一交易日的最大未平倉。</div>
   </details>
 </div>
 
@@ -114,7 +119,9 @@ function nthWeekday(y, m, wd, n) {
   if (d.getUTCMonth() !== m - 1) d = new Date(Date.UTC(y, m - 1, 1 + off + 7 * (n - 2)));
   return d.toISOString().slice(0, 10);
 }
+let SETTLE = [], SDATE = {};
 function expiry(con) {
+  if (SDATE[con]) return SDATE[con];
   const m = con.match(/^(\d{4})(\d{2})(?:([WF])(\d))?$/);
   if (!m) return null;
   return m[3] ? nthWeekday(+m[1], +m[2], m[3] === "W" ? 3 : 5, +m[4]) : nthWeekday(+m[1], +m[2], 3, 3);
@@ -158,15 +165,19 @@ async function load() {
   const months = [...new Set(dates.map(d => d.slice(0, 7).replace("-", "")))];
   let done = 0; const tick = () => $("pg").style.width = (++done / (dates.length + months.length) * 100) + "%";
   $("pg").style.width = "0"; $("msg").textContent = "下載中…";
-  const [days, idx] = await Promise.all([
-    pool(dates, 4, d => getJSON(`${api}/api/day?date=${d}`), tick),
-    pool(months, 2, m => getJSON(`${api}/api/index?month=${m}`), tick)]);
+  const [days, idx, stl] = await Promise.all([
+    pool(dates, 4, d => getJSON(`${api}/api/day?date=${d}&v=2`), tick),
+    pool(months, 2, m => getJSON(`${api}/api/index?month=${m}`), tick),
+    getJSON(`${api}/api/settle`).catch(e => ({ error: e.message }))]);
+  SETTLE = stl.settle || []; SDATE = {};
+  SETTLE.forEach(x => SDATE[x.con] = x.date);
   const index = {}; idx.forEach(r => r?.index && Object.assign(index, r.index));
   const errs = days.filter(r => r?.error);
   DATA = { daily: days.filter(r => r?.trading), index };
   redraw();
   $("msg").innerHTML = `更新於 ${new Date().toLocaleTimeString()}` +
-    (errs.length ? `　<span class="err">${errs.length} 天失敗，再按更新重試</span>` : "");
+    (errs.length ? `　<span class="err">${errs.length} 天失敗，再按更新重試</span>` : "") +
+    (stl.error ? `　<span class="err">結算價取得失敗（Worker 需更新）</span>` : "");
   setTimeout(() => $("pg").style.width = "0", 600);
 }
 
@@ -190,16 +201,19 @@ function redraw() {
     const c = last.cs[k]; if (!c) return "";
     return `<tr><td style="text-align:left">${k} <span style="color:var(--muted);font-size:11px">${short(c.con)}</span></td>
       <td class="c">${fmt(c.C)}</td><td class="p">${fmt(c.P)}</td>
-      <td style="font-size:11px;color:var(--muted)">壓 ${fmt(c.C - last.ix)}｜撐 ${fmt(last.ix - c.P)}</td>
+      <td class="dist">壓 ${fmt(c.C - last.ix)}<br>撐 ${fmt(last.ix - c.P)}</td>
       <td class="monOnly"><span class="badge b-${c.st || "ok"}">${BADGE[c.st] || "—"}</span></td></tr>`;
-  }).join("") + (last ? `<tr><td colspan="5" style="font-size:11px;color:var(--muted);text-align:left">${last.date}　加權指數 ${fmt(last.ix, 2)}</td></tr>` : "");
+  }).join("") + (last ? `<tr><td colspan="5" style="font-size:11px;color:var(--muted);text-align:left">${last.date}　加權指數 ${fmt(last.ix, 2)}${
+      SETTLE[0] ? `　｜　最近結算 ${SETTLE[0].date.slice(5).replace("-", "/")} ${short(SETTLE[0].con)} <b class="stlv">${fmt(SETTLE[0].price)}</b>` : ""}</td></tr>` : "");
 
   // 每日表格
   $("hd").innerHTML = `<tr><th>日期</th><th>指數</th>${show.map(k => `<th colspan="2">${k}</th>`).join("")}</tr>`;
   const list = rows.slice().reverse(), view = showAll ? list : list.slice(0, 10);
   $("tb").innerHTML = view.map(r => {
     const wd = new Date(r.date + "T00:00:00Z").getUTCDay();
-    return `<tr><td class="${wd === 3 ? "wed" : ""}">${r.date.slice(5).replace("-", "/")} ${WD[wd]}</td><td>${fmt(r.ix)}</td>` +
+    const st = SETTLE.filter(x => x.date === r.date);
+    const stTag = st.length ? `<span class="tag stl">${st.map(x => "結" + fmt(x.price)).join(" ")}</span>` : "";
+    return `<tr><td class="${wd === 3 ? "wed" : ""}">${r.date.slice(5).replace("-", "/")} ${WD[wd]}</td><td>${stTag}${fmt(r.ix)}</td>` +
       show.map(k => {
         const c = r.cs[k]; if (!c) return "<td></td><td></td>";
         const tag = c.isNew ? `<span class="tag">${short(c.con)}</span>` : "";
@@ -212,15 +226,15 @@ function redraw() {
 
   // 結算紀錄
   const by = Object.fromEntries(daily.map(d => [d.date, d])), ds = daily.map(d => d.date), out = [];
-  for (const con of new Set(daily.flatMap(d => Object.keys(d.contracts)))) {
-    const e = expiry(con); if (!e || !by[e]) continue;
-    const b = ds.filter(d => d < e && by[d].contracts[con]).pop(); if (!b) continue;
-    const w = by[b].contracts[con]; out.push({ e, con, ...w, ix: index[e], st: judge(w, index[e]) });
+  for (const x of SETTLE) {
+    if (!ds.length || x.date <= ds[0] || x.date > ds[ds.length - 1]) continue;   // 只列期間內
+    const b = ds.filter(d => d < x.date && by[d].contracts[x.con]).pop(); if (!b) continue;
+    const w = by[b].contracts[x.con]; out.push({ e: x.date, con: x.con, ...w, ix: x.price, st: judge(w, x.price) });
   }
   out.sort((a, b) => b.e.localeCompare(a.e) || a.con.localeCompare(b.con));
   $("settle").innerHTML = out.map(s => `<tr><td>${s.e.slice(5).replace("-", "/")}</td><td>${short(s.con)}</td>
-    <td class="c">${fmt(s.C)}</td><td class="p">${fmt(s.P)}</td><td>${fmt(s.ix)}</td>
-    <td><span class="badge b-${s.st === "nr" ? "ok" : s.st || "ok"}">${s.st === "cb" ? "Call 倒莊" : s.st === "pb" ? "Put 倒莊" : "守住"}</span></td></tr>`).join("")
+    <td class="c">${fmt(s.C)}</td><td class="p">${fmt(s.P)}</td><td class="stlv">${fmt(s.ix)}</td>
+    <td class="monOnly"><span class="badge b-${s.st === "nr" ? "ok" : s.st || "ok"}">${s.st === "cb" ? "Call 倒莊" : s.st === "pb" ? "Put 倒莊" : "守住"}</span></td></tr>`).join("")
     || '<tr><td colspan="6" style="color:var(--muted)">期間內沒有到期契約</td></tr>';
 }
 $("moreBtn").onclick = () => { showAll = !showAll; redraw(); };
