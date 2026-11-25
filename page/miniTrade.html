@@ -263,6 +263,8 @@
     #charts-grid.layout-1 .sub-pane { display: none !important; }
     #charts-grid.layout-1 .pane-header { display: none !important; }
     #charts-grid.layout-2 #pane-2 { display: none !important; }
+    /* 多畫面時不顯示開高低收，避免遮住K線 */
+    #charts-grid:not(.layout-1) #ohlc-bar, #charts-grid:not(.layout-1) #ohlc-bar-1, #charts-grid:not(.layout-1) #ohlc-bar-2 { display: none !important; }
 
     .layout-btn {
       padding: 2px 6px;
