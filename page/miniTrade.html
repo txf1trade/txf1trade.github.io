@@ -32,7 +32,7 @@
           'BTCUSDT': { tz: 'UTC',              start: 0,    evening: false, weekend: true,    label: '24H（UTC 00:00 換日）' }
         },
         // 預設開啟的指標（比對指標 id 或名稱）；每個畫面一開始都只開這些
-        defaultInd: ['dayweek', '日周線'],
+        defaultInd: ['dayweek', '日周線', 'wave', '波段'],
         zone: { sessMode: 'auto', baseMode: 'prev', lookback: 20, shortN: 5, wLong: 0.5, wShort: 0.3, wLast: 0.2, linear: true, kTarget: 0.25, kRange: 0.5 }
       };
     })();
@@ -922,7 +922,7 @@
       try { localStorage.setItem(IND_PREF_KEY, JSON.stringify({ lineVisibility: { zone: lineVisibility.zone, zone2: lineVisibility.zone2, zone3: lineVisibility.zone3 }, uiPrefs })); } catch (e) {}
     }
     // 指標預設版本：版本不同時，所有畫面的指標開關重設為「只開日周線」（只做一次）
-    const IND_DEFAULT_VER = '2';
+    const IND_DEFAULT_VER = '3';
     window.__indReset = false;
     try { window.__indReset = localStorage.getItem('tvIndDefaultVer') !== IND_DEFAULT_VER; } catch (e) {}
     (function loadIndPrefs() {
@@ -1995,6 +1995,54 @@
     }
     document.addEventListener('DOMContentLoaded', initMiniChart);
 
+    /* ===================== 價格座標：K 線倒數 mm:ss（顯示在最新價標籤正下方） ===================== */
+    function initBarCountdown() {
+      const els = multiPanes.map((p, i) => {
+        const box = document.getElementById(i === 0 ? 'chart-container' : 'chart-container-' + i);
+        if (!box) return null;
+        if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
+        const el = document.createElement('div');
+        el.style.cssText = 'position:absolute;right:0;z-index:7;pointer-events:none;display:none;color:#fff;text-align:center;' +
+          'font:11px ui-monospace,Menlo,Consolas,monospace;line-height:15px;height:15px;border-radius:0 0 2px 2px';
+        box.appendChild(el);
+        return { el, box, last: '' };
+      });
+      const mmss = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+      // 目前 K 棒剩餘秒數；日K/週K 或已收盤（最後一根太舊）不顯示
+      function remain(p, cs) {
+        if (isDayRes(p.res) || !cs.length) return null;
+        const step = getResolutionSeconds(p.res), now = Date.now() / 1000, lt = cs[cs.length - 1].time;
+        if (now - lt > step * 2) return null;
+        let r = lt + step - now;
+        if (!(r > 0 && r <= step)) r = step - (now % step);
+        return Math.max(0, Math.floor(r));
+      }
+      const hide = o => { if (o.last !== 'off') { o.el.style.display = 'none'; o.last = 'off'; } };
+      function loop() {
+        requestAnimationFrame(loop);
+        els.forEach((o, i) => {
+          if (!o) return;
+          const p = multiPanes[i];
+          if (!p.chart || !p.series || (i > 0 && i >= chartLayout)) return hide(o);
+          const cs = i === 0 ? currentCandles : (p.candles || []);
+          const r = remain(p, cs); if (r == null) return hide(o);
+          const c = cs[cs.length - 1];
+          let y = null, w = 0, axisH = 26;
+          try { y = p.series.priceToCoordinate(c.close); w = p.chart.priceScale('right').width(); axisH = p.chart.timeScale().height() || 26; } catch (e) {}
+          const plotH = o.box.clientHeight - axisH;
+          if (y == null || !w || y < 0 || y > plotH) return hide(o);
+          const top = Math.min(plotH - 15, Math.round(y + (i === 0 ? 10 : 9)));
+          const bg = c.close >= c.open ? '#f23645' : '#089981';
+          const txt = mmss(r), key = txt + '|' + top + '|' + w + '|' + bg;
+          if (key === o.last) return;
+          o.last = key;
+          o.el.style.display = 'block'; o.el.style.top = top + 'px'; o.el.style.width = w + 'px'; o.el.style.background = bg;
+          o.el.textContent = txt;
+        });
+      }
+      loop();
+    }
+
     function initBottomResizer() {
       const resizer = document.getElementById('bottom-resizer');
       const detailCard = document.getElementById('symbol-detail-card');
@@ -2064,6 +2112,7 @@
       currentResolution = multiPanes[0].res;
 
       initChart();
+      initBarCountdown();
       initBottomResizer();
       renderWatchlist();
 
@@ -2562,7 +2611,7 @@
     function makeZone(pi) {
       const P = multiPanes[pi]; if (!P || !P.chart) return null;
       const Z = {
-        pi, on: !!lineVisibility[zoneKey(pi)],
+        pi, on: !!lineVisibility.zone,  // 所有畫面同步
         out: null, sig: '', lines: [], pxKey: '', prev: {},
         candles: () => pi === 0 ? currentCandles : (multiPanes[pi].candles || []),
         code: () => paneCode(pi),
@@ -2634,15 +2683,16 @@
       }
     });
     function pick(o, ks) { const r = {}; ks.forEach(k => { if (k in o) r[k] = o[k]; }); return r; }
-    // 必來點按鈕：作用在目前選取的畫面
+    // 必來點按鈕：所有畫面同步開關
     (function () {
       const btn = $('tab-zone'); if (!btn) return;
       const active = () => zones[activePaneIdx] || zones[0];
       const sync = () => { const Z = active(); btn.className = Z && Z.on ? TAB_ON : TAB_OFF; zInfoKey = ''; if (Z) zUpdateInfo(Z, Z.out); };
       btn.onclick = () => {
         const Z = active(); if (!Z) return;
-        Z.on = !Z.on;
-        lineVisibility[zoneKey(Z.pi)] = Z.on;
+        const v = !Z.on;
+        zones.forEach(z => { z.on = v; });
+        lineVisibility.zone = v;
         saveIndPrefs(); sync(); refreshOverlays();
       };
       window.addEventListener('activePaneChanged', sync);
@@ -2932,7 +2982,7 @@ window.TVInd = (function () {
   st.on = st.on || {}; st.on2 = st.on2 || {}; st.on3 = st.on3 || {}; st.params = st.params || {};
   const saveSt = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch (e) {} };
   if (window.__indReset) { st.on = {}; st.on2 = {}; st.on3 = {}; saveSt(); }  // 改成預設只開日周線
-  const onMap = I => I.pi === 0 ? st.on : I.pi === 1 ? st.on2 : st.on3;
+  const onMap = I => st.on;  // 指標開關所有畫面同步（共用一組）
   const DEF_IND = new Set(APP_CFG.defaultInd || []);
   const isDefault = d => DEF_IND.has(d.id) || DEF_IND.has(d.name);
   const curInst = () => insts[activePaneIdx] || insts[0];
@@ -3050,7 +3100,7 @@ window.TVInd = (function () {
       const b = document.createElement('button');
       b.id = 'tab-' + d.id; b.textContent = d.name || d.id; b.title = (d.desc ? d.desc + '｜' : '') + '長按設定參數';
       b.className = TAB_OFF;
-      b.onclick = () => { const I = curInst(); if (I) setOn(I, I.runs[d.id], !I.runs[d.id].on); };
+      b.onclick = () => { const I = curInst(); if (!I) return; const v = !I.runs[d.id].on; insts.forEach(J => { if (J.runs[d.id].on !== v) setOn(J, J.runs[d.id], v); }); };
       if (errBtn && errBtn.parentNode === wrap) wrap.insertBefore(b, errBtn); else wrap.appendChild(b);
       btns[d.id] = b;
     }
