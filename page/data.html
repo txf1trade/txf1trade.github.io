@@ -198,6 +198,9 @@
         .pts-side { display: inline-block; margin-left: 4px; padding: 1px 4px; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: 1px; font-family: -apple-system, sans-serif; }
         .pts-buy { background: #da3633; color: #fff; }
         .pts-sell { background: var(--gold); color: #000; }
+        .exp-note { font-size: 9px; font-weight: bold; margin-top: 4px; white-space: nowrap; }
+        .exp-put { color: var(--green); }
+        .exp-call { color: var(--red); }
 
         .retail-row { background: rgba(241, 224, 90, 0.03) !important; }
         .retail-text { color: var(--gold); font-weight: bold; }
@@ -833,6 +836,16 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
         const dealerTrendHtml = dealerScore >= 0 ? '<span class="up" style="font-weight:bold;">🚀 短線押多</span>' : '<span class="down" style="font-weight:bold;">⚠️ 短線避險</span>';
         const foreignTrendHtml = foreignScore >= 0 ? '<span class="up" style="font-weight:bold;">📈 長線偏多</span>' : '<span class="down" style="font-weight:bold;">📉 長線偏空</span>';
 
+        // 曝險註記：賣權曝險 = 極度看空；買權曝險 = 極度看多
+        const expNote = (c, p) => {
+            const n = [];
+            if (c < 0) n.push('<div class="exp-note exp-call">(買權曝險：市場極度看多)</div>');
+            if (p < 0) n.push('<div class="exp-note exp-put">(賣權曝險：市場極度看空)</div>');
+            return n.join('');
+        };
+        const dealerNote = expNote(s.dc, s.dp);
+        const foreignNote = expNote(s.fc, s.fp);
+
         const tableEl = document.getElementById('opt-data-table');
         if (tableEl) {
             let finalDealerRows = "";
@@ -840,7 +853,7 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                 let firstIndex = dealerHtml.indexOf("</tr>");
                 if(firstIndex !== -1) {
                     finalDealerRows = dealerHtml.substring(0, firstIndex) + 
-                        `<td rowspan="${dealerRowsCount}" style="vertical-align: middle; background: rgba(255,255,255,0.015); border-left: 2px solid var(--border);" class="text-center"><div>${dealerTrendHtml}</div></td>` + 
+                        `<td rowspan="${dealerRowsCount}" style="vertical-align: middle; background: rgba(255,255,255,0.015); border-left: 2px solid var(--border);" class="text-center"><div>${dealerTrendHtml}</div>${dealerNote}</td>` + 
                         dealerHtml.substring(firstIndex);
                 } else { finalDealerRows = dealerHtml; }
             }
@@ -850,7 +863,7 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                 let firstIndex = foreignHtml.indexOf("</tr>");
                 if(firstIndex !== -1) {
                     finalForeignRows = foreignHtml.substring(0, firstIndex) + 
-                        `<td rowspan="${foreignRowsCount}" style="vertical-align: middle; background: rgba(255,255,255,0.015); border-left: 2px solid var(--border);" class="text-center"><div>${foreignTrendHtml}</div></td>` + 
+                        `<td rowspan="${foreignRowsCount}" style="vertical-align: middle; background: rgba(255,255,255,0.015); border-left: 2px solid var(--border);" class="text-center"><div>${foreignTrendHtml}</div>${foreignNote}</td>` + 
                         foreignHtml.substring(firstIndex);
                 } else { finalForeignRows = foreignHtml; }
             }
