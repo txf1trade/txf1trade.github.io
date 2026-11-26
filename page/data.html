@@ -195,6 +195,9 @@
         td { padding: 8px 4px; border: 1px solid var(--border); text-align: center; }
         .num-cell { font-family: "Consolas", "Monaco", monospace; font-weight: bold; }
         .pos { color: var(--red); } .neg { color: var(--green); }
+        .pts-side { display: inline-block; margin-left: 4px; padding: 1px 4px; border-radius: 3px; font-size: 10px; font-weight: bold; vertical-align: 1px; font-family: -apple-system, sans-serif; }
+        .pts-buy { background: #da3633; color: #fff; }
+        .pts-sell { background: var(--gold); color: #000; }
 
         .retail-row { background: rgba(241, 224, 90, 0.03) !important; }
         .retail-text { color: var(--gold); font-weight: bold; }
@@ -799,7 +802,7 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
                 <td class="num-cell ${diffV>=0?'pos':'neg'}">${diff} <span class="ai-tag ${diffCls}">${diffAct}</span></td>
                 <td class="num-cell ${oiV>=0?'pos':'neg'}">${oi}</td>
                 <td class="num-cell ${amtV>=0?'pos':'neg'}">${amtV.toLocaleString()}</td>
-                <td class="num-cell ${oiV>=0?'pos':'neg'}">${ptsStr}<span style="font-size:9px;color:var(--gray);margin-left:2px;">${isNaN(pts)?'':ptsSide}</span></td>
+                <td class="num-cell ${oiV>=0?'pos':'neg'}">${ptsStr}${isNaN(pts)?'':`<span class="pts-side ${oiV>=0?'pts-buy':'pts-sell'}">${ptsSide}</span>`}</td>
                 <td><span class="ai-tag ${tagClass}">${actType}</span>${exposureTxt}</td>`;
 
             if(id === "自營商") {
