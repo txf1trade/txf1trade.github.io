@@ -839,8 +839,8 @@ html[data-theme="light"] img, html[data-theme="light"] video { filter:invert(1) 
         // 曝險註記：賣權曝險 = 極度看空；買權曝險 = 極度看多
         const expNote = (c, p) => {
             const n = [];
-            if (c < 0) n.push('<div class="exp-note exp-call">(買權曝險：市場極度看多)</div>');
-            if (p < 0) n.push('<div class="exp-note exp-put">(賣權曝險：市場極度看空)</div>');
+            if (c < 0) n.push('<div class="exp-note exp-call">(市場極度看多)</div>');
+            if (p < 0) n.push('<div class="exp-note exp-put">(市場極度看空)</div>');
             return n.join('');
         };
         const dealerNote = expNote(s.dc, s.dp);
