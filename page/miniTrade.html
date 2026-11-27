@@ -338,6 +338,7 @@
         <button class="layout-btn" data-layout="2" title="雙圖並排"><i class="fa-solid fa-table-columns"></i></button>
         <button class="layout-btn" data-layout="3" title="三圖並排"><svg width="13" height="11" viewBox="0 0 13 11" fill="none" stroke="currentColor" stroke-width="1.4" style="display:inline-block;vertical-align:-1px"><rect x="0.7" y="0.7" width="11.6" height="9.6" rx="1.2"/><line x1="4.6" y1="1" x2="4.6" y2="10"/><line x1="8.4" y1="1" x2="8.4" y2="10"/></svg></button>
       </div>
+      <button id="btn-all-latest" class="panel-btn bg-tvBg/80 border border-tvBorder" style="padding:3px 7px" title="所有畫面捲到最新K棒並自動縮放"><i class="fa-solid fa-forward-step"></i></button>
       <!-- 電腦版：右側面板顯示/隱藏 -->
       <div class="desk-only items-center bg-tvBg/80 p-0.5 rounded border border-tvBorder space-x-0.5">
         <button id="btn-toggle-wl" class="panel-btn" title="顯示/隱藏 標的清單"><i class="fa-solid fa-list"></i></button>
@@ -1340,6 +1341,18 @@
         chart.priceScale('right').applyOptions({ autoScale: true });
       } catch (e) {}
     }
+    // 所有顯示中的畫面捲到最新 K 棒並自動縮放價格
+    function scrollAllToLatest() {
+      _pushTok++; pushToLatest();
+      for (let i = 1; i < chartLayout && i < multiPanes.length; i++) {
+        const p = multiPanes[i], n = p.candles.length;
+        if (!n || !p.chart) continue;
+        try {
+          p.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 65), to: n - 1 + 6 });
+          p.chart.priceScale('right').applyOptions({ autoScale: true });
+        } catch (e) {}
+      }
+    }
     function schedulePush() {
       const tok = ++_pushTok, u0 = _userMoved;
       [0, 350, 1000, 2200].forEach(d => setTimeout(() => { if (tok === _pushTok && u0 === _userMoved) pushToLatest(); }, d));
@@ -2118,6 +2131,7 @@
       initBottomResizer();
       renderWatchlist();
 
+      document.getElementById('btn-all-latest').addEventListener('click', scrollAllToLatest);
       // 綁定多圖版面切換按鈕與子視窗點擊焦點
       document.querySelectorAll('.layout-btn').forEach(btn => {
         btn.addEventListener('click', () => setChartLayout(Number(btn.dataset.layout)));
@@ -2981,7 +2995,9 @@ window.TVInd = (function () {
   let ready = false, dataVer = 0, errBtn = null, calcCode = null, subOrder = [];
   let st = { on: {}, on2: {}, on3: {}, params: {}, heights: {} };
   try { st = Object.assign(st, JSON.parse(localStorage.getItem(LS) || '{}')); } catch (e) {}
-  st.on = st.on || {}; st.on2 = st.on2 || {}; st.on3 = st.on3 || {}; st.params = st.params || {};
+  st.on = st.on || {}; st.on2 = st.on2 || {}; st.on3 = st.on3 || {}; st.params = st.params || {}; st.hide = st.hide || {};
+  const hid = (d, k) => !!(st.hide[d.id] && st.hide[d.id][k]);  // 某條線是否被使用者隱藏
+  const sLabel = sp => sp.title || sp.key;
   const saveSt = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch (e) {} };
   if (window.__indReset) { st.on = {}; st.on2 = {}; st.on3 = {}; saveSt(); }  // 改成預設只開日周線
   const onMap = I => st.on;  // 指標開關所有畫面同步（共用一組）
@@ -3106,13 +3122,17 @@ window.TVInd = (function () {
       if (errBtn && errBtn.parentNode === wrap) wrap.insertBefore(b, errBtn); else wrap.appendChild(b);
       btns[d.id] = b;
     }
-    if (d.params.length && typeof IndParams !== 'undefined') {
+    if ((d.params.length || d.series.length) && typeof IndParams !== 'undefined') {
       IndParams.register(d.id, {
         title: d.name || d.id, note: () => d.note || '',
-        fields: d.params.map(q => ({ key: q.key, label: q.label, type: (q.type === 'select' || q.type === 'bool') ? 'select' : 'number', options: q.type === 'bool' ? [['1', '開'], ['0', '關']] : q.options, min: q.min, max: q.max, step: q.step })),
-        get: () => { const o = {}; d.params.forEach(q => { o[q.key] = cv(q, pv[d.id][q.key]); }); return o; },
-        defaults: () => { const o = {}; d.params.forEach(q => { o[q.key] = cv(q, q.def); }); return o; },
+        fields: d.params.map(q => ({ key: q.key, label: q.label, type: (q.type === 'select' || q.type === 'bool') ? 'select' : 'number', options: q.type === 'bool' ? [['1', '開'], ['0', '關']] : q.options, min: q.min, max: q.max, step: q.step }))
+          .concat(d.series.map(sp => ({ key: 's:' + sp.key, label: '線條：' + sLabel(sp), type: 'select', options: [['1', '顯示'], ['0', '隱藏']] }))),
+        get: () => { const o = {}; d.params.forEach(q => { o[q.key] = cv(q, pv[d.id][q.key]); }); d.series.forEach(sp => { o['s:' + sp.key] = hid(d, sp.key) ? '0' : '1'; }); return o; },
+        defaults: () => { const o = {}; d.params.forEach(q => { o[q.key] = cv(q, q.def); }); d.series.forEach(sp => { o['s:' + sp.key] = '1'; }); return o; },
         set: v => {
+          const hm = {}; d.series.forEach(sp => { if (v['s:' + sp.key] === '0') hm[sp.key] = true; });
+          st.hide[d.id] = hm;
+          insts.forEach(I => { const r = I.runs[d.id]; r.series.forEach((s, i) => { try { s.applyOptions({ visible: !hm[d.series[i].key] }); } catch (e) {} }); });
           const p = pv[d.id];
           d.params.forEach(q => {
             if (v[q.key] === undefined) return;
@@ -3139,7 +3159,7 @@ window.TVInd = (function () {
     const d = r.def, sub = d.pane === 'sub', sid = sub ? 'ind_' + d.id : 'right';
     const pf = { type: 'price', precision: 0, minMove: 1 };
     r.series = d.series.map(sp => {
-      const o = { priceScaleId: sid, priceLineVisible: false, lastValueVisible: !!sp.label, crosshairMarkerVisible: false, title: sp.label ? (sp.title || '') : '', priceFormat: pf };
+      const o = { visible: !hid(d, sp.key), priceScaleId: sid, priceLineVisible: false, lastValueVisible: !!sp.label, crosshairMarkerVisible: false, title: sp.label ? (sp.title || '') : '', priceFormat: pf };
       if (sub && d.range) o.autoscaleInfoProvider = () => ({ priceRange: { minValue: d.range[0], maxValue: d.range[1] } });
       else if (!sub && !sp.scale) o.autoscaleInfoProvider = () => null;
       return sp.kind === 'hist'
@@ -3232,8 +3252,11 @@ window.TVInd = (function () {
   function legendFor(r, idx) {
     const o = r.out; if (!o) return '';
     let items;
-    if (typeof o.legend === 'function') items = o.legend(idx) || [];
-    else items = r.def.series.filter(sp => sp.legend).map(sp => { const s = o[sp.key]; if (!s) return null; const v = s.v[idx]; if (isn(v)) return null; return { n: sp.title, v: fmtV(v, sp.fmt), c: (s.c && s.c[idx]) || sp.color }; }).filter(Boolean);
+    if (typeof o.legend === 'function') {
+      const hidT = new Set(r.def.series.filter(sp => hid(r.def, sp.key)).map(sLabel));
+      items = (o.legend(idx) || []).filter(it => !hidT.has(it.n));
+    }
+    else items = r.def.series.filter(sp => sp.legend && !hid(r.def, sp.key)).map(sp => { const s = o[sp.key]; if (!s) return null; const v = s.v[idx]; if (isn(v)) return null; return { n: sp.title, v: fmtV(v, sp.fmt), c: (s.c && s.c[idx]) || sp.color }; }).filter(Boolean);
     return items.map(it => `<span style="color:${it.c}"><span class="lg-name">${it.n}</span><span class="lg-val"> ${it.v}</span></span>`).join('');
   }
   function idxAt(I, t) {
