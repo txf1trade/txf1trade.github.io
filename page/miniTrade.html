@@ -207,7 +207,7 @@
     #draw-toolbar .sidebar-btn { width:34px; height:34px; }
     #draw-toolbar .sep { width:24px; height:1px; background:#2a2e39; margin:4px 0; }
     #dt-color { width:22px; height:22px; padding:0; border:1px solid #2a2e39; border-radius:4px; background:none; cursor:pointer; }
-    .tool-active #chart-container, .tool-active #chart-container * { cursor: crosshair !important; }
+    .tool-active, .tool-active * { cursor: crosshair !important; }
     .scale-btn { font-size:11px; padding:2px 8px; border-radius:4px; color:#787b86; border:1px solid transparent; }
     .scale-btn:hover { background:#2a2e39; color:#fff; }
     #axis-scale-btns .scale-btn { font-size:10px; padding:1px 5px; }
@@ -2764,51 +2764,68 @@
         if (!P.hovering && P.candles.length) renderSubOhlc(i, P.candles[P.candles.length - 1]);
       }
     }, 500);
-    /* ================= 繪圖工具 ================= */
-    const cv = document.createElement('canvas');
-    cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5';
-    box.appendChild(cv);
-    const ctx = cv.getContext('2d');
-    let W = 0, H = 0, dpr = 1;
-    new ResizeObserver(() => {
-      dpr = window.devicePixelRatio || 1; W = box.clientWidth; H = box.clientHeight;
-      cv.width = W * dpr; cv.height = H * dpr;
-      if (W > 0 && H > 0) chart.applyOptions({ width: W, height: H });
-    }).observe(box);
+    /* ================= 繪圖工具（畫面1、2、3 都可以畫） ================= */
     const fixScroll = () => { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; };
     window.addEventListener('resize', fixScroll);
     document.addEventListener('fullscreenchange', () => { fixScroll(); setTimeout(fixScroll, 150); });
 
-    let tool = 'cursor', magnet = false, hidden = false, color = '#2962ff';
-    let drawings = [], cur = null, sel = null, drag = null, loadedKey = '', startXY = null;
+    // 工具狀態：所有畫面共用
+    let tool = 'cursor', magnet = false, hidden = false, color = '#2962ff', lastType = null;
+    let active = null;   // 正在畫線或拖曳中的畫面
     const FIB = [[0, '#787b86'], [0.236, '#f23645'], [0.382, '#ff9800'], [0.5, '#4caf50'], [0.618, '#089981'], [0.786, '#00bcd4'], [1, '#787b86']];
+    const draws = [];
 
-    function curKey() {
-      const it = getAllWatchlistItems().find(s => s.id === multiPanes[0].symbolId);
-      return (it ? it.code : '?') + '|' + multiPanes[0].res;
+    const DKEY = 'tvdraw';
+    const readAll = () => { try { return JSON.parse(localStorage.getItem(DKEY) || '{}'); } catch (e) { return {}; } };
+    function save(D) {
+      if (!D.loadedKey) return;
+      try { const st = readAll(); st[D.loadedKey] = D.drawings; localStorage.setItem(DKEY, JSON.stringify(st)); } catch (e) {}
+      // 其他畫面若顯示同一商品同一週期，同步更新
+      draws.forEach(o => { if (o !== D && o.loadedKey === D.loadedKey) load(o, o.loadedKey); });
     }
-    function save() {
-      try { const st = JSON.parse(localStorage.getItem('tvdraw') || '{}'); st[loadedKey] = drawings; localStorage.setItem('tvdraw', JSON.stringify(st)); } catch (e) {}
-    }
-    function load(k) {
-      try { drawings = (JSON.parse(localStorage.getItem('tvdraw') || '{}')[k]) || []; } catch (e) { drawings = []; }
-      cur = null; sel = null; drag = null;
+    function load(D, k) { D.drawings = readAll()[k] || []; D.cur = null; D.sel = null; D.drag = null; }
+
+    function makeDraw(pi) {
+      const P = multiPanes[pi]; if (!P || !P.chart) return null;
+      const bx = $(pi === 0 ? 'chart-container' : 'chart-container-' + pi); if (!bx) return null;
+      const cvs = document.createElement('canvas');
+      cvs.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5';
+      bx.appendChild(cvs);
+      const D = {
+        pi, box: bx, cvs, ctx: cvs.getContext('2d'), W: 0, H: 0, dpr: 1,
+        drawings: [], cur: null, sel: null, drag: null, loadedKey: '', startXY: null,
+        chart: P.chart, ts: P.chart.timeScale(),
+        ser: () => pi === 0 ? S() : multiPanes[pi].series,
+        candles: () => pi === 0 ? currentCandles : (multiPanes[pi].candles || []),
+        key: () => paneCode(pi) + '|' + multiPanes[pi].res,
+        fmt: v => fmtPx(v, paneCode(pi)),
+        visible: () => pi === 0 || pi < chartLayout
+      };
+      new ResizeObserver(() => {
+        D.dpr = window.devicePixelRatio || 1; D.W = bx.clientWidth; D.H = bx.clientHeight;
+        cvs.width = D.W * D.dpr; cvs.height = D.H * D.dpr;
+        if (pi === 0 && D.W > 0 && D.H > 0) chart.applyOptions({ width: D.W, height: D.H });
+      }).observe(bx);
+      bx.addEventListener('mousedown', e => down(D, e), true);
+      bx.addEventListener('touchstart', e => down(D, e), { capture: true, passive: false });
+      bx.addEventListener('mousemove', e => hover(D, e));
+      return D;
     }
 
-    const plotW = () => { let w = 60; try { w = chart.priceScale('right').width() || 60; } catch (e) {} return W - w; };
-    const plotH = () => { let h = 26; try { if (typeof ts.height === 'function') h = ts.height(); } catch (e) {} return H - h; };
-    const px = p => ({ x: ts.logicalToCoordinate(p.l), y: S().priceToCoordinate(p.p) });
+    const plotW = D => { let w = 60; try { w = D.chart.priceScale('right').width() || 60; } catch (e) {} return D.W - w; };
+    const plotH = D => { let h = 26; try { if (typeof D.ts.height === 'function') h = D.ts.height(); } catch (e) {} return D.H - h; };
+    const px = (D, p) => ({ x: D.ts.logicalToCoordinate(p.l), y: D.ser().priceToCoordinate(p.p) });
 
-    function evPt(e) {
+    function evPt(D, e) {
       const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
-      const r = box.getBoundingClientRect();
+      const r = D.box.getBoundingClientRect();
       return { x: t.clientX - r.left, y: t.clientY - r.top };
     }
-    function toData(x, y) {
-      let l = ts.coordinateToLogical(x), p = S().coordinateToPrice(y);
+    function toData(D, x, y) {
+      let l = D.ts.coordinateToLogical(x), p = D.ser().coordinateToPrice(y);
       if (l == null || p == null) return null;
       if (magnet) {
-        const c = currentCandles[Math.round(l)];
+        const c = D.candles()[Math.round(l)];
         if (c) {
           l = Math.round(l);
           p = [c.open, c.high, c.low, c.close].reduce((a, b) => Math.abs(b - p) < Math.abs(a - p) ? b : a);
@@ -2822,9 +2839,9 @@
       let t = L ? ((x - a.x) * dx + (y - a.y) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
       return Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy));
     }
-    function hitTest(x, y) {
-      for (let i = drawings.length - 1; i >= 0; i--) {
-        const d = drawings[i], q = d.pts.map(px);
+    function hitTest(D, x, y) {
+      for (let i = D.drawings.length - 1; i >= 0; i--) {
+        const d = D.drawings[i], q = d.pts.map(p => px(D, p));
         if (q.some(o => o.x == null || o.y == null)) continue;
         for (let h = 0; h < q.length; h++) if (Math.hypot(x - q[h].x, y - q[h].y) < 9) return { d, handle: h };
         let ok = false;
@@ -2836,76 +2853,81 @@
       }
       return null;
     }
+    const clearSelOthers = D => draws.forEach(o => { if (o !== D) o.sel = null; });
 
-    function down(e) {
-      if (hidden) return;
-      const { x, y } = evPt(e);
-      if (x > plotW() || y > plotH()) return;
+    function down(D, e) {
+      if (hidden || !D.visible()) return;
+      const { x, y } = evPt(D, e);
+      if (x > plotW(D) || y > plotH(D)) return;
       const stop = () => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); };
       if (tool !== 'cursor') {
         stop();
-        const pt = toData(x, y); if (!pt) return;
-        if (tool === 'hline' || tool === 'vline') { addDrawing(tool, [pt]); return; }
-        if (!cur) { cur = { type: tool, pts: [pt, { ...pt }], color }; startXY = { x, y }; }
-        else { cur.pts[1] = pt; finish(); }
+        const pt = toData(D, x, y); if (!pt) return;
+        clearSelOthers(D); active = D;
+        if (tool === 'hline' || tool === 'vline') { addDrawing(D, tool, [pt]); return; }
+        if (!D.cur) { D.cur = { type: tool, pts: [pt, { ...pt }], color }; D.startXY = { x, y }; }
+        else { D.cur.pts[1] = pt; finish(D); }
         return;
       }
-      const h = hitTest(x, y);
+      const h = hitTest(D, x, y);
+      clearSelOthers(D);
       if (h) {
-        stop(); sel = h.d;
-        drag = { d: h.d, handle: h.handle, start: toData(x, y), orig: h.d.pts.map(p => ({ ...p })) };
-      } else sel = null;
+        stop(); D.sel = h.d; active = D;
+        D.drag = { d: h.d, handle: h.handle, start: toData(D, x, y), orig: h.d.pts.map(p => ({ ...p })) };
+      } else D.sel = null;
     }
     function move(e) {
-      const { x, y } = evPt(e);
-      if (cur) { const pt = toData(x, y); if (pt) cur.pts[1] = pt; if (e.cancelable && e.touches) e.preventDefault(); return; }
-      if (drag) {
-        const pt = toData(x, y); if (!pt) return;
-        if (drag.handle >= 0) drag.d.pts[drag.handle] = pt;
-        else { const dl = pt.l - drag.start.l, dp = pt.p - drag.start.p; drag.d.pts = drag.orig.map(o => ({ l: o.l + dl, p: o.p + dp })); }
+      const D = active; if (!D) return;
+      const { x, y } = evPt(D, e);
+      if (D.cur) { const pt = toData(D, x, y); if (pt) D.cur.pts[1] = pt; if (e.cancelable && e.touches) e.preventDefault(); return; }
+      if (D.drag) {
+        const pt = toData(D, x, y); if (!pt) return;
+        const g = D.drag;
+        if (g.handle >= 0) g.d.pts[g.handle] = pt;
+        else { const dl = pt.l - g.start.l, dp = pt.p - g.start.p; g.d.pts = g.orig.map(o => ({ l: o.l + dl, p: o.p + dp })); }
         if (e.cancelable && e.touches) e.preventDefault();
-        return;
       }
-      if (tool === 'cursor' && !hidden && !e.touches) {
-        const inPlot = x <= plotW() && y <= plotH(), h = inPlot && hitTest(x, y);
-        box.style.cursor = h ? (h.handle >= 0 ? 'pointer' : 'move') : '';
-      }
+    }
+    function hover(D, e) {
+      if (tool !== 'cursor' || hidden || D.drag || D.cur) return;
+      const { x, y } = evPt(D, e);
+      const inPlot = x <= plotW(D) && y <= plotH(D), h = inPlot && hitTest(D, x, y);
+      D.box.style.cursor = h ? (h.handle >= 0 ? 'pointer' : 'move') : '';
     }
     function up(e) {
-      if (cur && startXY) { const { x, y } = evPt(e); if (Math.hypot(x - startXY.x, y - startXY.y) > 8) finish(); }
-      if (drag) { drag = null; save(); }
+      const D = active; if (!D) return;
+      if (D.cur && D.startXY) { const { x, y } = evPt(D, e); if (Math.hypot(x - D.startXY.x, y - D.startXY.y) > 8) finish(D); }
+      if (D.drag) { D.drag = null; save(D); }
+      if (!D.cur && !D.drag) active = null;
     }
-    function finish() {
-      const p = cur.pts; cur = null; startXY = null;
+    function finish(D) {
+      const p = D.cur.pts; D.cur = null; D.startXY = null;
       if (p[0].l === p[1].l && p[0].p === p[1].p) return;
-      addDrawing(null, p, true);
+      addDrawing(D, null, p, true);
     }
-    let lastType = null;
-    function addDrawing(type, pts, fromCur) {
+    function addDrawing(D, type, pts, fromCur) {
       const t = fromCur ? (lastType || tool) : type;
-      drawings.push({ id: Date.now() + Math.random(), type: t, pts, color });
-      sel = drawings[drawings.length - 1];
-      save(); setTool('cursor');
+      D.drawings.push({ id: Date.now() + Math.random(), type: t, pts, color });
+      D.sel = D.drawings[D.drawings.length - 1];
+      save(D); setTool('cursor'); active = null;
     }
 
-    box.addEventListener('mousedown', down, true);
-    box.addEventListener('touchstart', down, { capture: true, passive: false });
     window.addEventListener('mousemove', move);
     window.addEventListener('touchmove', move, { passive: false });
     window.addEventListener('mouseup', up);
     window.addEventListener('touchend', up);
+    const selOwner = () => draws.find(D => D && D.sel);
+    function delSel() { const D = selOwner(); if (!D) return; D.drawings = D.drawings.filter(d => d !== D.sel); D.sel = null; save(D); }
     window.addEventListener('keydown', e => {
       if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && sel) delSel();
-      if (e.key === 'Escape') { cur = null; sel = null; setTool('cursor'); }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selOwner()) delSel();
+      if (e.key === 'Escape') { draws.forEach(D => { D.cur = null; D.sel = null; }); active = null; setTool('cursor'); }
     });
 
-    function delSel() { if (!sel) return; drawings = drawings.filter(d => d !== sel); sel = null; save(); }
-
     function setTool(t) {
-      tool = t; if (t !== 'cursor') { lastType = t; cur = null; }
+      tool = t; if (t !== 'cursor') { lastType = t; draws.forEach(D => { D.cur = null; }); }
       document.querySelectorAll('.draw-tool').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
-      box.classList.toggle('tool-active', t !== 'cursor');
+      draws.forEach(D => D.box.classList.toggle('tool-active', t !== 'cursor'));
     }
     document.querySelectorAll('.draw-tool').forEach(b => b.onclick = () => setTool(b.dataset.tool));
     $('dt-magnet').onclick = e => { magnet = !magnet; e.currentTarget.classList.toggle('active', magnet); };
@@ -2914,18 +2936,23 @@
       e.currentTarget.classList.toggle('active', hidden);
       e.currentTarget.querySelector('i').className = hidden ? 'fa-solid fa-eye-slash text-sm' : 'fa-solid fa-eye text-sm';
     };
-    $('dt-del').onclick = () => { if (sel) delSel(); else if (drawings.length && confirm('清除此商品/週期的所有繪圖？')) { drawings = []; save(); } };
-    $('dt-color').oninput = e => { color = e.target.value; if (sel) { sel.color = color; save(); } };
+    // 刪除：有選取就刪選取；沒有就清除「目前選取畫面」的全部繪圖
+    $('dt-del').onclick = () => {
+      if (selOwner()) { delSel(); return; }
+      const D = draws.find(o => o.pi === activePaneIdx) || draws[0];
+      if (D && D.drawings.length && confirm(`清除畫面${D.pi + 1}此商品/週期的所有繪圖？`)) { D.drawings = []; save(D); }
+    };
+    $('dt-color').oninput = e => { color = e.target.value; const D = selOwner(); if (D) { D.sel.color = color; save(D); } };
 
-    function drawOne(d, isSel) {
-      const q = d.pts.map(px); if (q.some(o => o.x == null || o.y == null)) return;
+    function drawOne(D, d, isSel) {
+      const ctx = D.ctx, q = d.pts.map(p => px(D, p)); if (q.some(o => o.x == null || o.y == null)) return;
       const c = d.color || '#2962ff';
       ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = isSel ? 2 : 1.5; ctx.setLineDash([]);
-      const pw = plotW();
-      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, pw, plotH()); ctx.clip();
+      const pw = plotW(D);
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, pw, plotH(D)); ctx.clip();
       if (d.type === 'trend') { ctx.beginPath(); ctx.moveTo(q[0].x, q[0].y); ctx.lineTo(q[1].x, q[1].y); ctx.stroke(); }
       else if (d.type === 'hline') { ctx.beginPath(); ctx.moveTo(0, q[0].y); ctx.lineTo(pw, q[0].y); ctx.stroke(); }
-      else if (d.type === 'vline') { ctx.beginPath(); ctx.moveTo(q[0].x, 0); ctx.lineTo(q[0].x, H); ctx.stroke(); }
+      else if (d.type === 'vline') { ctx.beginPath(); ctx.moveTo(q[0].x, 0); ctx.lineTo(q[0].x, D.H); ctx.stroke(); }
       else if (d.type === 'rect') {
         const x = Math.min(q[0].x, q[1].x), y = Math.min(q[0].y, q[1].y), w = Math.abs(q[1].x - q[0].x), h = Math.abs(q[1].y - q[0].y);
         ctx.globalAlpha = .15; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; ctx.strokeRect(x, y, w, h);
@@ -2935,45 +2962,52 @@
         ctx.font = '11px sans-serif'; ctx.textBaseline = 'bottom';
         let prevY = null;
         FIB.forEach(([lv, col]) => {
-          const price = p0 + (p1 - p0) * lv, y = S().priceToCoordinate(price); if (y == null) return;
+          const price = p0 + (p1 - p0) * lv, y = D.ser().priceToCoordinate(price); if (y == null) return;
           if (prevY != null) { ctx.globalAlpha = .08; ctx.fillStyle = col; ctx.fillRect(x1, Math.min(y, prevY), x2 - x1, Math.abs(y - prevY)); ctx.globalAlpha = 1; }
           ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
-          ctx.fillStyle = col; ctx.fillText(`${lv} (${fmt(price)})`, x1 + 4, y - 2);
+          ctx.fillStyle = col; ctx.fillText(`${lv} (${D.fmt(price)})`, x1 + 4, y - 2);
           prevY = y;
         });
         ctx.strokeStyle = '#787b86'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(q[0].x, q[0].y); ctx.lineTo(q[1].x, q[1].y); ctx.stroke(); ctx.setLineDash([]);
       }
       ctx.restore();
-      if (d.type === 'hline') label(pw, q[0].y, fmt(d.pts[0].p), c);
+      if (d.type === 'hline') label(D, pw, q[0].y, D.fmt(d.pts[0].p), c);
       if (isSel) {
         const hs = d.type === 'hline' || d.type === 'vline' ? [q[0]] : q;
         hs.forEach(o => { ctx.beginPath(); ctx.arc(o.x, o.y, 5, 0, 7); ctx.fillStyle = '#131722'; ctx.fill(); ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.stroke(); });
       }
     }
-    function label(x, y, text, bg) {
+    function label(D, x, y, text, bg) {
+      const ctx = D.ctx;
       ctx.font = '11px sans-serif'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = bg; ctx.fillRect(x, y - 9, W - x, 18);
+      ctx.fillStyle = bg; ctx.fillRect(x, y - 9, D.W - x, 18);
       ctx.fillStyle = '#fff'; ctx.fillText(text, x + 5, y + 1);
     }
     function frame() {
       requestAnimationFrame(frame);
-      if (!W) return;
-      try {
-        const k = curKey();
-        if (k !== loadedKey) {
-          if (loadedKey) save();
-          loadedKey = k; load(k);
-          const it = getAllWatchlistItems().find(s => s.id === multiPanes[0].symbolId);
-          const rl = { '1': '1m', '5': '5m', '15': '15m', '60': '1h', '1D': '日', 'W': '週' }[multiPanes[0].res] || multiPanes[0].res;
-          chart.applyOptions({ watermark: { text: it ? `${it.name}, ${rl}` : '' } });
-        }
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, W, H);
-        if (hidden) return;
-        drawings.forEach(d => drawOne(d, d === sel));
-        if (cur) drawOne(cur, true);
-      } catch (e) {}
+      draws.forEach(D => {
+        if (!D.W) return;
+        try {
+          const k = D.key();
+          if (k !== D.loadedKey) {
+            if (D.loadedKey) save(D);
+            D.loadedKey = k; load(D, k);
+            if (D.pi === 0) {
+              const it = getAllWatchlistItems().find(s => s.id === multiPanes[0].symbolId);
+              const rl = { '1': '1m', '5': '5m', '15': '15m', '60': '1h', '1D': '日', 'W': '週' }[multiPanes[0].res] || multiPanes[0].res;
+              chart.applyOptions({ watermark: { text: it ? `${it.name}, ${rl}` : '' } });
+            }
+          }
+          const ctx = D.ctx;
+          ctx.setTransform(D.dpr, 0, 0, D.dpr, 0, 0);
+          ctx.clearRect(0, 0, D.W, D.H);
+          if (hidden || !D.visible()) return;
+          D.drawings.forEach(d => drawOne(D, d, d === D.sel));
+          if (D.cur) drawOne(D, D.cur, true);
+        } catch (e) {}
+      });
     }
+    [0, 1, 2].forEach(pi => { const D = makeDraw(pi); if (D) draws.push(D); });
     frame();
     setTool('cursor');
   }
