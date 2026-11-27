@@ -139,7 +139,11 @@ function renderSess() {
     prefs.session = b.dataset.s;
     try { localStorage.setItem("txfkey_prefs", JSON.stringify(prefs)); } catch (e) {}
     renderSess();
-    if (DATA || $("out").innerHTML) run(true); // 已經算過就直接換資料
+    // 切換不自動查詢：同條件查過就直接顯示記住的結果，沒查過就清空等使用者按「計算」
+    const q = new URLSearchParams({ settle: $("settle").value.replaceAll("-", "/"), end: $("end").value.replaceAll("-", "/"), session: prefs.session });
+    const hit = CACHE[q.toString()];
+    if (hit) { DATA = hit; render(hit); }
+    else if ($("out").innerHTML) { DATA = null; $("out").innerHTML = `<p class="msg">已切換到${SESS_NAME[prefs.session]}，按「計算」查詢</p>`; }
   }));
 }
 renderSess();
