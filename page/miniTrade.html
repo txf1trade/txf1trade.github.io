@@ -3249,16 +3249,36 @@ window.TVInd = (function () {
   }
 
   const fmtV = (v, f) => f === 'x1' ? v.toFixed(1) : f === 'x2' ? v.toFixed(2) : f === 'pct' ? Math.round(v) + '%' : Math.round(v).toLocaleString('en-US');
+  // 圖上指標名稱可點擊：點一下隱藏該線（名稱變淡、劃線），再點一下恢復
   function legendFor(r, idx) {
     const o = r.out; if (!o) return '';
-    let items;
+    const d = r.def;
+    const item = (sk, n, v, c, off) => `<span data-ind="${d.id}" data-sk="${sk}" title="點擊${off ? '顯示' : '隱藏'}${n}" style="color:${c};cursor:pointer;pointer-events:auto;${off ? 'opacity:.4;text-decoration:line-through;' : ''}"><span class="lg-name">${n}</span>${off ? '' : `<span class="lg-val"> ${v}</span>`}</span>`;
+    const plain = it => `<span style="color:${it.c}"><span class="lg-name">${it.n}</span><span class="lg-val"> ${it.v}</span></span>`;
     if (typeof o.legend === 'function') {
-      const hidT = new Set(r.def.series.filter(sp => hid(r.def, sp.key)).map(sLabel));
-      items = (o.legend(idx) || []).filter(it => !hidT.has(it.n));
+      const byT = {}; d.series.forEach(sp => { byT[sLabel(sp)] = sp; });
+      return (o.legend(idx) || []).map(it => { const sp = byT[it.n]; return sp ? item(sp.key, it.n, it.v, it.c, hid(d, sp.key)) : plain(it); }).join('');
     }
-    else items = r.def.series.filter(sp => sp.legend && !hid(r.def, sp.key)).map(sp => { const s = o[sp.key]; if (!s) return null; const v = s.v[idx]; if (isn(v)) return null; return { n: sp.title, v: fmtV(v, sp.fmt), c: (s.c && s.c[idx]) || sp.color }; }).filter(Boolean);
-    return items.map(it => `<span style="color:${it.c}"><span class="lg-name">${it.n}</span><span class="lg-val"> ${it.v}</span></span>`).join('');
+    return d.series.filter(sp => sp.legend).map(sp => {
+      if (hid(d, sp.key)) return item(sp.key, sLabel(sp), '', sp.color, true);
+      const s = o[sp.key]; if (!s) return '';
+      const v = s.v[idx]; if (isn(v)) return '';
+      return item(sp.key, sLabel(sp), fmtV(v, sp.fmt), (s.c && s.c[idx]) || sp.color, false);
+    }).join('');
   }
+  function toggleLine(id, key) {
+    const d = defs.find(x => x.id === id); if (!d) return;
+    const hm = st.hide[id] || (st.hide[id] = {});
+    if (hm[key]) delete hm[key]; else hm[key] = true;
+    saveSt();
+    const i = d.series.findIndex(sp => sp.key === key);
+    insts.forEach(I => { const sr = I.runs[id] && I.runs[id].series[i]; if (sr) { try { sr.applyOptions({ visible: !hm[key] }); } catch (e) {} } renderLegends(I); });
+  }
+  document.addEventListener('pointerdown', e => {
+    const t = e.target.closest && e.target.closest('[data-ind][data-sk]'); if (!t) return;
+    e.preventDefault(); e.stopPropagation();
+    toggleLine(t.dataset.ind, t.dataset.sk);
+  }, true);
   function idxAt(I, t) {
     const cs = I.candles(), n = cs.length; if (!n) return -1; if (t == null) return n - 1;
     let lo = 0, hi = n - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (cs[m].time <= t) lo = m; else hi = m - 1; }
